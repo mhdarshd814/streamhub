@@ -50,6 +50,20 @@ export default function GoLivePage() {
     setCheckingAccess(false);
   }
 
+  function selectVisibility(nextVisibility: StreamVisibility) {
+    setVisibility(nextVisibility);
+
+    if (nextVisibility === "private") {
+      setCategory("Private Call");
+      if (!title.trim()) setTitle("Private One-on-One Call");
+    }
+
+    if (nextVisibility === "subscribers") {
+      setCategory("Subscribers Only");
+      if (!title.trim()) setTitle("Premium Subscriber Stream");
+    }
+  }
+
   async function uploadThumbnail(file: File) {
     const maxSize = 500 * 1024;
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -93,7 +107,7 @@ export default function GoLivePage() {
 
   async function handleStartStream() {
     if (!title.trim() || !category) {
-      alert("Please enter stream title and select category.");
+      alert("Please enter title and select category.");
       return;
     }
 
@@ -154,7 +168,7 @@ export default function GoLivePage() {
 
     alert(
       visibility === "private"
-        ? "Private video call created successfully."
+        ? "Private one-on-one call room created. Invite a guest from the studio."
         : visibility === "subscribers"
         ? "Subscriber-only stream created successfully."
         : "Public stream created successfully."
@@ -165,7 +179,7 @@ export default function GoLivePage() {
 
   const visibilityLabel =
     visibility === "private"
-      ? "Private video call"
+      ? "Private one-on-one call"
       : visibility === "subscribers"
       ? "Subscribers-only stream"
       : "Public live stream";
@@ -187,20 +201,74 @@ export default function GoLivePage() {
           </p>
 
           <h1 className="mb-3 text-3xl font-black sm:text-4xl lg:text-5xl">
-            Create a <span className="text-red-500">New Stream</span>
+            Create <span className="text-red-500">Live Content</span>
           </h1>
 
           <p className="max-w-3xl text-sm leading-6 text-gray-400 sm:text-base lg:text-lg">
-            Set up your stream, private call, or subscriber-only broadcast before
-            starting.
+            Create a public stream, subscriber-only broadcast, or private
+            one-on-one video call.
           </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:col-span-2 lg:p-8">
             <h2 className="mb-6 text-2xl font-black sm:text-3xl">
-              Stream Details
+              Session Details
             </h2>
+
+            <label className="mb-3 block text-sm font-semibold text-gray-300 sm:text-base">
+              Select Type
+            </label>
+
+            <div className="mb-6 grid gap-3 md:grid-cols-3 md:gap-4">
+              <button
+                type="button"
+                onClick={() => selectVisibility("public")}
+                className={
+                  visibility === "public"
+                    ? "rounded-2xl border border-red-600 bg-red-600/10 p-4 text-left sm:p-5"
+                    : "rounded-2xl border border-gray-700 bg-gray-800 p-4 text-left hover:border-gray-500 sm:p-5"
+                }
+              >
+                <div className="mb-3 text-3xl">🌍</div>
+                <h3 className="mb-2 text-lg font-black">Public Stream</h3>
+                <p className="text-sm leading-6 text-gray-400">
+                  Visible on Explore and Following pages.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectVisibility("private")}
+                className={
+                  visibility === "private"
+                    ? "rounded-2xl border border-purple-500 bg-purple-500/10 p-4 text-left sm:p-5"
+                    : "rounded-2xl border border-gray-700 bg-gray-800 p-4 text-left hover:border-gray-500 sm:p-5"
+                }
+              >
+                <div className="mb-3 text-3xl">📞</div>
+                <h3 className="mb-2 text-lg font-black">Private Call</h3>
+                <p className="text-sm leading-6 text-gray-400">
+                  One-on-one video call. Hidden from public pages.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectVisibility("subscribers")}
+                className={
+                  visibility === "subscribers"
+                    ? "rounded-2xl border border-yellow-500 bg-yellow-500/10 p-4 text-left sm:p-5"
+                    : "rounded-2xl border border-gray-700 bg-gray-800 p-4 text-left hover:border-gray-500 sm:p-5"
+                }
+              >
+                <div className="mb-3 text-3xl">⭐</div>
+                <h3 className="mb-2 text-lg font-black">Subscribers Only</h3>
+                <p className="text-sm leading-6 text-gray-400">
+                  Only active subscribers can watch and chat.
+                </p>
+              </button>
+            </div>
 
             <label className="mb-2 block text-sm font-semibold text-gray-300 sm:text-base">
               Title
@@ -208,7 +276,7 @@ export default function GoLivePage() {
             <input
               placeholder={
                 visibility === "private"
-                  ? "Example: Private discussion with Ahmed"
+                  ? "Example: Private one-on-one call with Ahmed"
                   : visibility === "subscribers"
                   ? "Example: Premium Q&A for subscribers"
                   : "Example: Late Night Gaming Live"
@@ -227,6 +295,9 @@ export default function GoLivePage() {
               className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
             >
               <option value="">Select Category</option>
+              <option value="Private Call">Private Call</option>
+              <option value="One-on-One Call">One-on-One Call</option>
+              <option value="Subscribers Only">Subscribers Only</option>
               <option value="Gaming">Gaming</option>
               <option value="Entertainment">Entertainment</option>
               <option value="Music">Music</option>
@@ -239,8 +310,6 @@ export default function GoLivePage() {
               <option value="News">News</option>
               <option value="Podcast">Podcast</option>
               <option value="Kids">Kids</option>
-              <option value="Private Call">Private Call</option>
-              <option value="Subscribers Only">Subscribers Only</option>
             </select>
 
             <label className="mb-2 block text-sm font-semibold text-gray-300 sm:text-base">
@@ -263,65 +332,29 @@ export default function GoLivePage() {
               Tags
             </label>
             <input
-              placeholder="gaming, live, fun, tutorial"
+              placeholder={
+                visibility === "private"
+                  ? "private, call, meeting"
+                  : "gaming, live, fun, tutorial"
+              }
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
+              className="mb-6 w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
             />
 
-            <label className="mb-3 block text-sm font-semibold text-gray-300 sm:text-base">
-              Stream Visibility
-            </label>
-
-            <div className="mb-6 grid gap-3 md:grid-cols-3 md:gap-4">
-              <button
-                type="button"
-                onClick={() => setVisibility("public")}
-                className={
-                  visibility === "public"
-                    ? "rounded-2xl border border-red-600 bg-red-600/10 p-4 text-left sm:p-5"
-                    : "rounded-2xl border border-gray-700 bg-gray-800 p-4 text-left hover:border-gray-500 sm:p-5"
-                }
-              >
-                <div className="mb-3 text-3xl">🌍</div>
-                <h3 className="mb-2 text-lg font-black">Public</h3>
-                <p className="text-sm leading-6 text-gray-400">
-                  Visible on Explore and Following pages.
+            {visibility === "private" && (
+              <div className="mb-6 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4 sm:p-5">
+                <h3 className="mb-2 text-lg font-black text-purple-300">
+                  Private Call Rules
+                </h3>
+                <p className="text-sm leading-6 text-gray-300">
+                  This room will not appear on Explore or Following pages. After
+                  creating it, open the studio and invite one guest. Both users
+                  will publish camera and microphone inside the same LiveKit
+                  room.
                 </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setVisibility("private")}
-                className={
-                  visibility === "private"
-                    ? "rounded-2xl border border-red-600 bg-red-600/10 p-4 text-left sm:p-5"
-                    : "rounded-2xl border border-gray-700 bg-gray-800 p-4 text-left hover:border-gray-500 sm:p-5"
-                }
-              >
-                <div className="mb-3 text-3xl">🔒</div>
-                <h3 className="mb-2 text-lg font-black">Private</h3>
-                <p className="text-sm leading-6 text-gray-400">
-                  Hidden from public pages. Guest invite only.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setVisibility("subscribers")}
-                className={
-                  visibility === "subscribers"
-                    ? "rounded-2xl border border-yellow-500 bg-yellow-500/10 p-4 text-left sm:p-5"
-                    : "rounded-2xl border border-gray-700 bg-gray-800 p-4 text-left hover:border-gray-500 sm:p-5"
-                }
-              >
-                <div className="mb-3 text-3xl">⭐</div>
-                <h3 className="mb-2 text-lg font-black">Subscribers only</h3>
-                <p className="text-sm leading-6 text-gray-400">
-                  Only active subscribers can watch and chat.
-                </p>
-              </button>
-            </div>
+              </div>
+            )}
 
             <button
               onClick={handleStartStream}
@@ -331,7 +364,7 @@ export default function GoLivePage() {
               {saving
                 ? "Creating..."
                 : visibility === "private"
-                ? "Create Private Call"
+                ? "Create Private Call Room"
                 : visibility === "subscribers"
                 ? "Create Subscribers-only Stream"
                 : "Create Public Stream"}
@@ -374,7 +407,7 @@ export default function GoLivePage() {
                 <div className="text-center text-gray-400">
                   <p className="mb-3 text-5xl">
                     {visibility === "private"
-                      ? "🔒"
+                      ? "📞"
                       : visibility === "subscribers"
                       ? "⭐"
                       : "📺"}
@@ -388,7 +421,7 @@ export default function GoLivePage() {
               <p className="mb-2 text-sm text-gray-400">Preview</p>
 
               <h3 className="mb-2 break-words text-lg font-black sm:text-xl">
-                {title || "Your stream title"}
+                {title || "Your session title"}
               </h3>
 
               <p className="mb-2 text-sm text-gray-400 sm:text-base">
@@ -409,14 +442,19 @@ export default function GoLivePage() {
 
               {visibility === "private" && (
                 <p className="mt-3 text-sm leading-6 text-gray-500">
-                  This will not appear on Explore or Following pages.
+                  Hidden from public pages. Only invited guest can join.
                 </p>
               )}
 
               {visibility === "subscribers" && (
                 <p className="mt-3 text-sm leading-6 text-gray-500">
-                  Only users with an active subscription to your profile should
-                  be allowed to watch. Watch-page protection is the next step.
+                  Only users with active subscription can access the watch page.
+                </p>
+              )}
+
+              {visibility === "public" && (
+                <p className="mt-3 text-sm leading-6 text-gray-500">
+                  Visible to followers and public viewers.
                 </p>
               )}
             </div>

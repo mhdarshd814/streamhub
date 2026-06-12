@@ -4,6 +4,7 @@ import "./globals.css";
 
 import Navbar from "./components/Navbar";
 import PushNotificationManager from "./components/PushNotificationManager";
+import IncomingCallPopup from "../components/IncomingCallPopup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-black text-white">
         <PushNotificationManager />
+        <IncomingCallPopup />
 
         <Navbar />
 

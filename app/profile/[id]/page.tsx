@@ -37,6 +37,7 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [callLoading, setCallLoading] = useState(false);
 
   useEffect(() => {
     if (profileId) loadProfile();
@@ -145,6 +146,92 @@ export default function PublicProfilePage() {
     }
 
     return true;
+  }
+
+  async function startPrivateCall() {
+    if (!viewerId || !profile || viewerId === profile.id) return;
+
+    const confirmed = confirm(
+      `Start a private one-on-one call with ${
+        profile.display_name || profile.username || "this creator"
+      }?`
+    );
+
+    if (!confirmed) return;
+
+    setCallLoading(true);
+
+    const allowed = await checkViewerAccess();
+
+    if (!allowed) {
+      setCallLoading(false);
+      return;
+    }
+
+    const callTitle = `Private Call with ${
+      profile.display_name || profile.username || "Creator"
+    }`;
+
+    const { data: streamData, error: streamError } = await supabase
+      .from("streams")
+      .insert([
+        {
+          user_id: viewerId,
+          title: callTitle,
+          category: "One-on-One Call",
+          description: "Private one-on-one video call.",
+          tags: "private,call,one-on-one",
+          visibility: "private",
+          status: "offline",
+          thumbnail_url: null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (streamError || !streamData) {
+      setCallLoading(false);
+      alert(streamError?.message || "Failed to create private call.");
+      return;
+    }
+
+    const { error: inviteError } = await supabase.from("stream_guests").insert([
+      {
+        stream_id: streamData.id,
+        host_id: viewerId,
+        guest_id: profile.id,
+        status: "pending",
+      },
+    ]);
+
+    if (inviteError) {
+      setCallLoading(false);
+      alert(inviteError.message);
+      return;
+    }
+
+    await supabase.from("private_call_requests").insert([
+      {
+        caller_id: viewerId,
+        receiver_id: profile.id,
+        stream_id: streamData.id,
+        status: "pending",
+      },
+    ]);
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: profile.id,
+        type: "private_call_request",
+        title: "Private Call Request",
+        message: "Someone invited you to a private one-on-one call.",
+        link: "/calls",
+        is_read: false,
+      },
+    ]);
+
+    setCallLoading(false);
+    window.location.href = `/live/${streamData.id}`;
   }
 
   async function toggleFollow() {
@@ -351,12 +438,22 @@ export default function PublicProfilePage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                 {!isOwnProfile && (
                   <>
                     <button
+                      onClick={startPrivateCall}
+                      disabled={
+                        callLoading || followLoading || subscriptionLoading
+                      }
+                      className="rounded-xl bg-purple-600 px-5 py-3 font-black text-white hover:bg-purple-700 disabled:bg-gray-700"
+                    >
+                      {callLoading ? "Starting..." : "📞 Private Call"}
+                    </button>
+
+                    <button
                       onClick={toggleFollow}
-                      disabled={followLoading || subscriptionLoading}
+                      disabled={followLoading || subscriptionLoading || callLoading}
                       className={`rounded-xl px-5 py-3 font-bold disabled:bg-gray-700 ${
                         isFollowing
                           ? "bg-gray-700 hover:bg-gray-600"
@@ -366,13 +463,13 @@ export default function PublicProfilePage() {
                       {followLoading
                         ? "Please wait..."
                         : isFollowing
-                          ? "Following"
-                          : "Follow"}
+                        ? "Following"
+                        : "Follow"}
                     </button>
 
                     <button
                       onClick={toggleSubscription}
-                      disabled={subscriptionLoading || followLoading}
+                      disabled={subscriptionLoading || followLoading || callLoading}
                       className={`rounded-xl px-5 py-3 font-black disabled:bg-gray-700 ${
                         isSubscribed
                           ? "border border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20"
@@ -382,14 +479,21 @@ export default function PublicProfilePage() {
                       {subscriptionLoading
                         ? "Please wait..."
                         : isSubscribed
-                          ? "Subscribed ✓"
-                          : `Subscribe AED ${planPrice}`}
+                        ? "Subscribed ✓"
+                        : `Subscribe AED ${planPrice}`}
                     </button>
                   </>
                 )}
 
                 {isOwnProfile && (
                   <>
+                    <button
+                      onClick={() => (window.location.href = "/calls")}
+                      className="rounded-xl bg-purple-600 px-5 py-3 font-black text-white hover:bg-purple-700"
+                    >
+                      Private Calls
+                    </button>
+
                     <button
                       onClick={() => (window.location.href = "/wallet")}
                       className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black hover:bg-yellow-400"
@@ -422,6 +526,17 @@ export default function PublicProfilePage() {
                 <p className="text-2xl font-black">{profile.following || 0}</p>
                 <p className="text-sm text-gray-400">Following</p>
               </div>
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5">
+              <h2 className="mb-2 text-xl font-black text-purple-300">
+                Private One-on-One Call
+              </h2>
+              <p className="text-sm leading-6 text-gray-300">
+                Start a private LiveKit room with this creator. The room is
+                hidden from Explore and public watch pages. Only the caller and
+                invited creator can join.
+              </p>
             </div>
 
             <div className="mt-8 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5">
@@ -484,8 +599,8 @@ export default function PublicProfilePage() {
                     {subscriptionLoading
                       ? "Please wait..."
                       : isSubscribed
-                        ? "Cancel Subscription"
-                        : "Subscribe Now"}
+                      ? "Cancel Subscription"
+                      : "Subscribe Now"}
                   </button>
                 </div>
               )}
