@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
@@ -34,6 +34,8 @@ export default function PublicProfilePage() {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [hasFirstStream, setHasFirstStream] = useState(false);
+  const [hasFirstFollow, setHasFirstFollow] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
@@ -42,6 +44,54 @@ export default function PublicProfilePage() {
   useEffect(() => {
     if (profileId) loadProfile();
   }, [profileId]);
+
+  const isOwnProfile = viewerId === profile?.id;
+  const hasPremiumPlan = !!plan?.is_active;
+  const planName = plan?.plan_name || "Premium";
+  const planPrice = plan?.price_aed ?? 9.99;
+
+  const completionItems = useMemo(() => {
+    if (!profile) return [];
+
+    return [
+      {
+        label: "Username added",
+        done: !!profile.username,
+        action: "/profile/edit",
+      },
+      {
+        label: "Avatar uploaded",
+        done: !!profile.avatar_url,
+        action: "/profile/edit",
+      },
+      {
+        label: "Bio completed",
+        done: !!profile.bio && profile.bio.trim().length >= 10,
+        action: "/profile/edit",
+      },
+      {
+        label: "Subscription plan active",
+        done: hasPremiumPlan,
+        action: "/wallet",
+      },
+      {
+        label: "First stream created",
+        done: hasFirstStream,
+        action: "/go-live",
+      },
+      {
+        label: "Following someone",
+        done: hasFirstFollow,
+        action: "/explore",
+      },
+    ];
+  }, [profile, hasPremiumPlan, hasFirstStream, hasFirstFollow]);
+
+  const completedCount = completionItems.filter((item) => item.done).length;
+  const completionPercent =
+    completionItems.length > 0
+      ? Math.round((completedCount / completionItems.length) * 100)
+      : 0;
 
   async function loadProfile() {
     setLoading(true);
@@ -112,6 +162,24 @@ export default function PublicProfilePage() {
 
     setPlan(planData || null);
 
+    if (user.id === profileId) {
+      const { data: streamData } = await supabase
+        .from("streams")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      setHasFirstStream(!!streamData?.length);
+
+      const { data: followingData } = await supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", user.id)
+        .limit(1);
+
+      setHasFirstFollow(!!followingData?.length);
+    }
+
     if (user.id !== profileId) {
       const { data: subscriptionStatus } = await supabase.rpc(
         "is_subscribed_to_creator",
@@ -150,7 +218,6 @@ export default function PublicProfilePage() {
 
   async function logout() {
     const confirmed = confirm("Are you sure you want to logout?");
-
     if (!confirmed) return;
 
     await supabase.auth.signOut();
@@ -383,11 +450,6 @@ export default function PublicProfilePage() {
     );
   }
 
-  const isOwnProfile = viewerId === profile.id;
-  const hasPremiumPlan = !!plan?.is_active;
-  const planName = plan?.plan_name || "Premium";
-  const planPrice = plan?.price_aed ?? 9.99;
-
   return (
     <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-5xl">
@@ -521,15 +583,9 @@ export default function PublicProfilePage() {
                       <ProfileAction label="✏️ Edit Profile" href="/profile/edit" />
                       <ProfileAction label="💰 Wallet" href="/wallet" />
                       <ProfileAction label="📞 Calls" href="/calls" />
-                      <ProfileAction
-                        label="🔔 Notifications"
-                        href="/notifications"
-                      />
+                      <ProfileAction label="🔔 Notifications" href="/notifications" />
                       <ProfileAction label="🎥 Go Live" href="/go-live" />
-                      <ProfileAction
-                        label="⚙️ Settings"
-                        href="/notifications/settings"
-                      />
+                      <ProfileAction label="⚙️ Settings" href="/notifications/settings" />
 
                       <button
                         onClick={logout}
@@ -542,6 +598,15 @@ export default function PublicProfilePage() {
                 )}
               </div>
             </div>
+
+            {isOwnProfile && (
+              <ProfileCompletionCard
+                percent={completionPercent}
+                completedCount={completedCount}
+                totalCount={completionItems.length}
+                items={completionItems}
+              />
+            )}
 
             <p className="mt-6 rounded-2xl border border-gray-800 bg-black/30 p-4 text-sm leading-6 text-gray-300 sm:text-base">
               {profile.bio || "No bio added yet."}
@@ -657,6 +722,63 @@ export default function PublicProfilePage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileCompletionCard({
+  percent,
+  completedCount,
+  totalCount,
+  items,
+}: {
+  percent: number;
+  completedCount: number;
+  totalCount: number;
+  items: { label: string; done: boolean; action: string }[];
+}) {
+  return (
+    <div className="mt-8 rounded-2xl border border-green-500/20 bg-green-500/10 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-black text-green-300">
+            Profile Completion
+          </h2>
+          <p className="mt-1 text-sm text-gray-300">
+            {completedCount} of {totalCount} completed
+          </p>
+        </div>
+
+        <div className="text-left sm:text-right">
+          <p className="text-3xl font-black text-green-300">{percent}%</p>
+          <p className="text-xs text-gray-400">Complete</p>
+        </div>
+      </div>
+
+      <div className="mt-4 h-3 overflow-hidden rounded-full bg-black/50">
+        <div
+          className="h-full rounded-full bg-green-500"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <button
+            key={item.label}
+            onClick={() => {
+              if (!item.done) window.location.href = item.action;
+            }}
+            className={`rounded-xl px-4 py-3 text-left text-sm font-bold ${
+              item.done
+                ? "border border-green-500/30 bg-green-500/10 text-green-300"
+                : "border border-gray-700 bg-gray-900 text-gray-300 hover:bg-gray-800"
+            }`}
+          >
+            {item.done ? "✅" : "⬜"} {item.label}
+          </button>
+        ))}
       </div>
     </div>
   );
