@@ -26,6 +26,7 @@ export default function Navbar() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [pendingInvites, setPendingInvites] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -41,7 +42,6 @@ export default function Navbar() {
 
     async function init() {
       const id = await checkUser();
-
       if (id) {
         inviteChannel = subscribeToInvites(id);
         notificationChannel = subscribeToNotifications(id);
@@ -66,7 +66,6 @@ export default function Navbar() {
 
     return () => {
       subscription.unsubscribe();
-
       if (inviteChannel) supabase.removeChannel(inviteChannel);
       if (notificationChannel) supabase.removeChannel(notificationChannel);
     };
@@ -86,7 +85,6 @@ export default function Navbar() {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
@@ -159,7 +157,6 @@ export default function Navbar() {
       .maybeSingle();
 
     setProfile(data || null);
-
     await loadPendingInvites(user.id);
     await loadNotifications(user.id);
 
@@ -191,10 +188,7 @@ export default function Navbar() {
   }
 
   async function openNotification(notification: Notification) {
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notification.id);
+    await supabase.from("notifications").update({ is_read: true }).eq("id", notification.id);
 
     if (userId) await loadNotifications(userId);
 
@@ -218,9 +212,13 @@ export default function Navbar() {
   }
 
   async function logout() {
+    const confirmed = confirm("Logout from StreamHub?");
+    if (!confirmed) return;
+
     await supabase.auth.signOut();
 
     setMenuOpen(false);
+    setMobileMenuOpen(false);
     setNotificationOpen(false);
     setPendingInvites(0);
     setUnreadNotifications(0);
@@ -232,13 +230,9 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Desktop Navbar - only extra large screens and above */}
       <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 xl:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div
-            onClick={() => goTo("/")}
-            className="flex cursor-pointer items-center gap-3"
-          >
+          <div onClick={() => goTo("/")} className="flex cursor-pointer items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
               <span className="text-2xl font-black text-white">▶</span>
             </div>
@@ -256,35 +250,22 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-5">
-            <button
-              onClick={() => goTo("/")}
-              className="font-bold text-gray-100 hover:text-red-400"
-            >
+            <button onClick={() => goTo("/")} className="font-bold text-gray-100 hover:text-red-400">
               Home
             </button>
 
-            <button
-              onClick={() => goTo("/explore")}
-              className="font-bold text-gray-100 hover:text-red-400"
-            >
+            <button onClick={() => goTo("/explore")} className="font-bold text-gray-100 hover:text-red-400">
               Explore
             </button>
 
             {loggedIn ? (
               <>
-                <button
-                  onClick={() => goTo("/following")}
-                  className="font-bold text-gray-100 hover:text-red-400"
-                >
+                <button onClick={() => goTo("/following")} className="font-bold text-gray-100 hover:text-red-400">
                   Following
                 </button>
 
-                <button
-                  onClick={() => goTo("/invites")}
-                  className="relative font-bold text-gray-100 hover:text-red-400"
-                >
+                <button onClick={() => goTo("/invites")} className="relative font-bold text-gray-100 hover:text-red-400">
                   Invites
-
                   {pendingInvites > 0 && (
                     <span className="absolute -right-4 -top-3 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
                       {pendingInvites}
@@ -292,10 +273,7 @@ export default function Navbar() {
                   )}
                 </button>
 
-                <button
-                  onClick={() => goTo("/dashboard")}
-                  className="font-bold text-gray-100 hover:text-red-400"
-                >
+                <button onClick={() => goTo("/dashboard")} className="font-bold text-gray-100 hover:text-red-400">
                   Dashboard
                 </button>
 
@@ -317,7 +295,6 @@ export default function Navbar() {
                     className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-xl hover:border-red-600"
                   >
                     🔔
-
                     {unreadNotifications > 0 && (
                       <span className="absolute -right-2 -top-2 min-w-[22px] animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
                         {unreadNotifications}
@@ -329,20 +306,12 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
                       <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
                         <div>
-                          <h3 className="font-black text-white">
-                            Notifications
-                          </h3>
-
-                          <p className="text-xs text-gray-400">
-                            {unreadNotifications} unread
-                          </p>
+                          <h3 className="font-black text-white">Notifications</h3>
+                          <p className="text-xs text-gray-400">{unreadNotifications} unread</p>
                         </div>
 
                         {unreadNotifications > 0 && (
-                          <button
-                            onClick={markAllNotificationsRead}
-                            className="text-xs font-bold text-red-400"
-                          >
+                          <button onClick={markAllNotificationsRead} className="text-xs font-bold text-red-400">
                             Mark all read
                           </button>
                         )}
@@ -350,9 +319,7 @@ export default function Navbar() {
 
                       <div className="max-h-96 overflow-auto">
                         {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-gray-400">
-                            No notifications yet.
-                          </div>
+                          <div className="p-6 text-center text-gray-400">No notifications yet.</div>
                         ) : (
                           notifications.map((notification) => (
                             <button
@@ -364,10 +331,7 @@ export default function Navbar() {
                                   : "w-full border-b border-gray-800 bg-red-600/10 px-5 py-4 text-left hover:bg-gray-800"
                               }
                             >
-                              <p className="font-bold text-white">
-                                {notification.title}
-                              </p>
-
+                              <p className="font-bold text-white">{notification.title}</p>
                               <p className="mt-1 text-sm text-gray-400">
                                 {notification.message || "New notification"}
                               </p>
@@ -396,11 +360,7 @@ export default function Navbar() {
                   >
                     <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-700">
                       {profile?.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt={profile.username || "Profile"}
-                          className="h-full w-full object-cover"
-                        />
+                        <img src={profile.avatar_url} alt={profile.username || "Profile"} className="h-full w-full object-cover" />
                       ) : (
                         "👤"
                       )}
@@ -429,10 +389,7 @@ export default function Navbar() {
                         </button>
                       )}
 
-                      <button
-                        onClick={logout}
-                        className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600"
-                      >
+                      <button onClick={logout} className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600">
                         Logout
                       </button>
                     </div>
@@ -441,17 +398,11 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <button
-                  onClick={() => goTo("/login")}
-                  className="font-bold text-gray-100 hover:text-red-400"
-                >
+                <button onClick={() => goTo("/login")} className="font-bold text-gray-100 hover:text-red-400">
                   Login
                 </button>
 
-                <button
-                  onClick={() => goTo("/signup")}
-                  className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
-                >
+                <button onClick={() => goTo("/signup")} className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700">
                   Sign Up
                 </button>
               </>
@@ -460,7 +411,6 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile + Tablet Header */}
       <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-gray-950/95 px-4 py-3 backdrop-blur xl:hidden">
         <div className="flex items-center justify-between">
           <button onClick={() => goTo("/")} className="flex items-center gap-3">
@@ -486,7 +436,6 @@ export default function Navbar() {
               className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl"
             >
               🔔
-
               {unreadNotifications > 0 && (
                 <span className="absolute -right-1 -top-1 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
                   {unreadNotifications}
@@ -494,17 +443,13 @@ export default function Navbar() {
               )}
             </button>
           ) : (
-            <button
-              onClick={() => goTo("/login")}
-              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20"
-            >
+            <button onClick={() => goTo("/login")} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20">
               Login
             </button>
           )}
         </div>
       </nav>
 
-      {/* Mobile + Tablet Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl xl:hidden">
         <div className="relative grid h-[76px] grid-cols-5 items-center px-2">
           <MobileItem icon="🏠" label="Home" href="/" />
@@ -520,65 +465,100 @@ export default function Navbar() {
             </span>
           </button>
 
-          <MobileItem
-            icon="📞"
-            label="Calls"
-            href={loggedIn ? "/calls" : "/login"}
-            badge={pendingInvites}
-          />
+          <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} badge={pendingInvites} />
 
-          <MobileItem
-            icon={
-              profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.username || "Profile"}
-                  className="h-6 w-6 rounded-full object-cover"
-                />
+          <button
+            onClick={() => {
+              if (!loggedIn) {
+                goTo("/login");
+                return;
+              }
+              setMobileMenuOpen(true);
+            }}
+            className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
+          >
+            <span className="flex h-7 items-center justify-center text-2xl">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.username || "Profile"} className="h-6 w-6 rounded-full object-cover" />
               ) : (
                 "👤"
-              )
-            }
-            label="Me"
-            href={loggedIn ? profilePath() : "/login"}
-          />
+              )}
+            </span>
+            <span className="text-[11px]">Me</span>
+          </button>
         </div>
       </nav>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[9998] bg-black/70 xl:hidden" onClick={() => setMobileMenuOpen(false)}>
+          <div
+            className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-gray-700" />
+
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.username || "Profile"} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-2xl">👤</span>
+                )}
+              </div>
+
+              <div>
+                <p className="text-lg font-black">
+                  {profile?.display_name || profile?.username || "My Account"}
+                </p>
+                <p className="text-sm text-gray-400">@{profile?.username || "streamhub"}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <MobileSheetItem label="👤 My Profile" href={profilePath()} />
+              <MobileSheetItem label="✏️ Edit Profile" href="/profile/edit" />
+              <MobileSheetItem label="💰 Wallet" href="/wallet" />
+              <MobileSheetItem label="📞 Calls" href="/calls" />
+              <MobileSheetItem label="🔔 Notifications" href="/notifications" />
+              <MobileSheetItem label="🎥 Go Live" href="/go-live" />
+              <MobileSheetItem label="⚙️ Settings" href="/notifications/settings" />
+
+              <button
+                onClick={logout}
+                className="rounded-2xl bg-red-600 px-4 py-4 text-left text-sm font-black text-white active:scale-95"
+              >
+                🚪 Logout
+              </button>
+            </div>
+
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="mt-4 w-full rounded-2xl bg-gray-800 px-4 py-4 text-sm font-bold text-white"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 function MenuItem({ label, href }: { label: string; href: string }) {
   return (
-    <button
-      onClick={() => (window.location.href = href)}
-      className="w-full bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600"
-    >
+    <button onClick={() => (window.location.href = href)} className="w-full bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600">
       {label}
     </button>
   );
 }
 
-function MobileItem({
-  icon,
-  label,
-  href,
-  badge,
-}: {
-  icon: ReactNode;
-  label: string;
-  href: string;
-  badge?: number;
-}) {
+function MobileItem({ icon, label, href, badge }: { icon: ReactNode; label: string; href: string; badge?: number }) {
   return (
     <button
       onClick={() => (window.location.href = href)}
       className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
     >
-      <span className="flex h-7 items-center justify-center text-2xl">
-        {icon}
-      </span>
-
+      <span className="flex h-7 items-center justify-center text-2xl">{icon}</span>
       <span className="text-[11px]">{label}</span>
 
       {!!badge && badge > 0 && (
@@ -586,6 +566,17 @@ function MobileItem({
           {badge}
         </span>
       )}
+    </button>
+  );
+}
+
+function MobileSheetItem({ label, href }: { label: string; href: string }) {
+  return (
+    <button
+      onClick={() => (window.location.href = href)}
+      className="rounded-2xl bg-gray-800 px-4 py-4 text-left text-sm font-bold text-white active:scale-95"
+    >
+      {label}
     </button>
   );
 }
