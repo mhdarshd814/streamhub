@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -225,8 +226,8 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Desktop Top Navbar */}
-      <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 md:block">
+      {/* Desktop Navbar - only large screens and above */}
+      <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 lg:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div onClick={() => goTo("/")} className="flex cursor-pointer items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
@@ -244,7 +245,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <button onClick={() => goTo("/")} className="font-bold text-gray-100 hover:text-red-400">
               Home
             </button>
@@ -291,7 +292,7 @@ export default function Navbar() {
                   >
                     🔔
                     {unreadNotifications > 0 && (
-                      <span className="absolute -right-2 -top-2 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+                      <span className="absolute -right-2 -top-2 min-w-[22px] animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
                         {unreadNotifications}
                       </span>
                     )}
@@ -355,12 +356,17 @@ export default function Navbar() {
                   >
                     <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-700">
                       {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt={profile.username} className="h-full w-full object-cover" />
+                        <img
+                          src={profile.avatar_url}
+                          alt={profile.username || "Profile"}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
                         "👤"
                       )}
                     </div>
-                    <span className="text-base font-semibold text-white">
+
+                    <span className="max-w-[130px] truncate text-base font-semibold text-white">
                       {profile?.display_name || profile?.username || "Profile"}
                     </span>
                   </button>
@@ -374,7 +380,19 @@ export default function Navbar() {
                       <MenuItem label="Create Stream" href="/go-live" />
                       <MenuItem label="Calls" href="/calls" />
 
-                      <button onClick={logout} className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600">
+                      {profile?.is_admin && (
+                        <button
+                          onClick={() => goTo("/admin")}
+                          className="w-full bg-gray-900 px-5 py-3 text-left font-black text-yellow-300 hover:bg-yellow-500 hover:text-black"
+                        >
+                          Admin Dashboard
+                        </button>
+                      )}
+
+                      <button
+                        onClick={logout}
+                        className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600"
+                      >
                         Logout
                       </button>
                     </div>
@@ -396,43 +414,86 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Header */}
-      <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-gray-950 px-4 py-3 md:hidden">
+      {/* Mobile + Tablet Header */}
+      <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-gray-950/95 px-4 py-3 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between">
-          <button onClick={() => goTo("/")} className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-600">
-              ▶
+          <button onClick={() => goTo("/")} className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
+              <span className="text-xl font-black text-white">▶</span>
             </div>
-            <span className="text-2xl font-black">
-              Stream<span className="text-red-500">Hub</span>
-            </span>
+
+            <div className="leading-none text-left">
+              <h1 className="text-2xl font-black tracking-tight">
+                <span className="text-white">Stream</span>
+                <span className="text-red-500">Hub</span>
+              </h1>
+              <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                Live Platform
+              </p>
+            </div>
           </button>
 
           {loggedIn ? (
-            <button onClick={() => goTo("/notifications")} className="relative text-2xl">
+            <button
+              onClick={() => goTo("/notifications")}
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl"
+            >
               🔔
               {unreadNotifications > 0 && (
-                <span className="absolute -right-2 -top-2 min-w-[20px] rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
+                <span className="absolute -right-1 -top-1 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
                   {unreadNotifications}
                 </span>
               )}
             </button>
           ) : (
-            <button onClick={() => goTo("/login")} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold">
+            <button
+              onClick={() => goTo("/login")}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20"
+            >
               Login
             </button>
           )}
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-red-900/40 bg-gray-950/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-5">
+      {/* Mobile + Tablet Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl lg:hidden">
+        <div className="relative grid h-[76px] grid-cols-5 items-center px-2">
           <MobileItem icon="🏠" label="Home" href="/" />
-          <MobileItem icon="🔍" label="Explore" href="/explore" />
-          <MobileItem icon="📺" label="Go Live" href={loggedIn ? "/go-live" : "/login"} />
-          <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} badge={pendingInvites} />
-          <MobileItem icon="👤" label="Profile" href={loggedIn ? profilePath() : "/login"} />
+          <MobileItem icon="🔥" label="Discover" href="/explore" />
+
+          <button
+            onClick={() => goTo(loggedIn ? "/go-live" : "/login")}
+            className="relative -top-6 mx-auto flex h-16 w-16 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
+          >
+            <span className="text-3xl font-black leading-none">＋</span>
+            <span className="mt-[-2px] text-[10px] font-black uppercase tracking-wide">
+              Live
+            </span>
+          </button>
+
+          <MobileItem
+            icon="💬"
+            label="Calls"
+            href={loggedIn ? "/calls" : "/login"}
+            badge={pendingInvites}
+          />
+
+          <MobileItem
+            icon={
+              profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.username || "Profile"}
+                  className="h-6 w-6 rounded-full object-cover"
+                />
+              ) : (
+                "👤"
+              )
+            }
+            label="Me"
+            href={loggedIn ? profilePath() : "/login"}
+          />
         </div>
       </nav>
     </>
@@ -456,7 +517,7 @@ function MobileItem({
   href,
   badge,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   href: string;
   badge?: number;
@@ -464,13 +525,13 @@ function MobileItem({
   return (
     <button
       onClick={() => (window.location.href = href)}
-      className="relative flex min-h-[64px] flex-col items-center justify-center gap-1 text-xs font-bold text-gray-300 active:bg-gray-900"
+      className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
     >
-      <span className="text-xl">{icon}</span>
-      <span>{label}</span>
+      <span className="flex h-7 items-center justify-center text-2xl">{icon}</span>
+      <span className="text-[11px]">{label}</span>
 
       {!!badge && badge > 0 && (
-        <span className="absolute right-5 top-2 min-w-[20px] rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
+        <span className="absolute right-4 top-2 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
           {badge}
         </span>
       )}
