@@ -24,14 +24,33 @@ type UpcomingStream = {
 export default function UpcomingStreamsPage() {
   const [streams, setStreams] = useState<UpcomingStream[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<string[]>([]);
+  const [reminderLoadingId, setReminderLoadingId] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
-    loadUpcomingStreams();
+    initializePage();
   }, []);
 
-  async function loadUpcomingStreams() {
+  async function initializePage() {
     setLoading(true);
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      setUserId(user.id);
+      await loadReminders(user.id);
+    }
+
+    await loadUpcomingStreams();
+    setLoading(false);
+  }
+
+  async function loadUpcomingStreams() {
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -54,19 +73,82 @@ export default function UpcomingStreamsPage() {
 
     if (error) {
       alert(error.message);
-      setLoading(false);
       return;
     }
 
     setStreams((data || []) as UpcomingStream[]);
-    setLoading(false);
+  }
+
+  async function loadReminders(id: string) {
+    const { data, error } = await supabase
+      .from("stream_reminders")
+      .select("scheduled_stream_id")
+      .eq("user_id", id);
+
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    setReminders((data || []).map((item: any) => item.scheduled_stream_id));
+  }
+
+  async function toggleReminder(streamId: string) {
+    if (!userId) {
+      alert("Please login first.");
+      window.location.href = "/login";
+      return;
+    }
+
+    setReminderLoadingId(streamId);
+
+    const alreadySet = reminders.includes(streamId);
+
+    if (alreadySet) {
+      const { error } = await supabase
+        .from("stream_reminders")
+        .delete()
+        .eq("user_id", userId)
+        .eq("scheduled_stream_id", streamId);
+
+      setReminderLoadingId(null);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      setReminders((current) => current.filter((id) => id !== streamId));
+      return;
+    }
+
+    const { error } = await supabase.from("stream_reminders").insert([
+      {
+        user_id: userId,
+        scheduled_stream_id: streamId,
+      },
+    ]);
+
+    setReminderLoadingId(null);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setReminders((current) => [...current, streamId]);
   }
 
   function groupLabel(dateString: string) {
     const date = new Date(dateString);
     const now = new Date();
 
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
     const startOfTomorrow = new Date(startOfToday);
     startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
@@ -114,16 +196,20 @@ export default function UpcomingStreamsPage() {
           </h1>
 
           <p className="mt-3 max-w-2xl text-gray-400">
-            Discover scheduled streams from creators and plan what to watch next.
+            Discover scheduled streams from creators and set reminders for the
+            ones you do not want to miss.
           </p>
         </div>
 
         {streams.length === 0 ? (
           <div className="rounded-3xl border border-gray-800 bg-gray-900 p-8 text-center">
             <p className="mb-4 text-6xl">📭</p>
+
             <h2 className="text-2xl font-black">No upcoming streams yet</h2>
+
             <p className="mt-3 text-gray-400">
-              Scheduled streams will appear here once creators plan their next live session.
+              Scheduled streams will appear here once creators plan their next
+              live session.
             </p>
 
             <button
@@ -146,6 +232,9 @@ export default function UpcomingStreamsPage() {
                       stream.profiles?.username ||
                       "Creator";
 
+                    const reminderSet = reminders.includes(stream.id);
+                    const isReminderLoading = reminderLoadingId === stream.id;
+
                     return (
                       <div
                         key={stream.id}
@@ -153,14 +242,20 @@ export default function UpcomingStreamsPage() {
                       >
                         <div className="mb-4 flex items-center gap-3">
                           <img
-                            src={stream.profiles?.avatar_url || "/default-avatar.png"}
+                            src={
+                              stream.profiles?.avatar_url ||
+                              "/default-avatar.png"
+                            }
                             alt={creatorName}
                             className="h-12 w-12 rounded-full object-cover"
                           />
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="truncate font-black">{creatorName}</p>
+                              <p className="truncate font-black">
+                                {creatorName}
+                              </p>
+
                               {stream.profiles?.is_verified && (
                                 <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold">
                                   ✓
@@ -188,11 +283,15 @@ export default function UpcomingStreamsPage() {
 
                         <div className="mt-4 rounded-2xl bg-black/40 p-4">
                           <p className="text-sm text-gray-400">Starts at</p>
+
                           <p className="mt-1 font-black">
-                            {new Date(stream.scheduled_start).toLocaleString([], {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })}
+                            {new Date(stream.scheduled_start).toLocaleString(
+                              [],
+                              {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }
+                            )}
                           </p>
                         </div>
 
@@ -207,10 +306,19 @@ export default function UpcomingStreamsPage() {
                           </button>
 
                           <button
-                            onClick={() => alert("Reminder option will be added next.")}
-                            className="rounded-xl bg-red-600 px-4 py-3 text-sm font-bold hover:bg-red-700"
+                            onClick={() => toggleReminder(stream.id)}
+                            disabled={isReminderLoading}
+                            className={
+                              reminderSet
+                                ? "rounded-xl bg-green-600 px-4 py-3 text-sm font-bold hover:bg-green-700 disabled:bg-gray-700"
+                                : "rounded-xl bg-red-600 px-4 py-3 text-sm font-bold hover:bg-red-700 disabled:bg-gray-700"
+                            }
                           >
-                            Notify Me
+                            {isReminderLoading
+                              ? "Saving..."
+                              : reminderSet
+                              ? "✓ Reminder Set"
+                              : "🔔 Notify Me"}
                           </button>
                         </div>
                       </div>
