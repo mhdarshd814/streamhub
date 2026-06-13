@@ -462,20 +462,28 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <nav className="fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl xl:hidden">
-        <div className="relative grid h-[76px] grid-cols-5 items-center px-2">
+      <nav className="fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
+        <div
+          className="relative mx-auto grid h-[76px] max-w-5xl grid-cols-5 items-center px-2"
+          style={{
+            paddingBottom: "env(safe-area-inset-bottom)",
+            height: "calc(76px + env(safe-area-inset-bottom))",
+          }}
+        >
           <MobileItem icon="🏠" label="Home" href="/" />
           <MobileItem icon="🔥" label="Discover" href="/explore" />
 
           <button
             onClick={() => goTo(loggedIn ? "/go-live" : "/login")}
-            className="relative -top-6 mx-auto flex h-16 w-16 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
+            className="absolute left-1/2 top-0 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
           >
             <span className="text-3xl font-black leading-none">＋</span>
             <span className="mt-[-2px] text-[10px] font-black uppercase tracking-wide">
               Live
             </span>
           </button>
+
+          <div className="pointer-events-none" />
 
           <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} badge={pendingInvites} />
 
@@ -505,6 +513,9 @@ export default function Navbar() {
         <div className="fixed inset-0 z-[9998] bg-black/70 xl:hidden" onClick={() => setMobileMenuOpen(false)}>
           <div
             className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
+            style={{
+              paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-gray-700" />
