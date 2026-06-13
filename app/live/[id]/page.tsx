@@ -574,6 +574,86 @@ export default function LiveRoomPage() {
     setIsLive(status === "live");
   }
 
+  async function findLinkedScheduledStreamIds() {
+    if (!stream || !currentUserId) return [] as string[];
+
+    const ids = new Set<string>();
+
+    const directMatches = await Promise.all([
+      supabase
+        .from("scheduled_streams")
+        .select("id")
+        .eq("stream_id", stream.id),
+      supabase
+        .from("scheduled_streams")
+        .select("id")
+        .eq("live_stream_id", stream.id),
+    ]);
+
+    directMatches.forEach(({ data, error }) => {
+      if (error) {
+        console.warn("Scheduled stream direct lookup skipped:", error.message);
+        return;
+      }
+
+      (data || []).forEach((item: any) => {
+        if (item.id) ids.add(item.id);
+      });
+    });
+
+    if (ids.size > 0) return Array.from(ids);
+
+    const { data: titleMatches, error: titleMatchError } = await supabase
+      .from("scheduled_streams")
+      .select("id, title, status, scheduled_start")
+      .eq("creator_id", currentUserId)
+      .eq("title", stream.title)
+      .in("status", ["scheduled", "upcoming", "live"])
+      .order("scheduled_start", { ascending: false })
+      .limit(3);
+
+    if (titleMatchError) {
+      console.warn("Scheduled stream title lookup skipped:", titleMatchError.message);
+      return [];
+    }
+
+    (titleMatches || []).forEach((item: any) => {
+      if (item.id) ids.add(item.id);
+    });
+
+    return Array.from(ids);
+  }
+
+  async function loadReminderRecipientIds(activeSubscriberIds: Set<string>) {
+    const scheduledStreamIds = await findLinkedScheduledStreamIds();
+
+    if (scheduledStreamIds.length === 0) return [] as string[];
+
+    const { data: reminders, error } = await supabase
+      .from("stream_reminders")
+      .select("user_id")
+      .in("scheduled_stream_id", scheduledStreamIds);
+
+    if (error) {
+      console.error("Reminder lookup error:", error.message);
+      return [];
+    }
+
+    const reminderIds = new Set<string>();
+
+    (reminders || []).forEach((item: any) => {
+      if (!item.user_id || item.user_id === currentUserId) return;
+
+      if (stream?.visibility === "subscribers" && !activeSubscriberIds.has(item.user_id)) {
+        return;
+      }
+
+      reminderIds.add(item.user_id);
+    });
+
+    return Array.from(reminderIds);
+  }
+
   async function sendStreamStartedNotifications() {
     if (!stream || !currentUserId) return;
 
@@ -602,19 +682,31 @@ export default function LiveRoomPage() {
         .eq("status", "active"),
     ]);
 
-    const recipientIds = new Set<string>();
-
-    (followers || []).forEach((item: any) => {
-      if (item.follower_id && item.follower_id !== currentUserId) {
-        recipientIds.add(item.follower_id);
-      }
-    });
+    const activeSubscriberIds = new Set<string>();
 
     (subscribers || []).forEach((item: any) => {
       if (item.subscriber_id && item.subscriber_id !== currentUserId) {
-        recipientIds.add(item.subscriber_id);
+        activeSubscriberIds.add(item.subscriber_id);
       }
     });
+
+    const reminderRecipientIds = await loadReminderRecipientIds(activeSubscriberIds);
+
+    const recipientIds = new Set<string>();
+
+    if (stream.visibility === "subscribers") {
+      activeSubscriberIds.forEach((userId) => recipientIds.add(userId));
+    } else {
+      (followers || []).forEach((item: any) => {
+        if (item.follower_id && item.follower_id !== currentUserId) {
+          recipientIds.add(item.follower_id);
+        }
+      });
+
+      activeSubscriberIds.forEach((userId) => recipientIds.add(userId));
+    }
+
+    reminderRecipientIds.forEach((userId) => recipientIds.add(userId));
 
     const recipients = Array.from(recipientIds);
 
@@ -630,21 +722,37 @@ export default function LiveRoomPage() {
         ? `"${stream.title}" is live for subscribers. Tap to watch.`
         : `"${stream.title}" is live now. Tap to watch.`;
 
-    const notifications = recipients.map((userId) => ({
-      user_id: userId,
-      type: "stream_started",
-      title,
-      message,
-      link: `/watch/${stream.id}`,
-      is_read: false,
-    }));
+    const link = `/watch/${stream.id}`;
 
-    const { error: notificationError } = await supabase
+    const { data: existingNotifications } = await supabase
       .from("notifications")
-      .insert(notifications);
+      .select("user_id")
+      .eq("type", "stream_started")
+      .eq("link", link);
 
-    if (notificationError) {
-      console.error("Stream notification error:", notificationError.message);
+    const alreadyNotifiedIds = new Set(
+      (existingNotifications || []).map((item: any) => item.user_id)
+    );
+
+    const notifications = recipients
+      .filter((userId) => !alreadyNotifiedIds.has(userId))
+      .map((userId) => ({
+        user_id: userId,
+        type: "stream_started",
+        title,
+        message,
+        link,
+        is_read: false,
+      }));
+
+    if (notifications.length > 0) {
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert(notifications);
+
+      if (notificationError) {
+        console.error("Stream notification error:", notificationError.message);
+      }
     }
 
     if (!session?.access_token) return;
@@ -662,7 +770,7 @@ export default function LiveRoomPage() {
               userId,
               title,
               message,
-              url: `/watch/${stream.id}`,
+              url: link,
             }),
           });
         } catch (error) {
