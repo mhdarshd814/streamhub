@@ -35,6 +35,22 @@ type PayoutRequest = {
   created_at: string;
 };
 
+type PrivateCallPayment = {
+  id: string;
+  stream_id: string;
+  caller_id: string;
+  creator_id: string;
+  amount_aed: number;
+  created_at: string;
+  streams?: {
+    title?: string | null;
+  } | null;
+  profiles?: {
+    username?: string | null;
+    display_name?: string | null;
+  } | null;
+};
+
 type SubscriptionPlan = {
   id: string;
   creator_id: string;
@@ -74,6 +90,7 @@ export default function WalletPage() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [tips, setTips] = useState<Tip[]>([]);
   const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
+  const [privateCallPayments, setPrivateCallPayments] = useState<PrivateCallPayment[]>([]);
 
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [planName, setPlanName] = useState("Premium");
@@ -170,6 +187,31 @@ export default function WalletPage() {
       .limit(20);
 
     setPayouts(payoutData || []);
+
+    const { data: callPaymentData } = await supabase
+      .from("private_call_payments")
+      .select(
+        `
+        id,
+        stream_id,
+        caller_id,
+        creator_id,
+        amount_aed,
+        created_at,
+        streams:stream_id (
+          title
+        ),
+        profiles:caller_id (
+          username,
+          display_name
+        )
+      `
+      )
+      .eq("creator_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    setPrivateCallPayments((callPaymentData || []) as PrivateCallPayment[]);
 
     const { data: planData } = await supabase
       .from("creator_subscription_plans")
@@ -279,6 +321,10 @@ export default function WalletPage() {
 
   const selectedPrice = PLAN_PRICES[planName] || 10;
   const estimatedMonthlyRevenue = activeSubscriberCount * selectedPrice;
+  const privateCallRevenue = privateCallPayments.reduce(
+    (total, payment) => total + Number(payment.amount_aed || 0),
+    0
+  );
 
   if (loading) {
     return (
@@ -324,7 +370,7 @@ export default function WalletPage() {
           </div>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
             label="Available Balance"
             value={`AED ${wallet?.available_balance_aed || 0}`}
@@ -341,6 +387,12 @@ export default function WalletPage() {
             label="Lifetime Earnings"
             value={`AED ${wallet?.lifetime_earnings_aed || 0}`}
             color="text-red-400"
+          />
+
+          <Stat
+            label="Private Call Revenue"
+            value={`AED ${privateCallRevenue.toFixed(2)}`}
+            color="text-purple-300"
           />
         </div>
 
@@ -502,6 +554,47 @@ export default function WalletPage() {
             >
               {submitting ? "Submitting..." : "Request Payout"}
             </button>
+          </section>
+
+          <section className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6 lg:col-span-2">
+            <h2 className="mb-4 text-2xl font-black">Paid Private Calls</h2>
+
+            {privateCallPayments.length === 0 ? (
+              <p className="rounded-xl border border-purple-500/10 bg-black/30 p-5 text-center text-gray-400">
+                No paid private calls received yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {privateCallPayments.map((payment) => {
+                  const callerName =
+                    payment.profiles?.display_name ||
+                    payment.profiles?.username ||
+                    "Caller";
+
+                  return (
+                    <div
+                      key={payment.id}
+                      className="rounded-xl border border-purple-500/10 bg-black/30 p-4"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-black">
+                            {payment.streams?.title || "Private call"}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-400">
+                            Paid by {callerName} • {new Date(payment.created_at).toLocaleString()}
+                          </p>
+                        </div>
+
+                        <p className="text-xl font-black text-purple-300">
+                          AED {Number(payment.amount_aed || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6 lg:col-span-2">

@@ -33,6 +33,7 @@ type StreamData = {
   watch_minutes?: number;
   user_id?: string;
   visibility?: "public" | "private" | "subscribers";
+  private_call_price?: number | null;
   is_suspended?: boolean;
   created_at?: string;
 };
@@ -69,6 +70,8 @@ export default function WatchPage() {
   const [loading, setLoading] = useState(true);
   const [privateBlocked, setPrivateBlocked] = useState(false);
   const [privateAllowed, setPrivateAllowed] = useState(false);
+  const [privateCallPrice, setPrivateCallPrice] = useState(0);
+  const [privatePaymentCompleted, setPrivatePaymentCompleted] = useState(false);
   const [subscriberBlocked, setSubscriberBlocked] = useState(false);
   const [subscriberAllowed, setSubscriberAllowed] = useState(false);
   const [blockedAccess, setBlockedAccess] = useState(false);
@@ -304,8 +307,13 @@ export default function WatchPage() {
       if (streamData.visibility !== "private") {
         setPrivateAllowed(false);
         setPrivateBlocked(false);
+        setPrivateCallPrice(0);
+        setPrivatePaymentCompleted(false);
         return true;
       }
+
+      const price = Number(streamData.private_call_price || 0);
+      setPrivateCallPrice(price);
 
       const {
         data: { user },
@@ -314,14 +322,20 @@ export default function WatchPage() {
       if (!user) {
         setPrivateAllowed(false);
         setPrivateBlocked(true);
-        setStatus("This is a private video call.");
+        setPrivatePaymentCompleted(false);
+        setStatus(
+          price > 0
+            ? `This is a paid private video call. Login and open Calls to pay AED ${price}.`
+            : "This is a private video call. Login and open Calls to join if invited."
+        );
         return false;
       }
 
       if (streamData.user_id === user.id) {
         setPrivateAllowed(true);
         setPrivateBlocked(true);
-        setStatus("This is your private video call.");
+        setPrivatePaymentCompleted(true);
+        setStatus("This is your private video call. Open it from the studio.");
         return false;
       }
 
@@ -333,16 +347,46 @@ export default function WatchPage() {
         .in("status", ["pending", "accepted"])
         .maybeSingle();
 
-      if (invite) {
+      if (!invite) {
+        setPrivateAllowed(false);
+        setPrivateBlocked(true);
+        setPrivatePaymentCompleted(false);
+        setStatus("This private video call is invite-only and cannot be watched publicly.");
+        return false;
+      }
+
+      if (price <= 0) {
         setPrivateAllowed(true);
         setPrivateBlocked(true);
-        setStatus("You are invited to this private video call.");
+        setPrivatePaymentCompleted(true);
+        setStatus("You are invited to this free private video call. Open it from Calls.");
+        return false;
+      }
+
+      const { data: payment, error: paymentError } = await supabase
+        .from("private_call_payments")
+        .select("id")
+        .eq("stream_id", streamId)
+        .eq("caller_id", user.id)
+        .eq("creator_id", streamData.user_id)
+        .maybeSingle();
+
+      if (paymentError) {
+        console.error("Private call payment check error:", paymentError.message);
+      }
+
+      if (payment) {
+        setPrivateAllowed(true);
+        setPrivateBlocked(true);
+        setPrivatePaymentCompleted(true);
+        setStatus(`Payment confirmed. Open Calls to join this AED ${price} private call.`);
         return false;
       }
 
       setPrivateAllowed(false);
       setPrivateBlocked(true);
-      setStatus("This private video call is not available for public viewing.");
+      setPrivatePaymentCompleted(false);
+      setStatus(`Payment required. Open Calls and pay AED ${price} to join this private call.`);
       return false;
     }
 
@@ -1179,27 +1223,57 @@ export default function WatchPage() {
     return (
       <main className="min-h-screen bg-[#050505] text-white">
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-          <div className="w-full max-w-xl rounded-[28px] border border-white/10 bg-white/[0.04] p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
+          <div className="w-full max-w-xl rounded-[28px] border border-purple-500/20 bg-purple-950/10 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
               🔒
             </div>
 
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-purple-400 sm:text-sm">
-              Private Video Call
+              Paid Private Video Call
             </p>
 
             <h1 className="text-3xl font-black sm:text-4xl">
               {stream?.title || "Private Stream"}
             </h1>
 
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <p className="text-sm text-white/45">Call Price</p>
+              <p className="mt-1 text-3xl font-black text-purple-300">
+                {privateCallPrice > 0 ? `AED ${privateCallPrice}` : "Free"}
+              </p>
+
+              <p
+                className={
+                  privatePaymentCompleted
+                    ? "mt-3 text-sm font-bold text-green-400"
+                    : "mt-3 text-sm font-bold text-yellow-300"
+                }
+              >
+                {privatePaymentCompleted
+                  ? "Payment confirmed / access allowed"
+                  : privateCallPrice > 0
+                  ? "Payment required before joining"
+                  : "Invite required before joining"}
+              </p>
+            </div>
+
             <p className="mt-4 text-sm text-white/55 sm:text-base">{status}</p>
 
-            <button
-              onClick={() => router.push("/explore")}
-              className="mt-7 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 font-bold text-white/75 hover:bg-white/10"
-            >
-              Back to Explore
-            </button>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                onClick={() => router.push("/calls")}
+                className="rounded-2xl bg-purple-600 px-6 py-3 font-black text-white hover:bg-purple-500"
+              >
+                Open Calls
+              </button>
+
+              <button
+                onClick={() => router.push("/explore")}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 font-bold text-white/75 hover:bg-white/10"
+              >
+                Back to Explore
+              </button>
+            </div>
           </div>
         </div>
       </main>

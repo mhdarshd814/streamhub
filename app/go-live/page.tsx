@@ -12,6 +12,7 @@ export default function GoLivePage() {
   const [tags, setTags] = useState("");
   const [visibility, setVisibility] = useState<StreamVisibility>("public");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [privateCallPrice, setPrivateCallPrice] = useState("25");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -111,6 +112,18 @@ export default function GoLivePage() {
       return;
     }
 
+    const priceAmount = visibility === "private" ? Number(privateCallPrice) : 0;
+
+    if (visibility === "private" && (!priceAmount || priceAmount < 0)) {
+      alert("Please enter a valid private call price.");
+      return;
+    }
+
+    if (visibility === "private" && priceAmount > 5000) {
+      alert("Private call price cannot be more than AED 5,000.");
+      return;
+    }
+
     setSaving(true);
 
     const {
@@ -153,6 +166,7 @@ export default function GoLivePage() {
           tags: tags.trim() || null,
           visibility,
           thumbnail_url: thumbnailUrl || null,
+          private_call_price: priceAmount,
           status: "offline",
         },
       ])
@@ -249,7 +263,7 @@ export default function GoLivePage() {
                 <div className="mb-3 text-3xl">📞</div>
                 <h3 className="mb-2 text-lg font-black">Private Call</h3>
                 <p className="text-sm leading-6 text-gray-400">
-                  One-on-one video call. Hidden from public pages.
+                  Paid one-on-one video call. Hidden from public pages.
                 </p>
               </button>
 
@@ -312,6 +326,41 @@ export default function GoLivePage() {
               <option value="Kids">Kids</option>
             </select>
 
+            {visibility === "private" && (
+              <div className="mb-5 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4 sm:p-5">
+                <label className="mb-2 block text-sm font-black text-purple-300 sm:text-base">
+                  Private Call Price AED
+                </label>
+
+                <select
+                  value={privateCallPrice}
+                  onChange={(e) => setPrivateCallPrice(e.target.value)}
+                  className="mb-3 w-full rounded-xl border border-purple-500/20 bg-black p-3 text-sm text-white outline-none focus:border-purple-400 sm:p-4 sm:text-base"
+                >
+                  <option value="0">Free</option>
+                  <option value="25">AED 25</option>
+                  <option value="50">AED 50</option>
+                  <option value="100">AED 100</option>
+                  <option value="250">AED 250</option>
+                  <option value="500">AED 500</option>
+                </select>
+
+                <input
+                  type="number"
+                  min="0"
+                  max="5000"
+                  value={privateCallPrice}
+                  onChange={(e) => setPrivateCallPrice(e.target.value)}
+                  placeholder="Custom price, example: 75"
+                  className="w-full rounded-xl border border-purple-500/20 bg-black p-3 text-sm text-white outline-none focus:border-purple-400 sm:p-4 sm:text-base"
+                />
+
+                <p className="mt-3 text-sm leading-6 text-gray-300">
+                  Guest must pay this amount from wallet before joining the private call. Set 0 only if you want a free private call.
+                </p>
+              </div>
+            )}
+
             <label className="mb-2 block text-sm font-semibold text-gray-300 sm:text-base">
               Description
             </label>
@@ -349,9 +398,8 @@ export default function GoLivePage() {
                 </h3>
                 <p className="text-sm leading-6 text-gray-300">
                   This room will not appear on Explore or Following pages. After
-                  creating it, open the studio and invite one guest. Both users
-                  will publish camera and microphone inside the same LiveKit
-                  room.
+                  creating it, open the studio and invite one guest. If a price
+                  is set, the guest must pay from wallet before the call opens.
                 </p>
               </div>
             )}
@@ -442,7 +490,7 @@ export default function GoLivePage() {
 
               {visibility === "private" && (
                 <p className="mt-3 text-sm leading-6 text-gray-500">
-                  Hidden from public pages. Only invited guest can join.
+                  Hidden from public pages. Guest pays AED {Number(privateCallPrice || 0).toFixed(2)} before joining.
                 </p>
               )}
 
