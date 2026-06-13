@@ -93,6 +93,58 @@ export default function PublicProfilePage() {
       ? Math.round((completedCount / completionItems.length) * 100)
       : 0;
 
+  const creatorLevel = useMemo(() => {
+    const followers = profile?.followers || 0;
+    let score = 0;
+
+    if (profile?.username) score += 10;
+    if (profile?.avatar_url) score += 10;
+    if (profile?.bio && profile.bio.trim().length >= 10) score += 10;
+    if (hasPremiumPlan) score += 15;
+    if (hasFirstStream) score += 20;
+    if (followers >= 10) score += 10;
+    if (followers >= 50) score += 15;
+    if (followers >= 100) score += 20;
+
+    if (score >= 90) {
+      return {
+        emoji: "💎",
+        name: "Diamond Creator",
+        color: "border-cyan-400/40 bg-cyan-400/10 text-cyan-300",
+        progressText: "Elite creator profile",
+        nextGoal: "Keep growing your audience and revenue.",
+      };
+    }
+
+    if (score >= 65) {
+      return {
+        emoji: "🥇",
+        name: "Gold Creator",
+        color: "border-yellow-400/40 bg-yellow-400/10 text-yellow-300",
+        progressText: "Strong creator profile",
+        nextGoal: "Reach 100 followers or improve profile completion.",
+      };
+    }
+
+    if (score >= 40) {
+      return {
+        emoji: "🥈",
+        name: "Silver Creator",
+        color: "border-zinc-300/40 bg-zinc-300/10 text-zinc-200",
+        progressText: "Growing creator profile",
+        nextGoal: "Create your first stream and activate a subscription plan.",
+      };
+    }
+
+    return {
+      emoji: "🥉",
+      name: "Bronze Creator",
+      color: "border-orange-400/40 bg-orange-400/10 text-orange-300",
+      progressText: "Starter creator profile",
+      nextGoal: "Add avatar, bio, and create your first stream.",
+    };
+  }, [profile, hasPremiumPlan, hasFirstStream]);
+
   async function loadProfile() {
     setLoading(true);
 
@@ -497,6 +549,12 @@ export default function PublicProfilePage() {
                         ⭐ Premium
                       </span>
                     )}
+
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-black ${creatorLevel.color}`}
+                    >
+                      {creatorLevel.emoji} {creatorLevel.name}
+                    </span>
                   </div>
 
                   <p className="mt-1 text-gray-400">@{profile.username}</p>
@@ -607,6 +665,14 @@ export default function PublicProfilePage() {
                 items={completionItems}
               />
             )}
+
+            <CreatorLevelCard
+              level={creatorLevel}
+              followers={profile.followers || 0}
+              hasPremiumPlan={hasPremiumPlan}
+              hasFirstStream={hasFirstStream}
+              completionPercent={completionPercent}
+            />
 
             <p className="mt-6 rounded-2xl border border-gray-800 bg-black/30 p-4 text-sm leading-6 text-gray-300 sm:text-base">
               {profile.bio || "No bio added yet."}
@@ -723,6 +789,71 @@ export default function PublicProfilePage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CreatorLevelCard({
+  level,
+  followers,
+  hasPremiumPlan,
+  hasFirstStream,
+  completionPercent,
+}: {
+  level: {
+    emoji: string;
+    name: string;
+    color: string;
+    progressText: string;
+    nextGoal: string;
+  };
+  followers: number;
+  hasPremiumPlan: boolean;
+  hasFirstStream: boolean;
+  completionPercent: number;
+}) {
+  return (
+    <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-widest text-red-300">
+            Creator Level
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black">
+            {level.emoji} {level.name}
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-300">{level.progressText}</p>
+        </div>
+
+        <div className={`w-fit rounded-2xl border px-5 py-4 ${level.color}`}>
+          <p className="text-sm font-black">{completionPercent}% Complete</p>
+          <p className="mt-1 text-xs opacity-80">{followers} followers</p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <LevelMetric label="Profile" value={`${completionPercent}%`} />
+        <LevelMetric label="First Stream" value={hasFirstStream ? "Done" : "Pending"} />
+        <LevelMetric label="Premium Plan" value={hasPremiumPlan ? "Active" : "Inactive"} />
+      </div>
+
+      <div className="mt-5 rounded-xl border border-gray-800 bg-black/30 p-4">
+        <p className="text-sm text-gray-300">
+          <span className="font-bold text-white">Next goal:</span>{" "}
+          {level.nextGoal}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LevelMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+      <p className="text-xs uppercase tracking-widest text-gray-500">{label}</p>
+      <p className="mt-2 font-black text-white">{value}</p>
     </div>
   );
 }

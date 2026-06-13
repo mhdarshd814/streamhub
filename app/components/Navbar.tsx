@@ -450,7 +450,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl xl:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl xl:hidden">
         <div className="relative grid h-[76px] grid-cols-5 items-center px-2">
           <MobileItem icon="🏠" label="Home" href="/" />
           <MobileItem icon="🔥" label="Discover" href="/explore" />
