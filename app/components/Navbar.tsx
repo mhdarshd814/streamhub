@@ -40,7 +40,6 @@ export default function Navbar() {
 
     async function init() {
       const id = await checkUser();
-
       if (id) {
         inviteChannel = subscribeToInvites(id);
         notificationChannel = subscribeToNotifications(id);
@@ -86,6 +85,14 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  function goTo(path: string) {
+    window.location.href = path;
+  }
+
+  function profilePath() {
+    return "/profile";
+  }
 
   function subscribeToInvites(id: string) {
     return supabase
@@ -172,10 +179,7 @@ export default function Navbar() {
       .order("created_at", { ascending: false })
       .limit(8);
 
-    if (error) {
-      console.error(error.message);
-      return;
-    }
+    if (error) return;
 
     setNotifications((data || []) as Notification[]);
     setUnreadNotifications((data || []).filter((item) => !item.is_read).length);
@@ -220,235 +224,218 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <div
-          onClick={() => (window.location.href = "/")}
-          className="flex cursor-pointer items-center gap-3"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
-            <span className="text-2xl font-black text-white">▶</span>
+    <>
+      {/* Desktop Top Navbar */}
+      <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 md:block">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div onClick={() => goTo("/")} className="flex cursor-pointer items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
+              <span className="text-2xl font-black text-white">▶</span>
+            </div>
+
+            <div className="leading-none">
+              <h1 className="text-4xl font-black tracking-tight">
+                <span className="text-white">Stream</span>
+                <span className="text-red-500">Hub</span>
+              </h1>
+              <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">
+                Live Platform
+              </p>
+            </div>
           </div>
 
-          <div className="leading-none">
-            <h1 className="text-4xl font-black tracking-tight">
-              <span className="text-white">Stream</span>
-              <span className="text-red-500">Hub</span>
-            </h1>
+          <div className="flex items-center gap-6">
+            <button onClick={() => goTo("/")} className="font-bold text-gray-100 hover:text-red-400">
+              Home
+            </button>
 
-            <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">
-              Live Platform
-            </p>
-          </div>
-        </div>
+            <button onClick={() => goTo("/explore")} className="font-bold text-gray-100 hover:text-red-400">
+              Explore
+            </button>
 
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => (window.location.href = "/")}
-            className="font-bold text-gray-100 transition hover:text-red-400"
-          >
-            Home
-          </button>
-
-          <button
-            onClick={() => (window.location.href = "/explore")}
-            className="font-bold text-gray-100 transition hover:text-red-400"
-          >
-            Explore
-          </button>
-
-          {loggedIn && (
-            <>
-              <button
-                onClick={() => (window.location.href = "/following")}
-                className="font-bold text-gray-100 transition hover:text-red-400"
-              >
-                Following
-              </button>
-
-              <button
-                onClick={() => (window.location.href = "/invites")}
-                className="relative font-bold text-gray-100 transition hover:text-red-400"
-              >
-                Invites
-                {pendingInvites > 0 && (
-                  <span className="absolute -right-4 -top-3 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-center text-xs font-black text-white">
-                    {pendingInvites}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => (window.location.href = "/notifications")}
-                className="font-bold text-gray-100 transition hover:text-red-400"
-              >
-                Notifications
-              </button>
-
-              <button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="font-bold text-gray-100 transition hover:text-red-400"
-              >
-                Dashboard
-              </button>
-
-              {profile?.is_admin && (
-                <button
-                  onClick={() => (window.location.href = "/admin")}
-                  className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 font-black text-yellow-300 transition hover:bg-yellow-500 hover:text-black"
-                >
-                  Admin
+            {loggedIn ? (
+              <>
+                <button onClick={() => goTo("/following")} className="font-bold text-gray-100 hover:text-red-400">
+                  Following
                 </button>
-              )}
 
-              <div ref={notificationRef} className="relative">
-                <button
-                  onClick={() => {
-                    setNotificationOpen(!notificationOpen);
-                    setMenuOpen(false);
-                  }}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-xl transition hover:border-red-600"
-                >
-                  🔔
-                  {unreadNotifications > 0 && (
-                    <span className="absolute -right-2 -top-2 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-center text-xs font-black text-white">
-                      {unreadNotifications}
+                <button onClick={() => goTo("/invites")} className="relative font-bold text-gray-100 hover:text-red-400">
+                  Invites
+                  {pendingInvites > 0 && (
+                    <span className="absolute -right-4 -top-3 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+                      {pendingInvites}
                     </span>
                   )}
                 </button>
 
-                {notificationOpen && (
-                  <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
-                    <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
-                      <div>
-                        <h3 className="font-black text-white">Notifications</h3>
-                        <p className="text-xs text-gray-400">
-                          {unreadNotifications} unread
-                        </p>
-                      </div>
-
-                      {unreadNotifications > 0 && (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-xs font-bold text-red-400 hover:text-red-300"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="max-h-96 overflow-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-gray-400">
-                          <p className="mb-2 text-3xl">🔕</p>
-                          <p>No notifications yet.</p>
-                        </div>
-                      ) : (
-                        notifications.map((notification) => (
-                          <button
-                            key={notification.id}
-                            onClick={() => openNotification(notification)}
-                            className={
-                              notification.is_read
-                                ? "w-full border-b border-gray-800 px-5 py-4 text-left hover:bg-gray-800"
-                                : "w-full border-b border-gray-800 bg-red-600/10 px-5 py-4 text-left hover:bg-gray-800"
-                            }
-                          >
-                            <p className="font-bold text-white">
-                              {notification.title}
-                            </p>
-                            <p className="mt-1 text-sm text-gray-400">
-                              {notification.message || "New notification"}
-                            </p>
-                          </button>
-                        ))
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => (window.location.href = "/notifications")}
-                      className="w-full bg-gray-950 px-5 py-3 text-center text-sm font-bold text-white hover:bg-red-600"
-                    >
-                      Open Notifications
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div ref={menuRef} className="relative">
-                <button
-                  onClick={() => {
-                    setMenuOpen(!menuOpen);
-                    setNotificationOpen(false);
-                  }}
-                  className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900 px-4 py-2 transition hover:border-red-600"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-700">
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt={profile.username}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      "👤"
-                    )}
-                  </div>
-
-                  <span className="text-base font-semibold text-white">
-                    {profile?.display_name || profile?.username || "Profile"}
-                  </span>
+                <button onClick={() => goTo("/dashboard")} className="font-bold text-gray-100 hover:text-red-400">
+                  Dashboard
                 </button>
 
-                {menuOpen && (
-                  <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
-                    <MenuItem label="My Profile" href="/profile" />
-                    <MenuItem label="Edit Profile" href="/profile/edit" />
-                    <MenuItem label="Stream Invites" href="/invites" />
-                    <MenuItem label="Notifications" href="/notifications" />
-                    <MenuItem label="Create Stream" href="/go-live" />
-
-                    {profile?.is_admin && (
-                      <button
-                        onClick={() => (window.location.href = "/admin")}
-                        className="w-full bg-gray-900 px-5 py-3 text-left font-black text-yellow-300 transition hover:bg-yellow-500 hover:text-black"
-                      >
-                        Admin Dashboard
-                      </button>
-                    )}
-
-                    <button
-                      onClick={logout}
-                      className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white transition hover:bg-red-600"
-                    >
-                      Logout
-                    </button>
-                  </div>
+                {profile?.is_admin && (
+                  <button
+                    onClick={() => goTo("/admin")}
+                    className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 font-black text-yellow-300 hover:bg-yellow-500 hover:text-black"
+                  >
+                    Admin
+                  </button>
                 )}
-              </div>
-            </>
-          )}
 
-          {!loggedIn && (
-            <>
-              <button
-                onClick={() => (window.location.href = "/login")}
-                className="font-bold text-gray-100 transition hover:text-red-400"
-              >
-                Login
-              </button>
+                <div ref={notificationRef} className="relative">
+                  <button
+                    onClick={() => {
+                      setNotificationOpen(!notificationOpen);
+                      setMenuOpen(false);
+                    }}
+                    className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-xl hover:border-red-600"
+                  >
+                    🔔
+                    {unreadNotifications > 0 && (
+                      <span className="absolute -right-2 -top-2 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+                        {unreadNotifications}
+                      </span>
+                    )}
+                  </button>
 
-              <button
-                onClick={() => (window.location.href = "/signup")}
-                className="rounded-xl bg-red-600 px-5 py-3 font-bold shadow-lg shadow-red-600/20 hover:bg-red-700"
-              >
-                Sign Up
-              </button>
-            </>
+                  {notificationOpen && (
+                    <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
+                        <div>
+                          <h3 className="font-black text-white">Notifications</h3>
+                          <p className="text-xs text-gray-400">{unreadNotifications} unread</p>
+                        </div>
+
+                        {unreadNotifications > 0 && (
+                          <button onClick={markAllNotificationsRead} className="text-xs font-bold text-red-400">
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-96 overflow-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-6 text-center text-gray-400">No notifications yet.</div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <button
+                              key={notification.id}
+                              onClick={() => openNotification(notification)}
+                              className={
+                                notification.is_read
+                                  ? "w-full border-b border-gray-800 px-5 py-4 text-left hover:bg-gray-800"
+                                  : "w-full border-b border-gray-800 bg-red-600/10 px-5 py-4 text-left hover:bg-gray-800"
+                              }
+                            >
+                              <p className="font-bold text-white">{notification.title}</p>
+                              <p className="mt-1 text-sm text-gray-400">
+                                {notification.message || "New notification"}
+                              </p>
+                            </button>
+                          ))
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => goTo("/notifications")}
+                        className="w-full bg-gray-950 px-5 py-3 text-sm font-bold text-white hover:bg-red-600"
+                      >
+                        Open Notifications
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div ref={menuRef} className="relative">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(!menuOpen);
+                      setNotificationOpen(false);
+                    }}
+                    className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900 px-4 py-2 hover:border-red-600"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt={profile.username} className="h-full w-full object-cover" />
+                      ) : (
+                        "👤"
+                      )}
+                    </div>
+                    <span className="text-base font-semibold text-white">
+                      {profile?.display_name || profile?.username || "Profile"}
+                    </span>
+                  </button>
+
+                  {menuOpen && (
+                    <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
+                      <MenuItem label="My Profile" href={profilePath()} />
+                      <MenuItem label="Edit Profile" href="/profile/edit" />
+                      <MenuItem label="Stream Invites" href="/invites" />
+                      <MenuItem label="Notifications" href="/notifications" />
+                      <MenuItem label="Create Stream" href="/go-live" />
+                      <MenuItem label="Calls" href="/calls" />
+
+                      <button onClick={logout} className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600">
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <button onClick={() => goTo("/login")} className="font-bold text-gray-100 hover:text-red-400">
+                  Login
+                </button>
+
+                <button onClick={() => goTo("/signup")} className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700">
+                  Sign Up
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Header */}
+      <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-gray-950 px-4 py-3 md:hidden">
+        <div className="flex items-center justify-between">
+          <button onClick={() => goTo("/")} className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-600">
+              ▶
+            </div>
+            <span className="text-2xl font-black">
+              Stream<span className="text-red-500">Hub</span>
+            </span>
+          </button>
+
+          {loggedIn ? (
+            <button onClick={() => goTo("/notifications")} className="relative text-2xl">
+              🔔
+              {unreadNotifications > 0 && (
+                <span className="absolute -right-2 -top-2 min-w-[20px] rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
+                  {unreadNotifications}
+                </span>
+              )}
+            </button>
+          ) : (
+            <button onClick={() => goTo("/login")} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold">
+              Login
+            </button>
           )}
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-red-900/40 bg-gray-950/95 backdrop-blur md:hidden">
+        <div className="grid grid-cols-5">
+          <MobileItem icon="🏠" label="Home" href="/" />
+          <MobileItem icon="🔍" label="Explore" href="/explore" />
+          <MobileItem icon="📺" label="Go Live" href={loggedIn ? "/go-live" : "/login"} />
+          <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} badge={pendingInvites} />
+          <MobileItem icon="👤" label="Profile" href={loggedIn ? profilePath() : "/login"} />
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -456,9 +443,37 @@ function MenuItem({ label, href }: { label: string; href: string }) {
   return (
     <button
       onClick={() => (window.location.href = href)}
-      className="w-full bg-gray-900 px-5 py-3 text-left text-white transition hover:bg-red-600"
+      className="w-full bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600"
     >
       {label}
+    </button>
+  );
+}
+
+function MobileItem({
+  icon,
+  label,
+  href,
+  badge,
+}: {
+  icon: string;
+  label: string;
+  href: string;
+  badge?: number;
+}) {
+  return (
+    <button
+      onClick={() => (window.location.href = href)}
+      className="relative flex min-h-[64px] flex-col items-center justify-center gap-1 text-xs font-bold text-gray-300 active:bg-gray-900"
+    >
+      <span className="text-xl">{icon}</span>
+      <span>{label}</span>
+
+      {!!badge && badge > 0 && (
+        <span className="absolute right-5 top-2 min-w-[20px] rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
