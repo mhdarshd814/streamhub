@@ -766,7 +766,7 @@ export default function LiveRoomPage() {
         }
 
         if (track.kind === Track.Kind.Video) {
-          addRemoteVideo(track, participant.identity);
+          addRemoteVideo(track, participant.name || participant.identity);
         }
       });
 
