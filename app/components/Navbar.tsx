@@ -378,6 +378,7 @@ export default function Navbar() {
                       <MenuItem label="Stream Invites" href="/invites" />
                       <MenuItem label="Notifications" href="/notifications" />
                       <MenuItem label="Create Stream" href="/go-live" />
+                      <MenuItem label="Schedule Stream" href="/schedule" />
                       <MenuItem label="Calls" href="/calls" />
 
                       {profile?.is_admin && (
@@ -521,6 +522,7 @@ export default function Navbar() {
               <MobileSheetItem label="📞 Calls" href="/calls" />
               <MobileSheetItem label="🔔 Notifications" href="/notifications" />
               <MobileSheetItem label="🎥 Go Live" href="/go-live" />
+              <MobileSheetItem label="📅 Schedule" href="/schedule" />
               <MobileSheetItem label="⚙️ Settings" href="/notifications/settings" />
 
               <button

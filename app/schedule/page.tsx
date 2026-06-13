@@ -43,7 +43,6 @@ export default function ScheduleStreamPage() {
     }
 
     setUserId(user.id);
-
     await loadScheduledStreams(user.id);
     setLoading(false);
   }
@@ -102,12 +101,28 @@ export default function ScheduleStreamPage() {
       },
     ]);
 
-    setSaving(false);
-
     if (error) {
+      setSaving(false);
       alert(error.message);
       return;
     }
+
+    if (notifyFollowers) {
+      const { error: notificationError } = await supabase.rpc(
+        "notify_followers_of_scheduled_stream",
+        {
+          p_creator_id: userId,
+          p_title: title.trim(),
+          p_schedule_time: selectedDate.toISOString(),
+        }
+      );
+
+      if (notificationError) {
+        console.error(notificationError.message);
+      }
+    }
+
+    setSaving(false);
 
     setTitle("");
     setCategory("");
@@ -117,7 +132,11 @@ export default function ScheduleStreamPage() {
 
     await loadScheduledStreams(userId);
 
-    alert("Stream scheduled successfully.");
+    alert(
+      notifyFollowers
+        ? "Stream scheduled successfully. Followers have been notified."
+        : "Stream scheduled successfully."
+    );
   }
 
   async function cancelSchedule(id: string) {
@@ -159,7 +178,7 @@ export default function ScheduleStreamPage() {
             📅 Schedule Stream
           </h1>
           <p className="mt-3 max-w-2xl text-gray-400">
-            Plan your next stream and optionally notify followers before going live.
+            Plan your next stream and notify followers before you go live.
           </p>
         </div>
 
@@ -168,29 +187,9 @@ export default function ScheduleStreamPage() {
             <h2 className="mb-5 text-2xl font-black">Create Schedule</h2>
 
             <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-300">
-                  📝 Title
-                </label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Example: Friday Night Live"
-                  className="w-full rounded-xl border border-gray-700 bg-black p-4 text-white outline-none focus:border-red-500"
-                />
-              </div>
+              <Input label="📝 Title" value={title} setValue={setTitle} placeholder="Friday Night Live" />
 
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-300">
-                  🎮 Category
-                </label>
-                <input
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Gaming, Music, Talk Show, Education..."
-                  className="w-full rounded-xl border border-gray-700 bg-black p-4 text-white outline-none focus:border-red-500"
-                />
-              </div>
+              <Input label="🎮 Category" value={category} setValue={setCategory} placeholder="Gaming, Music, Talk Show..." />
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-gray-300">
@@ -232,7 +231,7 @@ export default function ScheduleStreamPage() {
                 disabled={saving}
                 className="w-full rounded-xl bg-red-600 px-6 py-4 font-black text-white hover:bg-red-700 disabled:bg-gray-700"
               >
-                {saving ? "Saving..." : "Schedule Stream"}
+                {saving ? "Scheduling..." : "Schedule Stream"}
               </button>
             </div>
           </div>
@@ -306,6 +305,32 @@ export default function ScheduleStreamPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Input({
+  label,
+  value,
+  setValue,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold text-gray-300">
+        {label}
+      </label>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl border border-gray-700 bg-black p-4 text-white outline-none focus:border-red-500"
+      />
     </div>
   );
 }

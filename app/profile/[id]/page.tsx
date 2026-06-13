@@ -643,6 +643,7 @@ export default function PublicProfilePage() {
                       <ProfileAction label="📞 Calls" href="/calls" />
                       <ProfileAction label="🔔 Notifications" href="/notifications" />
                       <ProfileAction label="🎥 Go Live" href="/go-live" />
+                      <ProfileAction label="📅 Schedule Stream" href="/schedule" />
                       <ProfileAction label="⚙️ Settings" href="/notifications/settings" />
 
                       <button
