@@ -148,6 +148,15 @@ export default function PublicProfilePage() {
     return true;
   }
 
+  async function logout() {
+    const confirmed = confirm("Are you sure you want to logout?");
+
+    if (!confirmed) return;
+
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
+
   async function startPrivateCall() {
     if (!viewerId || !profile || viewerId === profile.id) return;
 
@@ -381,7 +390,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 lg:px-8 lg:py-10">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <button
           onClick={() => (window.location.href = "/explore")}
           className="mb-6 rounded-xl bg-gray-800 px-5 py-3 text-sm font-bold hover:bg-gray-700 sm:text-base"
@@ -393,7 +402,7 @@ export default function PublicProfilePage() {
           <div className="h-28 bg-gradient-to-r from-red-700 via-red-600 to-orange-500 sm:h-36" />
 
           <div className="p-5 sm:p-8">
-            <div className="-mt-16 flex flex-col gap-5 sm:-mt-20 sm:flex-row sm:items-end sm:justify-between">
+            <div className="-mt-16 flex flex-col gap-5 sm:-mt-20 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                 <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-gray-900 bg-gray-800 sm:h-36 sm:w-36">
                   {profile.avatar_url ? (
@@ -438,7 +447,7 @@ export default function PublicProfilePage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-end">
                 {!isOwnProfile && (
                   <>
                     <button
@@ -453,7 +462,9 @@ export default function PublicProfilePage() {
 
                     <button
                       onClick={toggleFollow}
-                      disabled={followLoading || subscriptionLoading || callLoading}
+                      disabled={
+                        followLoading || subscriptionLoading || callLoading
+                      }
                       className={`rounded-xl px-5 py-3 font-bold disabled:bg-gray-700 ${
                         isFollowing
                           ? "bg-gray-700 hover:bg-gray-600"
@@ -469,7 +480,9 @@ export default function PublicProfilePage() {
 
                     <button
                       onClick={toggleSubscription}
-                      disabled={subscriptionLoading || followLoading || callLoading}
+                      disabled={
+                        subscriptionLoading || followLoading || callLoading
+                      }
                       className={`rounded-xl px-5 py-3 font-black disabled:bg-gray-700 ${
                         isSubscribed
                           ? "border border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20"
@@ -486,28 +499,46 @@ export default function PublicProfilePage() {
                 )}
 
                 {isOwnProfile && (
-                  <>
-                    <button
-                      onClick={() => (window.location.href = "/calls")}
-                      className="rounded-xl bg-purple-600 px-5 py-3 font-black text-white hover:bg-purple-700"
-                    >
-                      Private Calls
-                    </button>
+                  <div className="w-full rounded-2xl border border-gray-800 bg-black/30 p-4 lg:min-w-[360px]">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-lg font-black">Account Menu</h2>
+                        <p className="mt-1 text-xs text-gray-400">
+                          Manage your StreamHub account
+                        </p>
+                      </div>
 
-                    <button
-                      onClick={() => (window.location.href = "/wallet")}
-                      className="rounded-xl bg-yellow-500 px-5 py-3 font-black text-black hover:bg-yellow-400"
-                    >
-                      Manage Premium
-                    </button>
+                      <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-black text-red-300">
+                        Me
+                      </span>
+                    </div>
 
-                    <button
-                      onClick={() => (window.location.href = "/profile/edit")}
-                      className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700"
-                    >
-                      Edit Profile
-                    </button>
-                  </>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <ProfileAction
+                        label="👤 My Profile"
+                        href={`/profile/${profile.id}`}
+                      />
+                      <ProfileAction label="✏️ Edit Profile" href="/profile/edit" />
+                      <ProfileAction label="💰 Wallet" href="/wallet" />
+                      <ProfileAction label="📞 Calls" href="/calls" />
+                      <ProfileAction
+                        label="🔔 Notifications"
+                        href="/notifications"
+                      />
+                      <ProfileAction label="🎥 Go Live" href="/go-live" />
+                      <ProfileAction
+                        label="⚙️ Settings"
+                        href="/notifications/settings"
+                      />
+
+                      <button
+                        onClick={logout}
+                        className="rounded-xl bg-red-600 px-5 py-3 text-left font-black text-white hover:bg-red-700"
+                      >
+                        🚪 Logout
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -628,5 +659,16 @@ export default function PublicProfilePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ProfileAction({ label, href }: { label: string; href: string }) {
+  return (
+    <button
+      onClick={() => (window.location.href = href)}
+      className="rounded-xl bg-gray-800 px-5 py-3 text-left font-bold text-white hover:bg-gray-700"
+    >
+      {label}
+    </button>
   );
 }
