@@ -1,20 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import Navbar from "./components/Navbar";
 import PushNotificationManager from "./components/PushNotificationManager";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import IncomingCallPopup from "../components/IncomingCallPopup";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "StreamHub",
@@ -32,7 +22,9 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -50,13 +42,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full bg-black antialiased`}
-    >
+    <html lang="en" className="h-full bg-black antialiased">
       <body className="min-h-full bg-black text-white">
         <PushNotificationManager />
         <IncomingCallPopup />
+        <PWAInstallPrompt />
 
         <Navbar />
 
