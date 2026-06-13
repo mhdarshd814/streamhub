@@ -507,8 +507,8 @@ export default function Navbar() {
       {/* Mobile + Tablet Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl xl:hidden">
         <div className="relative grid h-[76px] grid-cols-5 items-center px-2">
-          <MobileItem icon="🏠"label="Home" href="/" />
-          <MobileItem icon="🔥"label="TEST123" href="/explore" />
+          <MobileItem icon="🏠" label="Home" href="/" />
+          <MobileItem icon="🔥" label="Discover" href="/explore" />
 
           <button
             onClick={() => goTo(loggedIn ? "/go-live" : "/login")}
@@ -521,8 +521,8 @@ export default function Navbar() {
           </button>
 
           <MobileItem
-            icon="💬"
-            label="CALLTEST"
+            icon="📞"
+            label="Calls"
             href={loggedIn ? "/calls" : "/login"}
             badge={pendingInvites}
           />
