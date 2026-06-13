@@ -15,6 +15,24 @@ type ScheduledStream = {
   created_at: string;
 };
 
+const STREAM_CATEGORIES = [
+  "Gaming",
+  "Music",
+  "Talk Show",
+  "Education",
+  "Fitness",
+  "Cooking",
+  "Lifestyle",
+  "Business",
+  "Technology",
+  "Sports",
+  "Travel",
+  "Comedy",
+  "News",
+  "Q&A",
+  "Other",
+];
+
 export default function ScheduleStreamPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -63,7 +81,7 @@ export default function ScheduleStreamPage() {
   }
 
   async function createSchedule() {
-    if (!userId) return;
+    if (!userId || saving) return;
 
     if (!title.trim()) {
       alert("Please enter a stream title.");
@@ -71,7 +89,7 @@ export default function ScheduleStreamPage() {
     }
 
     if (!category.trim()) {
-      alert("Please enter a category.");
+      alert("Please select a category.");
       return;
     }
 
@@ -81,6 +99,11 @@ export default function ScheduleStreamPage() {
     }
 
     const selectedDate = new Date(scheduledStart);
+
+    if (Number.isNaN(selectedDate.getTime())) {
+      alert("Please select a valid start date and time.");
+      return;
+    }
 
     if (selectedDate.getTime() <= Date.now()) {
       alert("Scheduled time must be in the future.");
@@ -187,9 +210,18 @@ export default function ScheduleStreamPage() {
             <h2 className="mb-5 text-2xl font-black">Create Schedule</h2>
 
             <div className="space-y-4">
-              <Input label="📝 Title" value={title} setValue={setTitle} placeholder="Friday Night Live" />
+              <Input
+                label="📝 Title"
+                value={title}
+                setValue={setTitle}
+                placeholder="Friday Night Live"
+              />
 
-              <Input label="🎮 Category" value={category} setValue={setCategory} placeholder="Gaming, Music, Talk Show..." />
+              <CategorySelect
+                label="🎮 Category"
+                value={category}
+                setValue={setCategory}
+              />
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-gray-300">
@@ -331,6 +363,37 @@ function Input({
         placeholder={placeholder}
         className="w-full rounded-xl border border-gray-700 bg-black p-4 text-white outline-none focus:border-red-500"
       />
+    </div>
+  );
+}
+
+function CategorySelect({
+  label,
+  value,
+  setValue,
+}: {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold text-gray-300">
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-full rounded-xl border border-gray-700 bg-black p-4 text-white outline-none focus:border-red-500"
+      >
+        <option value="">Select category</option>
+
+        {STREAM_CATEGORIES.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
