@@ -188,7 +188,10 @@ export default function Navbar() {
   }
 
   async function openNotification(notification: Notification) {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", notification.id);
+    await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", notification.id);
 
     if (userId) await loadNotifications(userId);
 
@@ -232,7 +235,10 @@ export default function Navbar() {
     <>
       <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 xl:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div onClick={() => goTo("/")} className="flex cursor-pointer items-center gap-3">
+          <div
+            onClick={() => goTo("/")}
+            className="flex cursor-pointer items-center gap-3"
+          >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
               <span className="text-2xl font-black text-white">▶</span>
             </div>
@@ -256,6 +262,10 @@ export default function Navbar() {
 
             <button onClick={() => goTo("/explore")} className="font-bold text-gray-100 hover:text-red-400">
               Explore
+            </button>
+
+            <button onClick={() => goTo("/streams/upcoming")} className="font-bold text-gray-100 hover:text-red-400">
+              Upcoming
             </button>
 
             {loggedIn ? (
@@ -379,6 +389,7 @@ export default function Navbar() {
                       <MenuItem label="Notifications" href="/notifications" />
                       <MenuItem label="Create Stream" href="/go-live" />
                       <MenuItem label="Schedule Stream" href="/schedule" />
+                      <MenuItem label="Upcoming Streams" href="/streams/upcoming" />
                       <MenuItem label="Calls" href="/calls" />
 
                       {profile?.is_admin && (
@@ -523,6 +534,7 @@ export default function Navbar() {
               <MobileSheetItem label="🔔 Notifications" href="/notifications" />
               <MobileSheetItem label="🎥 Go Live" href="/go-live" />
               <MobileSheetItem label="📅 Schedule" href="/schedule" />
+              <MobileSheetItem label="📆 Upcoming" href="/streams/upcoming" />
               <MobileSheetItem label="⚙️ Settings" href="/notifications/settings" />
 
               <button
