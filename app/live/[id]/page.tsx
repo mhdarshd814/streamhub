@@ -46,6 +46,12 @@ type StreamGuest = {
   profiles?: Profile | null;
 };
 
+type RemoteVideoTrack = {
+  id: string;
+  identity: string;
+  track: any;
+};
+
 export default function LiveRoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -78,6 +84,7 @@ export default function LiveRoomPage() {
   const [creatorResults, setCreatorResults] = useState<Profile[]>([]);
   const [creatorSearching, setCreatorSearching] = useState(false);
   const [inviteSendingId, setInviteSendingId] = useState<string | null>(null);
+  const [remoteVideos, setRemoteVideos] = useState<RemoteVideoTrack[]>([]);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
@@ -396,6 +403,36 @@ export default function LiveRoomPage() {
     });
 
     remoteAudioElementsRef.current = [];
+  }
+
+  function addRemoteVideo(track: any, identity: string) {
+    if (!track || track.kind !== Track.Kind.Video) return;
+
+    const trackId = track.sid || `${identity}-${track.kind}`;
+
+    setRemoteVideos((current) => {
+      const exists = current.some((item) => item.id === trackId);
+      if (exists) return current;
+
+      return [
+        ...current,
+        {
+          id: trackId,
+          identity,
+          track,
+        },
+      ];
+    });
+  }
+
+  function removeRemoteVideo(track: any) {
+    if (!track) return;
+
+    const trackId = track.sid || `${track.kind}`;
+
+    setRemoteVideos((current) =>
+      current.filter((item) => item.id !== trackId && item.track !== track)
+    );
   }
 
   async function removeLiveKitParticipant(participantIdentity: string) {
@@ -723,14 +760,22 @@ export default function LiveRoomPage() {
         dynacast: true,
       });
 
-      newRoom.on(RoomEvent.TrackSubscribed, (track) => {
+      newRoom.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
         if (track.kind === Track.Kind.Audio) {
           attachRemoteAudio(track);
+        }
+
+        if (track.kind === Track.Kind.Video) {
+          addRemoteVideo(track, participant.identity);
         }
       });
 
       newRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
         try {
+          if (track.kind === Track.Kind.Video) {
+            removeRemoteVideo(track);
+          }
+
           track.detach().forEach((element) => element.remove());
         } catch (error) {
           console.error(error);
@@ -752,6 +797,10 @@ export default function LiveRoomPage() {
 
           if (track && track.kind === Track.Kind.Audio) {
             attachRemoteAudio(track);
+          }
+
+          if (track && track.kind === Track.Kind.Video) {
+            addRemoteVideo(track, participant.identity);
           }
         });
       });
@@ -804,6 +853,7 @@ export default function LiveRoomPage() {
     }
 
     setRoom(null);
+    setRemoteVideos([]);
 
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
@@ -1398,13 +1448,38 @@ export default function LiveRoomPage() {
               </div>
 
               <div className="relative flex h-[260px] items-center justify-center overflow-hidden bg-black sm:h-[420px] lg:h-[560px]">
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="h-full w-full object-cover"
-                />
+                <div className="grid h-full w-full grid-cols-1 gap-2 p-2 sm:grid-cols-2">
+                  <div className="relative overflow-hidden rounded-2xl bg-gray-950">
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="h-full w-full object-cover"
+                    />
+
+                    <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
+                      You
+                    </div>
+                  </div>
+
+                  {remoteVideos.length === 0 ? (
+                    <div className="flex items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
+                      <div>
+                        <p className="mb-2 text-4xl">📞</p>
+                        <p className="text-sm">Waiting for the other person...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    remoteVideos.map((item) => (
+                      <RemoteVideoTile
+                        key={item.id}
+                        track={item.track}
+                        identity={item.identity}
+                      />
+                    ))
+                  )}
+                </div>
 
                 {!room && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
@@ -1770,6 +1845,47 @@ export default function LiveRoomPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RemoteVideoTile({
+  track,
+  identity,
+}: {
+  track: any;
+  identity: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (!track || !videoRef.current) return;
+
+    track.attach(videoRef.current);
+
+    return () => {
+      try {
+        if (videoRef.current) {
+          track.detach(videoRef.current);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+  }, [track]);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gray-950">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className="h-full w-full object-cover"
+      />
+
+      <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
+        {identity}
       </div>
     </div>
   );

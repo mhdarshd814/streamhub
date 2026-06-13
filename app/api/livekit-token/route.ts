@@ -96,26 +96,37 @@ export async function POST(req: Request) {
 
     const isOwner = stream.user_id === user.id;
 
-    let isApprovedGuest = false;
+    const { data: acceptedGuestInvite } = await supabase
+      .from("stream_guests")
+      .select("id, status")
+      .eq("stream_id", stream.id)
+      .eq("guest_id", user.id)
+      .eq("status", "accepted")
+      .maybeSingle();
 
-    if (!isOwner) {
-      const { data: invite } = await supabase
-        .from("stream_guests")
-        .select("id, status")
-        .eq("stream_id", stream.id)
-        .eq("guest_id", user.id)
-        .eq("status", "accepted")
-        .maybeSingle();
+    const isAcceptedGuest = !!acceptedGuestInvite;
 
-      isApprovedGuest = !!invite;
-    }
+    const { data: privateCallRequest } = await supabase
+      .from("private_call_requests")
+      .select("id, caller_id, receiver_id, status")
+      .eq("stream_id", stream.id)
+      .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .in("status", ["accepted", "pending"])
+      .maybeSingle();
+
+    const isPrivateCallParticipant = !!privateCallRequest;
+    const isAcceptedPrivateCall =
+      privateCallRequest?.status === "accepted" ||
+      privateCallRequest?.caller_id === user.id;
+
+    const isApprovedGuest = isAcceptedGuest || isAcceptedPrivateCall;
 
     if (mode === "studio" && !isOwner) {
       return bad("Only the stream owner can join studio", 403);
     }
 
     if (mode === "guest" && !isApprovedGuest) {
-      return bad("Guest invite required", 403);
+      return bad("Accepted private call or guest invite required", 403);
     }
 
     if (mode === "viewer") {
@@ -123,7 +134,12 @@ export async function POST(req: Request) {
         return bad("Stream is offline", 403);
       }
 
-      if (stream.visibility === "private" && !isOwner && !isApprovedGuest) {
+      if (
+        stream.visibility === "private" &&
+        !isOwner &&
+        !isAcceptedGuest &&
+        !isPrivateCallParticipant
+      ) {
         return bad("This stream is private", 403);
       }
 
@@ -143,9 +159,14 @@ export async function POST(req: Request) {
       }
     }
 
-    const canPublish = mode === "studio" || mode === "guest";
+    const canPublish =
+      mode === "studio" ||
+      mode === "guest" ||
+      (stream.visibility === "private" &&
+        (isOwner || isAcceptedGuest || isAcceptedPrivateCall));
 
     const identity = user.id;
+
     const displayName =
       profile.display_name ||
       profile.username ||
@@ -178,6 +199,9 @@ export async function POST(req: Request) {
         roomName,
         canPublish,
         visibility: stream.visibility,
+        isOwner,
+        isAcceptedGuest,
+        isPrivateCallParticipant,
       },
     });
 
