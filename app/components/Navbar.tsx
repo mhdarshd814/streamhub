@@ -423,7 +423,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-gray-950/95 px-4 py-3 backdrop-blur xl:hidden">
+      <nav className="fixed inset-x-0 top-0 z-[9997] border-b border-red-900/40 bg-gray-950/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
         <div className="flex items-center justify-between">
           <button onClick={() => goTo("/")} className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
@@ -466,8 +466,8 @@ export default function Navbar() {
         <div
           className="relative mx-auto grid h-[76px] max-w-5xl grid-cols-5 items-center px-2"
           style={{
-            paddingBottom: "env(safe-area-inset-bottom)",
             height: "calc(76px + env(safe-area-inset-bottom))",
+            paddingBottom: "env(safe-area-inset-bottom)",
           }}
         >
           <MobileItem icon="🏠" label="Home" href="/" />
