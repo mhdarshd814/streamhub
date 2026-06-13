@@ -771,6 +771,8 @@ export default function LiveRoomPage() {
               title,
               message,
               url: link,
+              streamId: stream.id,
+              notificationType: "stream_started",
             }),
           });
         } catch (error) {

@@ -9,6 +9,8 @@ type PushSendBody = {
   title?: string;
   message?: string;
   url?: string;
+  streamId?: string;
+  notificationType?: string;
 };
 
 function bad(message: string, status = 400) {
@@ -71,8 +73,34 @@ export async function POST(req: Request) {
       return bad("Banned users cannot send push notifications", 403);
     }
 
-    if (!profile?.is_admin && user.id !== body.userId) {
-      return bad("Admin permission required", 403);
+    let allowedToSend = false;
+
+    if (profile?.is_admin) {
+      allowedToSend = true;
+    }
+
+    if (user.id === body.userId) {
+      allowedToSend = true;
+    }
+
+    if (!allowedToSend && body.streamId) {
+      const { data: streamData, error: streamError } = await supabase
+        .from("streams")
+        .select("id, user_id, visibility")
+        .eq("id", body.streamId)
+        .maybeSingle();
+
+      if (streamError) {
+        return bad(streamError.message, 500);
+      }
+
+      if (streamData?.user_id === user.id) {
+        allowedToSend = true;
+      }
+    }
+
+    if (!allowedToSend) {
+      return bad("Permission denied for this push notification", 403);
     }
 
     webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
@@ -86,19 +114,30 @@ export async function POST(req: Request) {
       return bad(subError.message, 500);
     }
 
+    if (!subscriptions || subscriptions.length === 0) {
+      return NextResponse.json({
+        success: true,
+        sent: 0,
+        failed: 0,
+        message: "No active push subscriptions found for this user",
+      });
+    }
+
     const payload = JSON.stringify({
       title: body.title,
       body: body.message || "",
       url: body.url || "/notifications",
       icon: "/icon-192.png",
       badge: "/icon-192.png",
+      notificationType: body.notificationType || "general",
+      streamId: body.streamId || null,
     });
 
     let sent = 0;
     let failed = 0;
 
     await Promise.all(
-      (subscriptions || []).map(async (subscription) => {
+      subscriptions.map(async (subscription) => {
         try {
           await webpush.sendNotification(
             {

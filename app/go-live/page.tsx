@@ -12,7 +12,8 @@ export default function GoLivePage() {
   const [tags, setTags] = useState("");
   const [visibility, setVisibility] = useState<StreamVisibility>("public");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [privateCallPrice, setPrivateCallPrice] = useState("25");
+  const [privateCallPriceOption, setPrivateCallPriceOption] = useState("25");
+  const [customPrivateCallPrice, setCustomPrivateCallPrice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -106,15 +107,41 @@ export default function GoLivePage() {
     }
   }
 
+  function getPrivateCallPriceAmount() {
+    if (visibility !== "private") return 0;
+
+    if (privateCallPriceOption === "custom") {
+      return Number(customPrivateCallPrice);
+    }
+
+    return Number(privateCallPriceOption);
+  }
+
+  function privateCallPriceLabel() {
+    const amount = getPrivateCallPriceAmount();
+
+    if (amount <= 0) return "Free";
+    return `AED ${amount.toFixed(2)}`;
+  }
+
   async function handleStartStream() {
     if (!title.trim() || !category) {
       alert("Please enter title and select category.");
       return;
     }
 
-    const priceAmount = visibility === "private" ? Number(privateCallPrice) : 0;
+    const priceAmount = getPrivateCallPriceAmount();
 
-    if (visibility === "private" && (!priceAmount || priceAmount < 0)) {
+    if (
+      visibility === "private" &&
+      privateCallPriceOption === "custom" &&
+      customPrivateCallPrice.trim() === ""
+    ) {
+      alert("Please enter a custom private call price.");
+      return;
+    }
+
+    if (visibility === "private" && (Number.isNaN(priceAmount) || priceAmount < 0)) {
       alert("Please enter a valid private call price.");
       return;
     }
@@ -329,13 +356,19 @@ export default function GoLivePage() {
             {visibility === "private" && (
               <div className="mb-5 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4 sm:p-5">
                 <label className="mb-2 block text-sm font-black text-purple-300 sm:text-base">
-                  Private Call Price AED
+                  Private Call Price
                 </label>
 
                 <select
-                  value={privateCallPrice}
-                  onChange={(e) => setPrivateCallPrice(e.target.value)}
-                  className="mb-3 w-full rounded-xl border border-purple-500/20 bg-black p-3 text-sm text-white outline-none focus:border-purple-400 sm:p-4 sm:text-base"
+                  value={privateCallPriceOption}
+                  onChange={(e) => {
+                    setPrivateCallPriceOption(e.target.value);
+
+                    if (e.target.value !== "custom") {
+                      setCustomPrivateCallPrice("");
+                    }
+                  }}
+                  className="w-full rounded-xl border border-purple-500/20 bg-black p-3 text-sm text-white outline-none focus:border-purple-400 sm:p-4 sm:text-base"
                 >
                   <option value="0">Free</option>
                   <option value="25">AED 25</option>
@@ -343,20 +376,24 @@ export default function GoLivePage() {
                   <option value="100">AED 100</option>
                   <option value="250">AED 250</option>
                   <option value="500">AED 500</option>
+                  <option value="1000">AED 1000</option>
+                  <option value="custom">Custom</option>
                 </select>
 
-                <input
-                  type="number"
-                  min="0"
-                  max="5000"
-                  value={privateCallPrice}
-                  onChange={(e) => setPrivateCallPrice(e.target.value)}
-                  placeholder="Custom price, example: 75"
-                  className="w-full rounded-xl border border-purple-500/20 bg-black p-3 text-sm text-white outline-none focus:border-purple-400 sm:p-4 sm:text-base"
-                />
+                {privateCallPriceOption === "custom" && (
+                  <input
+                    type="number"
+                    min="0"
+                    max="5000"
+                    value={customPrivateCallPrice}
+                    onChange={(e) => setCustomPrivateCallPrice(e.target.value)}
+                    placeholder="Enter custom amount, example: 75"
+                    className="mt-3 w-full rounded-xl border border-purple-500/20 bg-black p-3 text-sm text-white outline-none focus:border-purple-400 sm:p-4 sm:text-base"
+                  />
+                )}
 
                 <p className="mt-3 text-sm leading-6 text-gray-300">
-                  Guest must pay this amount from wallet before joining the private call. Set 0 only if you want a free private call.
+                  Guest must pay this amount from wallet before joining the private call. Choose Free only if you want an unpaid private call.
                 </p>
               </div>
             )}
@@ -490,7 +527,7 @@ export default function GoLivePage() {
 
               {visibility === "private" && (
                 <p className="mt-3 text-sm leading-6 text-gray-500">
-                  Hidden from public pages. Guest pays AED {Number(privateCallPrice || 0).toFixed(2)} before joining.
+                  Hidden from public pages. Guest pays {privateCallPriceLabel()} before joining.
                 </p>
               )}
 
