@@ -100,7 +100,7 @@ export default function WatchPage() {
   const watchStartRef = useRef<number | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
 
-  async function updateDailyAnalytics(input: {
+  async function incrementDailyAnalytics(input: {
     viewsDelta?: number;
     watchMinutesDelta?: number;
     likesDelta?: number;
@@ -109,76 +109,17 @@ export default function WatchPage() {
   }) {
     if (!streamId) return;
 
-    let creatorId = stream?.user_id || null;
-
-    if (!creatorId) {
-      const { data } = await supabase
-        .from("streams")
-        .select("user_id")
-        .eq("id", streamId)
-        .maybeSingle();
-
-      creatorId = data?.user_id || null;
-    }
-
-    if (!creatorId) return;
-
-    const today = new Date().toISOString().slice(0, 10);
-
-    const { data: existing, error: existingError } = await supabase
-      .from("stream_daily_analytics")
-      .select("*")
-      .eq("stream_id", streamId)
-      .eq("creator_id", creatorId)
-      .eq("analytics_date", today)
-      .maybeSingle();
-
-    if (existingError) {
-      console.error("Daily analytics read error:", existingError.message);
-      return;
-    }
-
-    if (existing) {
-      const { error } = await supabase
-        .from("stream_daily_analytics")
-        .update({
-          views: Number(existing.views || 0) + Number(input.viewsDelta || 0),
-          watch_minutes:
-            Number(existing.watch_minutes || 0) +
-            Number(input.watchMinutesDelta || 0),
-          likes: Number(existing.likes || 0) + Number(input.likesDelta || 0),
-          chat_messages:
-            Number(existing.chat_messages || 0) +
-            Number(input.chatMessagesDelta || 0),
-          peak_viewers: Math.max(
-            Number(existing.peak_viewers || 0),
-            Number(input.peakViewers || 0)
-          ),
-        })
-        .eq("id", existing.id);
-
-      if (error) {
-        console.error("Daily analytics update error:", error.message);
-      }
-
-      return;
-    }
-
-    const { error } = await supabase.from("stream_daily_analytics").insert([
-      {
-        stream_id: streamId,
-        creator_id: creatorId,
-        analytics_date: today,
-        views: Number(input.viewsDelta || 0),
-        watch_minutes: Number(input.watchMinutesDelta || 0),
-        likes: Number(input.likesDelta || 0),
-        chat_messages: Number(input.chatMessagesDelta || 0),
-        peak_viewers: Number(input.peakViewers || 0),
-      },
-    ]);
+    const { error } = await supabase.rpc("increment_stream_daily_analytics", {
+      target_stream_id: streamId,
+      views_delta: input.viewsDelta || 0,
+      watch_minutes_delta: input.watchMinutesDelta || 0,
+      likes_delta: input.likesDelta || 0,
+      chat_messages_delta: input.chatMessagesDelta || 0,
+      peak_viewers_value: input.peakViewers || 0,
+    });
 
     if (error) {
-      console.error("Daily analytics insert error:", error.message);
+      console.error("Daily analytics RPC error:", error.message);
     }
   }
 
@@ -190,33 +131,23 @@ export default function WatchPage() {
     let isMounted = true;
 
     async function getViewerCount() {
-      const { count, error } = await supabase
-        .from("stream_viewers")
-        .select("id", { count: "exact", head: true })
-        .eq("stream_id", streamId);
+      const { data, error } = await supabase.rpc("sync_stream_viewer_count", {
+        target_stream_id: streamId,
+      });
 
-      if (!error) {
-        const total = count || 0;
-        setViewerCount(total);
+      if (error) {
+        console.error("Viewer count sync error:", error.message);
 
-        const { data: currentStream } = await supabase
-          .from("streams")
-          .select("peak_viewers")
-          .eq("id", streamId)
-          .maybeSingle();
+        const { count } = await supabase
+          .from("stream_viewers")
+          .select("id", { count: "exact", head: true })
+          .eq("stream_id", streamId);
 
-        const currentPeak = currentStream?.peak_viewers || 0;
-
-        await supabase
-          .from("streams")
-          .update({
-            viewers: total,
-            peak_viewers: Math.max(currentPeak, total),
-          })
-          .eq("id", streamId);
-
-        await updateDailyAnalytics({ peakViewers: total });
+        setViewerCount(count || 0);
+        return;
       }
+
+      setViewerCount(Number(data || 0));
     }
 
     async function trackTotalView() {
@@ -224,21 +155,14 @@ export default function WatchPage() {
 
       viewTrackedRef.current = true;
 
-      const { data: currentStream } = await supabase
-        .from("streams")
-        .select("total_views")
-        .eq("id", streamId)
-        .maybeSingle();
+      const { error } = await supabase.rpc("increment_stream_total_view", {
+        target_stream_id: streamId,
+      });
 
-      await supabase
-        .from("streams")
-        .update({
-          total_views: (currentStream?.total_views || 0) + 1,
-        })
-        .eq("id", streamId);
-
-
-      await updateDailyAnalytics({ viewsDelta: 1 });
+      if (error) {
+        console.error("Total view RPC error:", error.message);
+        await incrementDailyAnalytics({ viewsDelta: 1 });
+      }
     }
 
     async function trackWatchMinutes() {
@@ -250,21 +174,15 @@ export default function WatchPage() {
 
       const minutesWatched = Math.max(1, Math.ceil(secondsWatched / 60));
 
-      const { data: currentStream } = await supabase
-        .from("streams")
-        .select("watch_minutes")
-        .eq("id", streamId)
-        .maybeSingle();
+      const { error } = await supabase.rpc("increment_stream_watch_minutes", {
+        target_stream_id: streamId,
+        minutes_delta: minutesWatched,
+      });
 
-      await supabase
-        .from("streams")
-        .update({
-          watch_minutes: (currentStream?.watch_minutes || 0) + minutesWatched,
-        })
-        .eq("id", streamId);
-
-
-      await updateDailyAnalytics({ watchMinutesDelta: minutesWatched });
+      if (error) {
+        console.error("Watch minutes RPC error:", error.message);
+        await incrementDailyAnalytics({ watchMinutesDelta: minutesWatched });
+      }
 
       watchStartRef.current = null;
     }
@@ -981,7 +899,7 @@ export default function WatchPage() {
       });
     }
 
-    await updateDailyAnalytics({ chatMessagesDelta: 1 });
+    await incrementDailyAnalytics({ chatMessagesDelta: 1 });
 
     setNewMessage("");
   }
@@ -1024,7 +942,7 @@ export default function WatchPage() {
     setLikes(data || 0);
 
     if (!liked) {
-      await updateDailyAnalytics({ likesDelta: 1 });
+      await incrementDailyAnalytics({ likesDelta: 1 });
     }
 
     setLiked((current) => !current);
