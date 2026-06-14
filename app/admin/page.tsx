@@ -253,6 +253,13 @@ export default function AdminHomePage() {
 
   const adminCards: AdminCard[] = [
     {
+      href: "/admin/broadcast",
+      icon: "📡",
+      title: "Admin Broadcast Studio",
+      description:
+        "Create official public broadcasts, open a screen-share focused studio, and stream announcements or external app screens.",
+    },
+    {
       href: "/admin/users",
       icon: "👥",
       title: "User Management",
