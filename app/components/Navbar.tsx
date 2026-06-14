@@ -239,9 +239,13 @@ export default function Navbar() {
             onClick={() => goTo("/")}
             className="flex cursor-pointer items-center gap-3"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
-              <span className="text-2xl font-black text-white">▶</span>
-            </div>
+            <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
+  <img
+    src="/icon-512.png"
+    alt="StreamHub"
+    className="h-full w-full object-cover"
+  />
+</div>
 
             <div className="leading-none">
               <h1 className="text-4xl font-black tracking-tight">
@@ -426,9 +430,13 @@ export default function Navbar() {
       <nav className="fixed inset-x-0 top-0 z-[9997] border-b border-red-900/40 bg-gray-950/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
         <div className="flex items-center justify-between">
           <button onClick={() => goTo("/")} className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 shadow-lg shadow-red-600/30">
-              <span className="text-2xl font-black text-white">▶</span>
-            </div>
+            <div className="h-12 w-12 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
+ 		 <img
+ 		 src="/icon-512.png"
+   		 alt="StreamHub"
+    		className="h-full w-full object-cover"
+ 		 />
+		</div>
 
             <div className="leading-none text-left">
               <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
