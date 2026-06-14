@@ -470,7 +470,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <nav className="fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
+      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
         <div
           className="relative mx-auto grid h-[76px] max-w-5xl grid-cols-5 items-center px-2"
           style={{
