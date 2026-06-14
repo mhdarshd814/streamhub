@@ -100,6 +100,88 @@ export default function WatchPage() {
   const watchStartRef = useRef<number | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
 
+  async function updateDailyAnalytics(input: {
+    viewsDelta?: number;
+    watchMinutesDelta?: number;
+    likesDelta?: number;
+    chatMessagesDelta?: number;
+    peakViewers?: number;
+  }) {
+    if (!streamId) return;
+
+    let creatorId = stream?.user_id || null;
+
+    if (!creatorId) {
+      const { data } = await supabase
+        .from("streams")
+        .select("user_id")
+        .eq("id", streamId)
+        .maybeSingle();
+
+      creatorId = data?.user_id || null;
+    }
+
+    if (!creatorId) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: existing, error: existingError } = await supabase
+      .from("stream_daily_analytics")
+      .select("*")
+      .eq("stream_id", streamId)
+      .eq("creator_id", creatorId)
+      .eq("analytics_date", today)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("Daily analytics read error:", existingError.message);
+      return;
+    }
+
+    if (existing) {
+      const { error } = await supabase
+        .from("stream_daily_analytics")
+        .update({
+          views: Number(existing.views || 0) + Number(input.viewsDelta || 0),
+          watch_minutes:
+            Number(existing.watch_minutes || 0) +
+            Number(input.watchMinutesDelta || 0),
+          likes: Number(existing.likes || 0) + Number(input.likesDelta || 0),
+          chat_messages:
+            Number(existing.chat_messages || 0) +
+            Number(input.chatMessagesDelta || 0),
+          peak_viewers: Math.max(
+            Number(existing.peak_viewers || 0),
+            Number(input.peakViewers || 0)
+          ),
+        })
+        .eq("id", existing.id);
+
+      if (error) {
+        console.error("Daily analytics update error:", error.message);
+      }
+
+      return;
+    }
+
+    const { error } = await supabase.from("stream_daily_analytics").insert([
+      {
+        stream_id: streamId,
+        creator_id: creatorId,
+        analytics_date: today,
+        views: Number(input.viewsDelta || 0),
+        watch_minutes: Number(input.watchMinutesDelta || 0),
+        likes: Number(input.likesDelta || 0),
+        chat_messages: Number(input.chatMessagesDelta || 0),
+        peak_viewers: Number(input.peakViewers || 0),
+      },
+    ]);
+
+    if (error) {
+      console.error("Daily analytics insert error:", error.message);
+    }
+  }
+
   useEffect(() => {
     let room: Room | null = null;
     let chatChannel: any = null;
@@ -132,6 +214,8 @@ export default function WatchPage() {
             peak_viewers: Math.max(currentPeak, total),
           })
           .eq("id", streamId);
+
+        await updateDailyAnalytics({ peakViewers: total });
       }
     }
 
@@ -152,6 +236,9 @@ export default function WatchPage() {
           total_views: (currentStream?.total_views || 0) + 1,
         })
         .eq("id", streamId);
+
+
+      await updateDailyAnalytics({ viewsDelta: 1 });
     }
 
     async function trackWatchMinutes() {
@@ -175,6 +262,9 @@ export default function WatchPage() {
           watch_minutes: (currentStream?.watch_minutes || 0) + minutesWatched,
         })
         .eq("id", streamId);
+
+
+      await updateDailyAnalytics({ watchMinutesDelta: minutesWatched });
 
       watchStartRef.current = null;
     }
@@ -891,6 +981,8 @@ export default function WatchPage() {
       });
     }
 
+    await updateDailyAnalytics({ chatMessagesDelta: 1 });
+
     setNewMessage("");
   }
 
@@ -930,6 +1022,11 @@ export default function WatchPage() {
     }
 
     setLikes(data || 0);
+
+    if (!liked) {
+      await updateDailyAnalytics({ likesDelta: 1 });
+    }
+
     setLiked((current) => !current);
   }
 
