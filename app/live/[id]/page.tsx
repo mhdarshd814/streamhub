@@ -329,6 +329,12 @@ export default function LiveRoomPage() {
   }, [chatMessages]);
 
   useEffect(() => {
+    if (focusedVideo !== "local" && !remoteVideos.some((item) => item.id === focusedVideo)) {
+      setFocusedVideo("local");
+    }
+  }, [focusedVideo, remoteVideos]);
+
+  useEffect(() => {
     if (role !== "host") return;
 
     const timer = setTimeout(() => {
@@ -841,6 +847,16 @@ export default function LiveRoomPage() {
       alert("Unable to switch camera. Some desktop browsers and devices do not expose a second camera.");
     }
   }
+
+  useEffect(() => {
+    if (!roomRef.current) return;
+
+    const timer = setTimeout(() => {
+      attachLocalVideoTrack(roomRef.current);
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [focusedVideo, isCompactStudio, remoteVideos.length, room]);
 
   async function startLiveStream() {
     if (!stream || starting) return;
@@ -1748,6 +1764,17 @@ export default function LiveRoomPage() {
                       className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90 disabled:text-gray-500"
                     >
                       Switch Focus
+                    </button>
+
+                    <button
+                      onClick={stopLiveStream}
+                      className="rounded-full bg-red-600 px-3 py-2 text-xs font-black backdrop-blur hover:bg-red-700"
+                    >
+                      {role === "host"
+                        ? isPrivate
+                          ? "End Call"
+                          : "End Stream"
+                        : "Leave Stream"}
                     </button>
                   </div>
                 )}
