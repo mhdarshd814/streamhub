@@ -85,6 +85,9 @@ export default function LiveRoomPage() {
   const [creatorSearching, setCreatorSearching] = useState(false);
   const [inviteSendingId, setInviteSendingId] = useState<string | null>(null);
   const [remoteVideos, setRemoteVideos] = useState<RemoteVideoTrack[]>([]);
+  const [focusedVideo, setFocusedVideo] = useState<"local" | string>("local");
+  const [isCompactStudio, setIsCompactStudio] = useState(false);
+  const [usingFrontCamera, setUsingFrontCamera] = useState(true);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
@@ -782,6 +785,63 @@ export default function LiveRoomPage() {
     );
   }
 
+  function attachLocalVideoTrack(targetRoom: Room | null) {
+    if (!targetRoom || !localVideoRef.current) return;
+
+    const videoPublication = Array.from(
+      targetRoom.localParticipant.videoTrackPublications.values()
+    )[0];
+
+    const videoTrack = videoPublication?.track;
+
+    if (videoTrack) {
+      try {
+        videoTrack.attach(localVideoRef.current);
+      } catch (error) {
+        console.error("Local video attach error:", error);
+      }
+    }
+  }
+
+  async function switchCameraView() {
+    const allowed = await checkCurrentUserStillAllowed();
+    if (!allowed) return;
+
+    const activeRoom = roomRef.current;
+
+    if (!activeRoom) return;
+
+    try {
+      if (!cameraOn) {
+        await activeRoom.localParticipant.setCameraEnabled(true);
+        setCameraOn(true);
+      }
+
+      const nextFacingMode = usingFrontCamera ? "environment" : "user";
+
+      const videoPublication = Array.from(
+        activeRoom.localParticipant.videoTrackPublications.values()
+      )[0];
+
+      const videoTrack: any = videoPublication?.track;
+
+      if (videoTrack?.restartTrack) {
+        await videoTrack.restartTrack({
+          facingMode: nextFacingMode,
+        });
+
+        setUsingFrontCamera(!usingFrontCamera);
+        setTimeout(() => attachLocalVideoTrack(activeRoom), 250);
+        return;
+      }
+
+      alert("Camera switch is not supported by this browser/device.");
+    } catch (error) {
+      console.error("Camera switch error:", error);
+      alert("Unable to switch camera. Some desktop browsers and devices do not expose a second camera.");
+    }
+  }
+
   async function startLiveStream() {
     if (!stream || starting) return;
 
@@ -915,20 +975,8 @@ export default function LiveRoomPage() {
         });
       });
 
-      const attachLocalVideo = () => {
-        const videoPublication = Array.from(
-          newRoom.localParticipant.videoTrackPublications.values()
-        )[0];
-
-        const videoTrack = videoPublication?.track;
-
-        if (videoTrack && localVideoRef.current) {
-          videoTrack.attach(localVideoRef.current);
-        }
-      };
-
-      attachLocalVideo();
-      setTimeout(attachLocalVideo, 500);
+      attachLocalVideoTrack(newRoom);
+      setTimeout(() => attachLocalVideoTrack(newRoom), 500);
 
       roomRef.current = newRoom;
       setRoom(newRoom);
@@ -1535,7 +1583,7 @@ export default function LiveRoomPage() {
 
         <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
           <div className="lg:col-span-2">
-            <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+            <div className="sticky top-[84px] z-40 overflow-hidden rounded-2xl border border-red-900/40 bg-gray-950 shadow-2xl shadow-red-950/30 lg:static lg:z-auto">
               <div className="flex flex-col gap-3 border-b border-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                 <div>
                   <h2 className="text-2xl font-black">Live Preview</h2>
@@ -1546,50 +1594,163 @@ export default function LiveRoomPage() {
                   </p>
                 </div>
 
-                <span
-                  className={
-                    isLive
-                      ? "w-fit rounded-full bg-red-600 px-4 py-1 text-sm font-black"
-                      : "w-fit rounded-full bg-gray-800 px-4 py-1 text-sm font-black text-gray-400"
-                  }
-                >
-                  {isLive ? "LIVE" : "OFFLINE"}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setFocusedVideo("local")}
+                    disabled={!room}
+                    className={
+                      focusedVideo === "local"
+                        ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
+                        : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
+                    }
+                  >
+                    You Big
+                  </button>
+
+                  {remoteVideos.length > 0 && (
+                    <button
+                      onClick={() => setFocusedVideo(remoteVideos[0].id)}
+                      disabled={!room}
+                      className={
+                        focusedVideo !== "local"
+                          ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
+                          : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
+                      }
+                    >
+                      Guest Big
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setIsCompactStudio((current) => !current)}
+                    className="rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700"
+                  >
+                    {isCompactStudio ? "Large View" : "Small View"}
+                  </button>
+
+                  <span
+                    className={
+                      isLive
+                        ? "w-fit rounded-full bg-red-600 px-4 py-1 text-sm font-black"
+                        : "w-fit rounded-full bg-gray-800 px-4 py-1 text-sm font-black text-gray-400"
+                    }
+                  >
+                    {isLive ? "LIVE" : "OFFLINE"}
+                  </span>
+                </div>
               </div>
 
-              <div className="relative flex h-[260px] items-center justify-center overflow-hidden bg-black sm:h-[420px] lg:h-[560px]">
-                <div className="grid h-full w-full grid-cols-1 gap-2 p-2 sm:grid-cols-2">
-                  <div className="relative overflow-hidden rounded-2xl bg-gray-950">
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      muted
-                      playsInline
-                      className="h-full w-full object-cover"
-                    />
+              <div
+                className={
+                  isCompactStudio
+                    ? "relative flex h-[220px] items-center justify-center overflow-hidden bg-black sm:h-[300px] lg:h-[420px]"
+                    : "relative flex h-[320px] items-center justify-center overflow-hidden bg-black sm:h-[520px] lg:h-[560px]"
+                }
+              >
+                <div className="relative h-full w-full p-2">
+                  {focusedVideo === "local" ? (
+                    <>
+                      <div
+                        onClick={() => setFocusedVideo("local")}
+                        className="relative h-full w-full overflow-hidden rounded-2xl bg-gray-950"
+                      >
+                        <video
+                          ref={localVideoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
 
-                    <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                      You
-                    </div>
-                  </div>
-
-                  {remoteVideos.length === 0 ? (
-                    <div className="flex items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
-                      <div>
-                        <p className="mb-2 text-4xl">📞</p>
-                        <p className="text-sm">Waiting for the other person...</p>
+                        <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
+                          You
+                        </div>
                       </div>
-                    </div>
+
+                      {remoteVideos.length > 0 ? (
+                        <div className="absolute bottom-4 right-4 h-28 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:h-40 sm:w-32">
+                          <RemoteVideoTile
+                            track={remoteVideos[0].track}
+                            identity={remoteVideos[0].identity}
+                            onClick={() => setFocusedVideo(remoteVideos[0].id)}
+                            className="h-full w-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="absolute bottom-4 right-4 flex h-28 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
+                          Waiting
+                        </div>
+                      )}
+                    </>
                   ) : (
-                    remoteVideos.map((item) => (
-                      <RemoteVideoTile
-                        key={item.id}
-                        track={item.track}
-                        identity={item.identity}
-                      />
-                    ))
+                    <>
+                      {remoteVideos.length > 0 ? (
+                        <RemoteVideoTile
+                          track={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).track}
+                          identity={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).identity}
+                          className="h-full w-full"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
+                          <div>
+                            <p className="mb-2 text-4xl">📞</p>
+                            <p className="text-sm">Waiting for the other person...</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div
+                        onClick={() => setFocusedVideo("local")}
+                        className="absolute bottom-4 right-4 h-28 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:h-40 sm:w-32"
+                      >
+                        <video
+                          ref={localVideoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
+
+                        <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
+                          You
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
+
+                {room && (
+                  <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={toggleCamera}
+                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                    >
+                      {cameraOn ? "Camera Off" : "Camera On"}
+                    </button>
+
+                    <button
+                      onClick={toggleMic}
+                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                    >
+                      {micOn ? "Mute" : "Unmute"}
+                    </button>
+
+                    <button
+                      onClick={switchCameraView}
+                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                    >
+                      Flip Camera
+                    </button>
+
+                    <button
+                      onClick={() => setFocusedVideo((current) => current === "local" && remoteVideos.length > 0 ? remoteVideos[0].id : "local")}
+                      disabled={remoteVideos.length === 0}
+                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90 disabled:text-gray-500"
+                    >
+                      Switch Focus
+                    </button>
+                  </div>
+                )}
 
                 {!room && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
@@ -1674,6 +1835,14 @@ export default function LiveRoomPage() {
                   className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
                 >
                   {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
+                </button>
+
+                <button
+                  onClick={switchCameraView}
+                  disabled={!room}
+                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  Flip Camera
                 </button>
 
                 <button
@@ -1963,9 +2132,13 @@ export default function LiveRoomPage() {
 function RemoteVideoTile({
   track,
   identity,
+  className = "",
+  onClick,
 }: {
   track: any;
   identity: string;
+  className?: string;
+  onClick?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -1986,7 +2159,10 @@ function RemoteVideoTile({
   }, [track]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gray-950">
+    <div
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-2xl bg-gray-950 ${onClick ? "cursor-pointer" : ""} ${className}`}
+    >
       <video
         ref={videoRef}
         autoPlay
