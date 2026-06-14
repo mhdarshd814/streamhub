@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+
 type Profile = {
   id: string;
   username: string | null;
@@ -57,7 +67,9 @@ type TipRow = {
   id: string;
   creator_id?: string;
   receiver_id?: string;
-  amount: number | null;
+  amount?: number | null;
+  amount_aed?: number | null;
+  creator_amount_aed?: number | null;
   status: string | null;
   created_at: string;
 };
@@ -78,12 +90,26 @@ type ReminderRow = {
   user_id: string;
 };
 
+type AnalyticsRow = {
+  id: string;
+  stream_id: string;
+  creator_id: string;
+  analytics_date: string;
+  views: number | null;
+  peak_viewers: number | null;
+  watch_minutes: number | null;
+  likes: number | null;
+  chat_messages: number | null;
+  created_at?: string | null;
+};
+
 type OptionalTableState = {
   walletAvailable: boolean;
   tipsAvailable: boolean;
   subscriptionsAvailable: boolean;
   scheduledAvailable: boolean;
   remindersAvailable: boolean;
+  analyticsAvailable: boolean;
 };
 
 export default function DashboardPage() {
@@ -94,6 +120,7 @@ export default function DashboardPage() {
   const [wallet, setWallet] = useState<WalletRow | null>(null);
   const [tips, setTips] = useState<TipRow[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [optionalTables, setOptionalTables] = useState<OptionalTableState>({
@@ -102,6 +129,7 @@ export default function DashboardPage() {
     subscriptionsAvailable: true,
     scheduledAvailable: true,
     remindersAvailable: true,
+    analyticsAvailable: true,
   });
 
   useEffect(() => {
@@ -219,19 +247,23 @@ export default function DashboardPage() {
     }
 
     const walletRows = await safeSelect<WalletRow>(
-      "wallets",
-      supabase.from("wallets").select("*").eq("user_id", user.id).limit(1),
+      "creator_wallets",
+      supabase
+        .from("creator_wallets")
+        .select("*")
+        .eq("user_id", user.id)
+        .limit(1),
       "walletAvailable"
     );
 
     setWallet(walletRows[0] || null);
 
     const tipsByCreator = await safeSelect<TipRow>(
-      "tips",
+      "stream_tips",
       supabase
-        .from("tips")
-        .select("id, creator_id, receiver_id, amount, status, created_at")
-        .or(`creator_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .from("stream_tips")
+        .select("*")
+        .eq("creator_id", user.id)
         .order("created_at", { ascending: false })
         .limit(100),
       "tipsAvailable"
@@ -251,6 +283,18 @@ export default function DashboardPage() {
     );
 
     setSubscriptions(activeSubscriptions);
+
+    const analyticsRows = await safeSelect<AnalyticsRow>(
+      "stream_daily_analytics",
+      supabase
+        .from("stream_daily_analytics")
+        .select("*")
+        .eq("creator_id", user.id)
+        .order("analytics_date", { ascending: true }),
+      "analyticsAvailable"
+    );
+
+    setAnalyticsData(analyticsRows);
 
     setLoading(false);
   }
@@ -328,16 +372,41 @@ export default function DashboardPage() {
       0
     );
 
-    const totalWatchMinutes = streams.reduce(
+    const analyticsViews = analyticsData.reduce(
+      (total, row) => total + Number(row.views || 0),
+      0
+    );
+
+    const analyticsWatchMinutes = analyticsData.reduce(
+      (total, row) => total + Number(row.watch_minutes || 0),
+      0
+    );
+
+    const analyticsLikes = analyticsData.reduce(
+      (total, row) => total + Number(row.likes || 0),
+      0
+    );
+
+    const totalWatchMinutesFromStreams = streams.reduce(
       (total, stream) => total + Number(stream.watch_minutes || 0),
       0
     );
 
-    const peakViewers = streams.reduce(
+    const totalWatchMinutes =
+      analyticsWatchMinutes > 0 ? analyticsWatchMinutes : totalWatchMinutesFromStreams;
+
+    const peakViewersFromStreams = streams.reduce(
       (max, stream) =>
         Math.max(max, Number(stream.peak_viewers || stream.viewers || 0)),
       0
     );
+
+    const peakViewersFromAnalytics = analyticsData.reduce(
+      (max, row) => Math.max(max, Number(row.peak_viewers || 0)),
+      0
+    );
+
+    const peakViewers = Math.max(peakViewersFromStreams, peakViewersFromAnalytics);
 
     const liveStreams = streams.filter((stream) => stream.status === "live").length;
     const offlineStreams = streams.filter((stream) => stream.status !== "live").length;
@@ -345,32 +414,52 @@ export default function DashboardPage() {
     const privateStreams = streams.filter((stream) => stream.visibility === "private").length;
     const subscriberStreams = streams.filter((stream) => stream.visibility === "subscribers").length;
 
-    const averageLikes = streams.length > 0 ? Math.round(totalLikes / streams.length) : 0;
-    const averageViews = streams.length > 0 ? Math.round(totalViews / streams.length) : 0;
+    const finalTotalViews = analyticsViews > 0 ? analyticsViews : totalViews;
+    const finalTotalLikes = analyticsLikes > 0 ? analyticsLikes : totalLikes;
+
+    const averageLikes =
+      streams.length > 0 ? Math.round(finalTotalLikes / streams.length) : 0;
+
+    const averageViews =
+      streams.length > 0 ? Math.round(finalTotalViews / streams.length) : 0;
+
     const averageWatchMinutes =
       streams.length > 0 ? Math.round(totalWatchMinutes / streams.length) : 0;
 
-    const engagementScore = totalViews > 0 ? Math.round((totalLikes / totalViews) * 100) : 0;
+    const engagementScore =
+      finalTotalViews > 0 ? Math.round((finalTotalLikes / finalTotalViews) * 100) : 0;
 
     const activeScheduled = scheduledStreams.filter(
-      (item) => item.status === "scheduled" && new Date(item.scheduled_start).getTime() > Date.now()
+      (item) =>
+        item.status === "scheduled" &&
+        new Date(item.scheduled_start).getTime() > Date.now()
     );
 
     const nextScheduled = [...activeScheduled].sort(
       (a, b) =>
-        new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime()
+        new Date(a.scheduled_start).getTime() -
+        new Date(b.scheduled_start).getTime()
     )[0];
 
     const totalReminders = reminders.length;
 
     const completedTips = tips.filter(
-      (tip) => !tip.status || ["completed", "paid", "success", "succeeded", "approved"].includes(tip.status)
+      (tip) =>
+        !tip.status ||
+        ["completed", "paid", "success", "succeeded", "approved"].includes(
+          tip.status
+        )
     );
 
-    const totalTips = completedTips.reduce(
-      (total, tip) => total + Number(tip.amount || 0),
-      0
-    );
+    const totalTips = completedTips.reduce((total, tip) => {
+      const value =
+        tip.creator_amount_aed ??
+        tip.amount_aed ??
+        tip.amount ??
+        0;
+
+      return total + Number(value || 0);
+    }, 0);
 
     const activeSubscriptions = subscriptions.filter(
       (item) => item.status === "active"
@@ -387,23 +476,81 @@ export default function DashboardPage() {
 
     const estimatedRevenue = Math.max(walletBalance, totalTips + subscriptionRevenue);
 
-    const topStream = [...streams].sort((a, b) => {
-      const aScore =
-        Number(a.likes || 0) +
-        Number(a.total_views || a.viewers || 0) +
-        Number(a.peak_viewers || 0);
+    const topStreams = [...streams]
+      .sort((a, b) => {
+        const aScore =
+          Number(a.likes || 0) +
+          Number(a.total_views || a.viewers || 0) +
+          Number(a.peak_viewers || 0);
 
-      const bScore =
-        Number(b.likes || 0) +
-        Number(b.total_views || b.viewers || 0) +
-        Number(b.peak_viewers || 0);
+        const bScore =
+          Number(b.likes || 0) +
+          Number(b.total_views || b.viewers || 0) +
+          Number(b.peak_viewers || 0);
 
-      return bScore - aScore;
-    })[0];
+        return bScore - aScore;
+      })
+      .slice(0, 5);
+
+    const topStream = topStreams[0];
+
+    const creatorHealthScore = Math.min(
+      100,
+      Math.round(
+        engagementScore * 0.3 +
+          Math.min(finalTotalViews / 100, 30) +
+          Math.min(finalTotalLikes / 10, 20) +
+          Math.min(profile?.followers || 0, 30)
+      )
+    );
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const thisMonthAnalytics = analyticsData.filter((row) => {
+      const date = new Date(row.analytics_date);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    });
+
+    const monthlyViews = thisMonthAnalytics.reduce(
+      (total, row) => total + Number(row.views || 0),
+      0
+    );
+
+    const monthlyWatchMinutes = thisMonthAnalytics.reduce(
+      (total, row) => total + Number(row.watch_minutes || 0),
+      0
+    );
+
+    const monthlyPeakViewers = thisMonthAnalytics.reduce(
+      (max, row) => Math.max(max, Number(row.peak_viewers || 0)),
+      0
+    );
+
+    const monthlyTips = completedTips
+      .filter((tip) => {
+        const date = new Date(tip.created_at);
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      })
+      .reduce((total, tip) => {
+        const value =
+          tip.creator_amount_aed ??
+          tip.amount_aed ??
+          tip.amount ??
+          0;
+
+        return total + Number(value || 0);
+      }, 0);
+
+    const monthlySubscriptions = activeSubscriptions.filter((item) => {
+      const date = new Date(item.created_at);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    }).length;
 
     return {
-      totalLikes,
-      totalViews,
+      totalLikes: finalTotalLikes,
+      totalViews: finalTotalViews,
       totalWatchMinutes,
       peakViewers,
       liveStreams,
@@ -424,11 +571,19 @@ export default function DashboardPage() {
       walletBalance,
       estimatedRevenue,
       topStream,
+      topStreams,
+      creatorHealthScore,
+      monthlyViews,
+      monthlyWatchMinutes,
+      monthlyPeakViewers,
+      monthlyTips,
+      monthlySubscriptions,
     };
-  }, [streams, scheduledStreams, reminders, tips, subscriptions, wallet]);
+  }, [streams, scheduledStreams, reminders, tips, subscriptions, wallet, analyticsData, profile]);
 
   const creatorName = profile?.display_name || profile?.username || "Creator";
-  const creatorLevel = profile?.creator_level || (profile?.is_verified ? "Verified" : "Standard");
+  const creatorLevel =
+    profile?.creator_level || (profile?.is_verified ? "Verified" : "Standard");
 
   if (loading) {
     return (
@@ -522,6 +677,65 @@ export default function DashboardPage() {
           <StatCard label="Engagement" value={`${stats.engagementScore}%`} note="Likes divided by views" valueClass="text-blue-400" />
         </div>
 
+        <div className="mb-10 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6 lg:p-7">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-black sm:text-3xl">
+                Creator Analytics V2
+              </h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Daily views, peak viewers and watch-time performance.
+              </p>
+            </div>
+
+            <div className="w-fit rounded-xl bg-red-600 px-4 py-2 text-sm font-bold">
+              Score: {stats.creatorHealthScore}/100
+            </div>
+          </div>
+
+          <div className="h-[320px] rounded-2xl bg-black/30 p-3">
+            {analyticsData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-center text-gray-400">
+                No analytics rows yet. Data will appear after stream_daily_analytics starts receiving records.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyticsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="analytics_date" stroke="#9ca3af" />
+                  <YAxis stroke="#9ca3af" />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="views" stroke="#ef4444" strokeWidth={3} />
+                  <Line type="monotone" dataKey="peak_viewers" stroke="#facc15" strokeWidth={3} />
+                  <Line type="monotone" dataKey="watch_minutes" stroke="#22c55e" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard label="Watch Minutes" value={stats.totalWatchMinutes} valueClass="text-green-500" />
+            <StatCard label="Peak Viewers" value={stats.peakViewers} valueClass="text-yellow-400" />
+            <StatCard label="Tips Revenue" value={`AED ${formatMoney(stats.totalTips)}`} valueClass="text-green-400" />
+            <StatCard label="Subscriptions" value={stats.activeSubscriptions.length} valueClass="text-purple-400" />
+          </div>
+        </div>
+
+        <div className="mb-10 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6 lg:p-7">
+          <div className="mb-6">
+            <h2 className="text-2xl font-black sm:text-3xl">Monthly Creator Summary</h2>
+            <p className="mt-1 text-sm text-gray-400">Current month creator performance snapshot.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <StatCard label="Monthly Views" value={stats.monthlyViews} valueClass="text-purple-400" />
+            <StatCard label="Watch Minutes" value={stats.monthlyWatchMinutes} valueClass="text-green-500" />
+            <StatCard label="Monthly Peak" value={stats.monthlyPeakViewers} valueClass="text-yellow-400" />
+            <StatCard label="Monthly Tips" value={`AED ${formatMoney(stats.monthlyTips)}`} valueClass="text-green-400" />
+            <StatCard label="New Subs" value={stats.monthlySubscriptions} valueClass="text-purple-400" />
+          </div>
+        </div>
+
         <div className="mb-8 grid gap-4 lg:mb-10 lg:grid-cols-3 lg:gap-6">
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6 lg:p-7">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -570,7 +784,13 @@ export default function DashboardPage() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-gray-400">Creator Status</p>
-                <h2 className={profile?.is_verified ? "mt-2 text-3xl font-black text-blue-400 sm:text-4xl" : "mt-2 text-3xl font-black text-gray-400 sm:text-4xl"}>
+                <h2
+                  className={
+                    profile?.is_verified
+                      ? "mt-2 text-3xl font-black text-blue-400 sm:text-4xl"
+                      : "mt-2 text-3xl font-black text-gray-400 sm:text-4xl"
+                  }
+                >
                   {profile?.is_verified ? "Verified" : "Standard"}
                 </h2>
               </div>
@@ -578,7 +798,9 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-sm text-gray-400">
-              {profile?.is_verified ? "Your badge is active." : "Tap to request verification and improve creator trust."}
+              {profile?.is_verified
+                ? "Your badge is active."
+                : "Tap to request verification and improve creator trust."}
             </p>
           </button>
         </div>
@@ -611,7 +833,9 @@ export default function DashboardPage() {
                 </div>
 
                 {stats.nextScheduled.description && (
-                  <p className="mt-3 text-sm leading-6 text-gray-300">{stats.nextScheduled.description}</p>
+                  <p className="mt-3 text-sm leading-6 text-gray-300">
+                    {stats.nextScheduled.description}
+                  </p>
                 )}
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -654,31 +878,27 @@ export default function DashboardPage() {
 
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6 lg:p-7">
             <div className="mb-5">
-              <h2 className="text-2xl font-black sm:text-3xl">Top Performing Stream</h2>
+              <h2 className="text-2xl font-black sm:text-3xl">Top 5 Streams</h2>
               <p className="mt-1 text-sm text-gray-400">Ranked by likes, views and peak viewers.</p>
             </div>
 
-            {stats.topStream ? (
-              <div className="rounded-2xl border border-gray-800 bg-black/40 p-4">
-                <div className="mb-4 flex h-44 w-full items-center justify-center overflow-hidden rounded-xl bg-gray-800">
-                  {stats.topStream.thumbnail_url ? (
-                    <img src={stats.topStream.thumbnail_url} alt={stats.topStream.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-gray-500">No Image</span>
-                  )}
-                </div>
-
-                <h3 className="break-words text-xl font-black">{stats.topStream.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-400">
-                  {stats.topStream.category} • ❤️ {stats.topStream.likes || 0} • 👀 {stats.topStream.total_views || stats.topStream.viewers || 0} • Peak {stats.topStream.peak_viewers || stats.topStream.viewers || 0}
-                </p>
-
-                <button
-                  onClick={() => openLiveRoom(stats.topStream!.id)}
-                  className="mt-4 rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
-                >
-                  Open Studio
-                </button>
+            {stats.topStreams.length > 0 ? (
+              <div className="space-y-3">
+                {stats.topStreams.map((stream, index) => (
+                  <div key={stream.id} className="rounded-2xl border border-gray-800 bg-black/40 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-sm font-black">
+                        #{index + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="break-words text-base font-black">{stream.title}</h3>
+                        <p className="mt-1 text-sm leading-6 text-gray-400">
+                          {stream.category} • ❤️ {stream.likes || 0} • 👀 {stream.total_views || stream.viewers || 0} • Peak {stream.peak_viewers || stream.viewers || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="rounded-2xl border border-gray-800 bg-black/40 p-6 text-center text-gray-400">
@@ -696,7 +916,10 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-gray-400 sm:text-base">Planned streams with reminder interest.</p>
             </div>
 
-            <button onClick={() => (window.location.href = "/schedule")} className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700">
+            <button
+              onClick={() => (window.location.href = "/schedule")}
+              className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
+            >
               Schedule New
             </button>
           </div>
@@ -712,7 +935,13 @@ export default function DashboardPage() {
                 <div key={item.id} className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className={item.status === "scheduled" ? "rounded-full bg-green-500/10 px-3 py-1 text-xs font-black text-green-300" : "rounded-full bg-red-500/10 px-3 py-1 text-xs font-black text-red-300"}>
+                      <span
+                        className={
+                          item.status === "scheduled"
+                            ? "rounded-full bg-green-500/10 px-3 py-1 text-xs font-black text-green-300"
+                            : "rounded-full bg-red-500/10 px-3 py-1 text-xs font-black text-red-300"
+                        }
+                      >
                         {item.status}
                       </span>
                       <span className="rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300">
@@ -720,11 +949,16 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <h3 className="break-words text-lg font-bold sm:text-xl">{item.title}</h3>
-                    <p className="mt-1 text-sm text-gray-400">⏰ {formatDateTime(item.scheduled_start)} • 🔔 {getReminderCount(item.id, reminders)} reminders</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      ⏰ {formatDateTime(item.scheduled_start)} • 🔔 {getReminderCount(item.id, reminders)} reminders
+                    </p>
                   </div>
 
                   {item.status === "scheduled" && (
-                    <button onClick={() => cancelSchedule(item.id)} className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-bold hover:bg-red-600">
+                    <button
+                      onClick={() => cancelSchedule(item.id)}
+                      className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-bold hover:bg-red-600"
+                    >
                       Cancel
                     </button>
                   )}
@@ -741,7 +975,10 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-gray-400 sm:text-base">Manage every stream, monitor performance and reopen your studio.</p>
             </div>
 
-            <button onClick={() => (window.location.href = "/go-live")} className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700">
+            <button
+              onClick={() => (window.location.href = "/go-live")}
+              className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
+            >
               New Stream
             </button>
           </div>
@@ -752,7 +989,10 @@ export default function DashboardPage() {
               <h3 className="mb-2 text-2xl font-bold">No streams created yet</h3>
               <p className="mb-6 text-gray-400">Create your first stream room and start building your audience.</p>
 
-              <button onClick={() => (window.location.href = "/go-live")} className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700">
+              <button
+                onClick={() => (window.location.href = "/go-live")}
+                className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700"
+              >
                 Create Stream
               </button>
             </div>
@@ -801,7 +1041,15 @@ export default function DashboardPage() {
                       </button>
 
                       {!isPrivate && (
-                        <button onClick={() => openWatch(stream)} disabled={!isLive} className={isLive ? "rounded-lg bg-green-600 px-4 py-2 text-sm font-bold hover:bg-green-700" : "cursor-not-allowed rounded-lg bg-gray-800 px-4 py-2 text-sm font-bold text-gray-500"}>
+                        <button
+                          onClick={() => openWatch(stream)}
+                          disabled={!isLive}
+                          className={
+                            isLive
+                              ? "rounded-lg bg-green-600 px-4 py-2 text-sm font-bold hover:bg-green-700"
+                              : "cursor-not-allowed rounded-lg bg-gray-800 px-4 py-2 text-sm font-bold text-gray-500"
+                          }
+                        >
                           Watch
                         </button>
                       )}
@@ -825,7 +1073,17 @@ export default function DashboardPage() {
   );
 }
 
-function QuickAction({ icon, title, text, href }: { icon: string; title: string; text: string; href: string }) {
+function QuickAction({
+  icon,
+  title,
+  text,
+  href,
+}: {
+  icon: string;
+  title: string;
+  text: string;
+  href: string;
+}) {
   return (
     <button
       onClick={() => (window.location.href = href)}
@@ -838,11 +1096,23 @@ function QuickAction({ icon, title, text, href }: { icon: string; title: string;
   );
 }
 
-function StatCard({ label, value, note, valueClass = "" }: { label: string; value: string | number; note?: string; valueClass?: string }) {
+function StatCard({
+  label,
+  value,
+  note,
+  valueClass = "",
+}: {
+  label: string;
+  value: string | number;
+  note?: string;
+  valueClass?: string;
+}) {
   return (
     <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:p-7">
       <p className="mb-2 text-sm text-gray-400">{label}</p>
-      <h2 className={`text-3xl font-black sm:text-4xl ${valueClass}`}>{value}</h2>
+      <h2 className={`text-3xl font-black sm:text-4xl ${valueClass}`}>
+        {value}
+      </h2>
       {note && <p className="mt-2 text-xs text-gray-500 sm:text-sm">{note}</p>}
     </div>
   );
