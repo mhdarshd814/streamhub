@@ -1,4 +1,4 @@
-const CACHE_NAME = "streamhub-pwa-v1";
+const CACHE_NAME = "streamhub-pwa-v2";
 
 const STATIC_CACHE_URLS = [
   "/",
@@ -6,7 +6,20 @@ const STATIC_CACHE_URLS = [
   "/manifest.webmanifest",
   "/icon-192.png",
   "/icon-512.png",
-  "/apple-touch-icon.png"
+  "/apple-touch-icon.png",
+];
+
+const NETWORK_ONLY_PATHS = [
+  "/api/",
+  "/live/",
+  "/watch/",
+  "/admin/",
+  "/analytics",
+  "/wallet",
+  "/profile/",
+  "/notifications",
+  "/following",
+  "/explore",
 ];
 
 self.addEventListener("install", function (event) {
@@ -37,6 +50,12 @@ self.addEventListener("activate", function (event) {
   self.clients.claim();
 });
 
+function shouldUseNetworkOnly(url) {
+  return NETWORK_ONLY_PATHS.some(function (path) {
+    return url.pathname.startsWith(path);
+  });
+}
+
 self.addEventListener("fetch", function (event) {
   const request = event.request;
 
@@ -45,6 +64,11 @@ self.addEventListener("fetch", function (event) {
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) return;
+
+  if (shouldUseNetworkOnly(url)) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(
@@ -57,19 +81,22 @@ self.addEventListener("fetch", function (event) {
 
   event.respondWith(
     caches.match(request).then(function (cachedResponse) {
-      return (
-        cachedResponse ||
-        fetch(request)
-          .then(function (networkResponse) {
-            return caches.open(CACHE_NAME).then(function (cache) {
-              cache.put(request, networkResponse.clone());
-              return networkResponse;
-            });
-          })
-          .catch(function () {
-            return caches.match("/offline");
-          })
-      );
+      if (cachedResponse) return cachedResponse;
+
+      return fetch(request)
+        .then(function (networkResponse) {
+          if (!networkResponse || networkResponse.status !== 200) {
+            return networkResponse;
+          }
+
+          return caches.open(CACHE_NAME).then(function (cache) {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(function () {
+          return caches.match("/offline");
+        });
     })
   );
 });
@@ -84,8 +111,8 @@ self.addEventListener("push", function (event) {
     icon: "/icon-192.png",
     badge: "/icon-192.png",
     data: {
-      url: data.url || "/notifications"
-    }
+      url: data.url || "/notifications",
+    },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
