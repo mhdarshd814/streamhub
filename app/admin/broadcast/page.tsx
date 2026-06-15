@@ -24,7 +24,6 @@ export default function AdminBroadcastPage() {
   const [creating, setCreating] = useState(false);
   const [streams, setStreams] = useState<BroadcastStream[]>([]);
   const [title, setTitle] = useState("Official StreamHub Broadcast");
-  const [category, setCategory] = useState("Admin Broadcast");
   const [description, setDescription] = useState(
     "Official broadcast from StreamHub admin team."
   );
@@ -74,10 +73,9 @@ export default function AdminBroadcastPage() {
     const { data, error } = await supabase
       .from("streams")
       .select("*")
-      .eq("user_id", user.id)
       .eq("category", "Admin Broadcast")
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(6);
 
     if (!error) {
       setStreams((data || []) as BroadcastStream[]);
@@ -88,7 +86,6 @@ export default function AdminBroadcastPage() {
 
   async function createBroadcast() {
     const cleanTitle = title.trim();
-    const cleanCategory = category.trim() || "Admin Broadcast";
 
     if (!cleanTitle) {
       alert("Enter a broadcast title.");
@@ -109,7 +106,7 @@ export default function AdminBroadcastPage() {
     const basePayload = {
       user_id: user.id,
       title: cleanTitle,
-      category: cleanCategory,
+      category: "Admin Broadcast",
       visibility: "public",
       status: "offline",
       viewers: 0,
@@ -165,6 +162,7 @@ export default function AdminBroadcastPage() {
     }
 
     await supabase.from("stream_viewers").delete().eq("stream_id", id);
+    await supabase.from("stream_chat").delete().eq("stream_id", id);
     await loadPage();
   }
 
@@ -209,13 +207,21 @@ export default function AdminBroadcastPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
             <button
               onClick={loadPage}
               className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700"
             >
               Refresh
             </button>
+
+            <Link
+              href="/admin/broadcasts"
+              className="rounded-xl bg-red-600 px-5 py-3 text-center font-bold hover:bg-red-700"
+            >
+              Manage
+            </Link>
+
             <Link
               href="/admin"
               className="rounded-xl bg-gray-800 px-5 py-3 text-center font-bold hover:bg-gray-700"
@@ -229,25 +235,16 @@ export default function AdminBroadcastPage() {
           <div className="mb-6">
             <h2 className="text-2xl font-black sm:text-3xl">Create Admin Broadcast</h2>
             <p className="mt-1 text-sm text-gray-400">
-              The broadcast will be public and visible in Explore once you start it from the studio.
+              The broadcast category is fixed as Admin Broadcast so management pages can track it correctly.
             </p>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <div>
+            <div className="lg:col-span-2">
               <label className="mb-2 block text-sm font-bold text-gray-300">Broadcast Title</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-gray-700 bg-black px-4 py-3 text-white outline-none focus:border-red-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-bold text-gray-300">Category</label>
-              <input
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
                 className="w-full rounded-xl border border-gray-700 bg-black px-4 py-3 text-white outline-none focus:border-red-500"
               />
             </div>
@@ -283,8 +280,18 @@ export default function AdminBroadcastPage() {
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
-          <div className="border-b border-gray-800 p-5 sm:p-6">
-            <h2 className="text-2xl font-black">Recent Admin Broadcasts</h2>
+          <div className="flex flex-col gap-3 border-b border-gray-800 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <h2 className="text-2xl font-black">Recent Admin Broadcasts</h2>
+              <p className="mt-1 text-sm text-gray-400">Showing latest broadcasts only.</p>
+            </div>
+
+            <Link
+              href="/admin/broadcasts"
+              className="rounded-xl bg-gray-800 px-5 py-3 text-center text-sm font-bold hover:bg-gray-700"
+            >
+              View All
+            </Link>
           </div>
 
           {streams.length === 0 ? (

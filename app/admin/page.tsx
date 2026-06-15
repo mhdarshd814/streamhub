@@ -9,6 +9,8 @@ type AdminStats = {
   verifiedCreators: number;
   pendingVerifications: number;
   liveStreams: number;
+  adminBroadcasts: number;
+  liveAdminBroadcasts: number;
   totalReports: number;
   blockedUsers: number;
   suspendedStreams: number;
@@ -53,6 +55,8 @@ export default function AdminHomePage() {
     verifiedCreators: 0,
     pendingVerifications: 0,
     liveStreams: 0,
+    adminBroadcasts: 0,
+    liveAdminBroadcasts: 0,
     totalReports: 0,
     blockedUsers: 0,
     suspendedStreams: 0,
@@ -100,6 +104,8 @@ export default function AdminHomePage() {
       verifiedResult,
       verificationResult,
       liveStreamsResult,
+      adminBroadcastsResult,
+      liveAdminBroadcastsResult,
       reportsResult,
       pendingReportsResult,
       blockedResult,
@@ -112,44 +118,20 @@ export default function AdminHomePage() {
       activeSubsDataResult,
     ] = await Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("is_verified", true),
-      supabase
-        .from("creator_verification_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending"),
-      supabase
-        .from("streams")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "live"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_verified", true),
+      supabase.from("creator_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("streams").select("id", { count: "exact", head: true }).eq("status", "live"),
+      supabase.from("streams").select("id", { count: "exact", head: true }).eq("category", "Admin Broadcast"),
+      supabase.from("streams").select("id", { count: "exact", head: true }).eq("category", "Admin Broadcast").eq("status", "live"),
       supabase.from("stream_reports").select("id", { count: "exact", head: true }),
-      supabase
-        .from("stream_reports")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending"),
+      supabase.from("stream_reports").select("id", { count: "exact", head: true }).eq("status", "pending"),
       supabase.from("user_blocks").select("id", { count: "exact", head: true }),
-      supabase
-        .from("streams")
-        .select("id", { count: "exact", head: true })
-        .eq("is_suspended", true),
+      supabase.from("streams").select("id", { count: "exact", head: true }).eq("is_suspended", true),
       supabase.from("stream_chat").select("id", { count: "exact", head: true }),
-      supabase
-        .from("admin_audit_logs")
-        .select("id", { count: "exact", head: true }),
-      supabase
-        .from("creator_payout_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending"),
-      supabase
-        .from("creator_subscriptions")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "active"),
-      supabase
-        .from("creator_subscriptions")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "cancelled"),
+      supabase.from("admin_audit_logs").select("id", { count: "exact", head: true }),
+      supabase.from("creator_payout_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("creator_subscriptions").select("id", { count: "exact", head: true }).eq("status", "active"),
+      supabase.from("creator_subscriptions").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
       supabase
         .from("creator_subscriptions")
         .select(
@@ -215,6 +197,8 @@ export default function AdminHomePage() {
       verifiedCreators: verifiedResult.count || 0,
       pendingVerifications: verificationResult.count || 0,
       liveStreams: liveStreamsResult.count || 0,
+      adminBroadcasts: adminBroadcastsResult.count || 0,
+      liveAdminBroadcasts: liveAdminBroadcastsResult.count || 0,
       totalReports: reportsResult.count || 0,
       pendingReports: pendingReportsResult.count || 0,
       blockedUsers: blockedResult.count || 0,
@@ -235,6 +219,8 @@ export default function AdminHomePage() {
     { label: "Verified", value: stats.verifiedCreators, color: "text-blue-400" },
     { label: "Verify Req.", value: stats.pendingVerifications, color: "text-cyan-400" },
     { label: "Live", value: stats.liveStreams, color: "text-green-500" },
+    { label: "Broadcasts", value: stats.adminBroadcasts, color: "text-red-400" },
+    { label: "Live Bcasts", value: stats.liveAdminBroadcasts, color: "text-red-500" },
     { label: "Reports", value: stats.totalReports, color: "text-red-500" },
     { label: "Pending", value: stats.pendingReports, color: "text-yellow-400" },
     { label: "Blocked", value: stats.blockedUsers, color: "text-orange-400" },
@@ -255,9 +241,16 @@ export default function AdminHomePage() {
     {
       href: "/admin/broadcast",
       icon: "📡",
-      title: "Admin Broadcast Studio",
+      title: "Create Broadcast",
       description:
-        "Create official public broadcasts, open a screen-share focused studio, and stream announcements or external app screens.",
+        "Create official public broadcasts and open the screen-share focused studio.",
+    },
+    {
+      href: "/admin/broadcasts",
+      icon: "🗂️",
+      title: "Broadcast Management",
+      description:
+        "List all admin broadcasts, force end live broadcasts, delete old broadcasts, copy watch links, and reopen studios.",
     },
     {
       href: "/admin/users",
@@ -364,7 +357,7 @@ export default function AdminHomePage() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
               Manage users, verification requests, subscriptions, payouts,
               reports, streams, chat safety, platform moderation, audit records,
-              and creator permissions.
+              admin broadcasts, and creator permissions.
             </p>
           </div>
 
@@ -377,6 +370,13 @@ export default function AdminHomePage() {
             </button>
 
             <Link
+              href="/admin/broadcasts"
+              className="rounded-xl bg-red-600 px-5 py-3 text-center font-bold hover:bg-red-700"
+            >
+              Broadcasts
+            </Link>
+
+            <Link
               href="/dashboard"
               className="rounded-xl bg-gray-800 px-5 py-3 text-center font-bold hover:bg-gray-700"
             >
@@ -385,7 +385,7 @@ export default function AdminHomePage() {
           </div>
         </section>
 
-        <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 xl:grid-cols-7">
+        <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 xl:grid-cols-8">
           {statCards.map((item) => (
             <div
               key={item.label}
@@ -402,6 +402,35 @@ export default function AdminHomePage() {
               </h2>
             </div>
           ))}
+        </section>
+
+        <section className="mb-8 rounded-2xl border border-red-900/40 bg-red-950/20 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-bold text-red-300">
+                Admin Broadcasts
+              </p>
+              <h2 className="text-2xl font-black">Official Broadcast Control</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
+                Create public admin broadcasts or manage existing ones from a dedicated broadcast management page.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href="/admin/broadcast"
+                className="rounded-xl bg-red-600 px-5 py-3 text-center font-black hover:bg-red-700"
+              >
+                Create
+              </Link>
+              <Link
+                href="/admin/broadcasts"
+                className="rounded-xl bg-gray-800 px-5 py-3 text-center font-black hover:bg-gray-700"
+              >
+                Manage
+              </Link>
+            </div>
+          </div>
         </section>
 
         <section className="mb-8 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5 sm:p-6">
