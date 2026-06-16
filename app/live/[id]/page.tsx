@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Room, RoomEvent, Track } from "livekit-client";
 import { supabase } from "../../../lib/supabase";
+import { KeepAwake } from "@capacitor-community/keep-awake";
 
 type Stream = {
   id: string;
@@ -308,6 +309,8 @@ export default function LiveRoomPage() {
     loadData();
 
     return () => {
+      KeepAwake.allowSleep().catch(() => {});
+
       if (chatChannel) supabase.removeChannel(chatChannel);
       if (streamChannel) supabase.removeChannel(streamChannel);
       if (guestChannel) supabase.removeChannel(guestChannel);
@@ -887,7 +890,8 @@ export default function LiveRoomPage() {
 
       if (!session?.access_token) {
         router.push("/login");
-        return;
+        return;        
+        
       }
 
       const participantName =
@@ -999,6 +1003,12 @@ export default function LiveRoomPage() {
       setCameraOn(true);
       setMicOn(true);
 
+      try {
+        await KeepAwake.keepAwake();
+      } catch (error) {
+        console.warn("Keep awake failed:", error);
+      }
+
       if (role === "host") {
         await updateStreamStatus("live");
       }
@@ -1019,6 +1029,12 @@ export default function LiveRoomPage() {
   }
 
   async function stopLiveStream() {
+    try {
+      await KeepAwake.allowSleep();
+    } catch (error) {
+      console.warn("Allow sleep failed:", error);
+    }
+
     cleanupRemoteAudio();
 
     if (roomRef.current) {
