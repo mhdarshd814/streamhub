@@ -14,8 +14,8 @@ export default function CapacitorStatusBar() {
           return;
         }
 
-        document.documentElement.style.setProperty("--app-status-top", "16px");
-        document.documentElement.style.setProperty("--app-bottom-extra", "60px");
+        document.documentElement.style.setProperty("--app-status-top", "24px");
+        document.documentElement.style.setProperty("--app-bottom-extra", "36px");
 
         const { StatusBar, Style } = await import("@capacitor/status-bar");
 
