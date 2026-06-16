@@ -92,6 +92,7 @@ export default function LiveRoomPage() {
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
@@ -311,6 +312,8 @@ export default function LiveRoomPage() {
 
     return () => {
       KeepAwake.allowSleep().catch(() => {});
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
 
       if (chatChannel) supabase.removeChannel(chatChannel);
       if (streamChannel) supabase.removeChannel(streamChannel);
@@ -337,20 +340,6 @@ export default function LiveRoomPage() {
       setFocusedVideo("local");
     }
   }, [focusedVideo, remoteVideos]);
-
-  useEffect(() => {
-    function handleFullscreenChange() {
-      if (!document.fullscreenElement) {
-        setIsTheaterMode(false);
-      }
-    }
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
-  }, []);
 
   useEffect(() => {
     if (role !== "host") return;
@@ -810,7 +799,7 @@ export default function LiveRoomPage() {
   }
 
   function attachLocalVideoTrack(targetRoom: Room | null) {
-    if (!targetRoom || !localVideoRef.current) return;
+    if (!targetRoom) return;
 
     const videoPublication = Array.from(
       targetRoom.localParticipant.videoTrackPublications.values()
@@ -818,13 +807,24 @@ export default function LiveRoomPage() {
 
     const videoTrack = videoPublication?.track;
 
-    if (videoTrack) {
+    if (!videoTrack) return;
+
+    [localVideoRef.current, theaterLocalVideoRef.current].forEach((videoElement) => {
+      if (!videoElement) return;
+
       try {
-        videoTrack.attach(localVideoRef.current);
+        videoTrack.attach(videoElement);
+        videoElement.muted = true;
+        videoElement.playsInline = true;
+        videoElement.autoplay = true;
+        videoElement.style.width = "100%";
+        videoElement.style.height = "100%";
+        videoElement.style.objectFit = "cover";
+        videoElement.play().catch(() => {});
       } catch (error) {
         console.error("Local video attach error:", error);
       }
-    }
+    });
   }
 
   async function switchCameraView() {
@@ -879,21 +879,22 @@ export default function LiveRoomPage() {
   async function enterTheaterMode() {
     if (!roomRef.current) return;
 
+    // Use our own fixed overlay instead of relying on browser fullscreen.
+    // Android WebView often blocks/ignores requestFullscreen(), but fixed overlay works reliably.
     setIsTheaterMode(true);
 
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch (error) {
-      console.warn("Browser fullscreen request skipped:", error);
-    }
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
 
-    setTimeout(() => attachLocalVideoTrack(roomRef.current), 150);
+    setTimeout(() => attachLocalVideoTrack(roomRef.current), 100);
+    setTimeout(() => attachLocalVideoTrack(roomRef.current), 400);
   }
 
   async function exitTheaterMode() {
     setIsTheaterMode(false);
+
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
 
     try {
       if (document.fullscreenElement) {
@@ -903,7 +904,8 @@ export default function LiveRoomPage() {
       console.warn("Browser fullscreen exit skipped:", error);
     }
 
-    setTimeout(() => attachLocalVideoTrack(roomRef.current), 150);
+    setTimeout(() => attachLocalVideoTrack(roomRef.current), 100);
+    setTimeout(() => attachLocalVideoTrack(roomRef.current), 400);
   }
 
   async function startLiveStream() {
@@ -1094,6 +1096,10 @@ export default function LiveRoomPage() {
 
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
+    }
+
+    if (theaterLocalVideoRef.current) {
+      theaterLocalVideoRef.current.srcObject = null;
     }
 
     setCameraOn(false);
@@ -1561,12 +1567,12 @@ export default function LiveRoomPage() {
   return (
     <>
       {room && isTheaterMode && (
-        <div className="fixed inset-0 z-[10000] bg-black text-white">
+        <div className="fixed inset-0 z-[2147483647] h-[100dvh] w-screen overflow-hidden bg-black text-white">
           <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
             {focusedVideo === "local" ? (
               <>
                 <video
-                  ref={localVideoRef}
+                  ref={theaterLocalVideoRef}
                   autoPlay
                   muted
                   playsInline
@@ -1611,7 +1617,7 @@ export default function LiveRoomPage() {
                   className="absolute bottom-28 right-4 h-36 w-28 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
                 >
                   <video
-                    ref={localVideoRef}
+                    ref={theaterLocalVideoRef}
                     autoPlay
                     muted
                     playsInline
@@ -1639,9 +1645,9 @@ export default function LiveRoomPage() {
 
                 <button
                   onClick={exitTheaterMode}
-                  className="shrink-0 rounded-full bg-white/10 px-4 py-2 text-sm font-black backdrop-blur hover:bg-white/20"
+                  className="shrink-0 rounded-full bg-red-600 px-5 py-3 text-sm font-black shadow-2xl backdrop-blur hover:bg-red-700"
                 >
-                  Exit
+                  Exit Fullscreen
                 </button>
               </div>
             </div>
