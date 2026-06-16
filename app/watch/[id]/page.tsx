@@ -93,13 +93,18 @@ export default function WatchPage() {
   const [tipMessage, setTipMessage] = useState("");
   const [tipSubmitting, setTipSubmitting] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
+  const [isViewerFullscreen, setIsViewerFullscreen] = useState(false);
+  const [fullscreenChatOpen, setFullscreenChatOpen] = useState(false);
+  const [videoTrackVersion, setVideoTrackVersion] = useState(0);
 
   const videoContainerRef = useRef<HTMLDivElement | null>(null);
+  const fullscreenVideoContainerRef = useRef<HTMLDivElement | null>(null);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const viewerRecordIdRef = useRef<string | null>(null);
   const viewTrackedRef = useRef(false);
   const watchStartRef = useRef<number | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
+  const remoteVideoTrackRef = useRef<RemoteTrack | null>(null);
 
   function isMobileDevice() {
     if (typeof navigator === "undefined") return false;
@@ -130,6 +135,55 @@ export default function WatchPage() {
       maxRetries: 5,
       peerConnectionTimeout: 20_000,
     };
+  }
+
+  function attachVideoTrackToContainer(
+    track: RemoteTrack | null,
+    container: HTMLDivElement | null,
+    borderRadius = "18px"
+  ) {
+    if (!track || !container) return;
+
+    const element = track.attach() as HTMLVideoElement;
+    element.autoplay = true;
+    element.playsInline = true;
+    element.style.width = "100%";
+    element.style.height = "100%";
+    element.style.objectFit = "cover";
+    element.style.borderRadius = borderRadius;
+    element.style.backgroundColor = "#000000";
+
+    container.innerHTML = "";
+    container.appendChild(element);
+
+    element.play().catch(() => {});
+  }
+
+  function openViewerFullscreen() {
+    if (!connected || streamStatus !== "live") {
+      alert("Fullscreen is available only while the stream is live and connected.");
+      return;
+    }
+
+    setIsViewerFullscreen(true);
+    setFullscreenChatOpen(false);
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    setTimeout(() => {
+      attachVideoTrackToContainer(
+        remoteVideoTrackRef.current,
+        fullscreenVideoContainerRef.current,
+        "0px"
+      );
+    }, 100);
+  }
+
+  function closeViewerFullscreen() {
+    setIsViewerFullscreen(false);
+    setFullscreenChatOpen(false);
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
   }
 
   async function incrementDailyAnalytics(input: {
@@ -656,22 +710,26 @@ export default function WatchPage() {
         return;
       }
 
-      const element = track.attach();
-
       if (track.kind === Track.Kind.Video) {
-        element.style.width = "100%";
-        element.style.height = "100%";
-        element.style.objectFit = "cover";
-        element.style.borderRadius = "18px";
+        remoteVideoTrackRef.current = track;
+        setVideoTrackVersion((current) => current + 1);
 
-        if (videoContainerRef.current) {
-          videoContainerRef.current.innerHTML = "";
-          videoContainerRef.current.appendChild(element);
-          setStatus("Live stream connected");
+        attachVideoTrackToContainer(track, videoContainerRef.current, "18px");
+
+        if (isViewerFullscreen) {
+          attachVideoTrackToContainer(
+            track,
+            fullscreenVideoContainerRef.current,
+            "0px"
+          );
         }
+
+        setStatus("Live stream connected");
+        return;
       }
 
       if (track.kind === Track.Kind.Audio) {
+        const element = track.attach();
         const audioElement = element as HTMLAudioElement;
         audioElement.autoplay = true;
         audioElement.controls = false;
@@ -849,6 +907,8 @@ export default function WatchPage() {
 
       removeViewerRecord();
       KeepAwake.allowSleep().catch(() => {});
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
 
       audioElementsRef.current.forEach((audio) => {
         try {
@@ -873,6 +933,24 @@ export default function WatchPage() {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
   }, [messages]);
+
+
+  useEffect(() => {
+    if (!isViewerFullscreen) return;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    const timer = setTimeout(() => {
+      attachVideoTrackToContainer(
+        remoteVideoTrackRef.current,
+        fullscreenVideoContainerRef.current,
+        "0px"
+      );
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isViewerFullscreen, connected, streamStatus, videoTrackVersion]);
 
   async function sendMessage() {
     if (!newMessage.trim()) return;
@@ -1350,6 +1428,146 @@ export default function WatchPage() {
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
+      {isViewerFullscreen && (
+        <div className="fixed inset-0 z-[10000] bg-black text-white">
+          <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
+            <div
+              ref={fullscreenVideoContainerRef}
+              className="absolute inset-0 flex h-full w-full items-center justify-center bg-black"
+            >
+              <div className="px-5 text-center">
+                <p className="text-base font-semibold text-white/80 sm:text-lg">
+                  {status}
+                </p>
+                <p className="mt-2 text-xs text-white/40 sm:text-sm">
+                  Waiting for broadcaster video...
+                </p>
+              </div>
+            </div>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/85 to-transparent px-4 pb-16 pt-[calc(18px+env(safe-area-inset-top))]">
+              <div className="pointer-events-auto flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold uppercase tracking-wide text-red-400">
+                    Live Viewer Mode
+                  </p>
+                  <h2 className="truncate text-lg font-black sm:text-2xl">
+                    {stream?.title || "Live Stream"}
+                  </h2>
+                  <p className="truncate text-xs text-white/55">
+                    {hostName} • {connected ? "Connected" : "Reconnecting"}
+                  </p>
+                </div>
+
+                <button
+                  onClick={closeViewerFullscreen}
+                  className="shrink-0 rounded-full bg-white/10 px-4 py-2 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  Exit
+                </button>
+              </div>
+            </div>
+
+            {fullscreenChatOpen && (
+              <div className="absolute inset-x-3 bottom-24 max-h-[48dvh] overflow-hidden rounded-3xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl sm:left-auto sm:right-5 sm:w-[380px]">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="font-black">Live Chat</h3>
+                  <button
+                    onClick={() => setFullscreenChatOpen(false)}
+                    className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold hover:bg-white/20"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="max-h-[32dvh] space-y-2 overflow-auto pr-1">
+                  {messages.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-white/45">
+                      No messages yet.
+                    </p>
+                  ) : (
+                    messages.slice(-40).map((msg) => (
+                      <div key={msg.id} className="rounded-2xl bg-white/10 p-2">
+                        <p className="truncate text-xs font-bold text-red-400">
+                          {msg.username}
+                        </p>
+                        <p className="break-words text-sm leading-5 text-white/85">
+                          {msg.message}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") sendMessage();
+                    }}
+                    placeholder={chatDisabled ? "Chat unavailable" : "Type a message..."}
+                    disabled={chatDisabled}
+                    className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-red-500 disabled:text-white/30"
+                  />
+
+                  <button
+                    onClick={sendMessage}
+                    disabled={chatDisabled}
+                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-500 disabled:bg-white/10 disabled:text-white/35"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-16">
+              <div className="pointer-events-auto mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={toggleLike}
+                  disabled={streamStatus !== "live" || blockedAccess}
+                  className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur ${
+                    liked
+                      ? "bg-white text-black hover:bg-white/90"
+                      : "bg-red-600 text-white hover:bg-red-500"
+                  } disabled:bg-white/10 disabled:text-white/35`}
+                >
+                  {liked ? "Liked ❤️" : "Like ❤️"}
+                </button>
+
+                <button
+                  onClick={() => setFullscreenChatOpen((current) => !current)}
+                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  Chat {messages.length > 0 ? `(${messages.length})` : ""}
+                </button>
+
+                {audioBlocked && (
+                  <button
+                    onClick={enableAudioManually}
+                    className="rounded-full bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500"
+                  >
+                    Audio 🔊
+                  </button>
+                )}
+
+                <div className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
+                  👁 {viewerCount}
+                </div>
+
+                <button
+                  onClick={closeViewerFullscreen}
+                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  Exit Fullscreen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
         {tipOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
@@ -1514,6 +1732,14 @@ export default function WatchPage() {
                       Enable Audio 🔊
                     </button>
                   )}
+
+                  <button
+                    onClick={openViewerFullscreen}
+                    disabled={streamStatus !== "live" || !connected || blockedAccess}
+                    className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:text-white/35 sm:px-6"
+                  >
+                    Fullscreen ⛶
+                  </button>
 
                   <button
                     onClick={toggleLike}
