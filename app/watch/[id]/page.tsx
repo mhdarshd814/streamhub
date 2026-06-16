@@ -11,6 +11,7 @@ import {
   Track,
 } from "livekit-client";
 import { supabase } from "../../../lib/supabase";
+import { KeepAwake } from "@capacitor-community/keep-awake";
 import BlockUserButton from "../../components/BlockUserButton";
 
 type ChatMessage = {
@@ -99,6 +100,37 @@ export default function WatchPage() {
   const viewTrackedRef = useRef(false);
   const watchStartRef = useRef<number | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
+
+  function isMobileDevice() {
+    if (typeof navigator === "undefined") return false;
+
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
+  function getViewerRoomOptions() {
+    const mobile = isMobileDevice();
+
+    return {
+      adaptiveStream: true,
+      dynacast: true,
+      stopLocalTrackOnUnpublish: true,
+      videoCaptureDefaults: {
+        resolution: {
+          width: mobile ? 960 : 1280,
+          height: mobile ? 540 : 720,
+          frameRate: mobile ? 24 : 30,
+        },
+      },
+    };
+  }
+
+  function getViewerConnectOptions() {
+    return {
+      autoSubscribe: true,
+      maxRetries: 5,
+      peerConnectionTimeout: 20_000,
+    };
+  }
 
   async function incrementDailyAnalytics(input: {
     viewsDelta?: number;
@@ -540,6 +572,7 @@ export default function WatchPage() {
               setConnected(false);
               setStatus("This stream has been suspended.");
               removeViewerRecord();
+      KeepAwake.allowSleep().catch(() => {});
 
               if (room) room.disconnect();
               return;
@@ -742,7 +775,7 @@ export default function WatchPage() {
           return;
         }
 
-        room = new Room();
+        room = new Room(getViewerRoomOptions() as any);
 
         room.on(
           RoomEvent.TrackSubscribed,
@@ -755,22 +788,41 @@ export default function WatchPage() {
           }
         );
 
+        (room as any).on((RoomEvent as any).Reconnecting, () => {
+          setConnected(false);
+          setStatus("Connection unstable. Reconnecting...");
+        });
+
+        (room as any).on((RoomEvent as any).Reconnected, () => {
+          setConnected(true);
+          setStatus("Live stream reconnected");
+        });
+
         room.on(RoomEvent.Disconnected, async () => {
           setConnected(false);
           setStatus("Stream ended. Redirecting to Explore...");
           await removeViewerRecord();
+          await KeepAwake.allowSleep().catch(() => {});
 
           setTimeout(() => {
             router.push("/explore");
           }, 2000);
         });
 
-        await room.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL!, data.token);
+        await room.connect(
+          process.env.NEXT_PUBLIC_LIVEKIT_URL!,
+          data.token,
+          getViewerConnectOptions() as any
+        );
 
         await createViewerRecord();
 
         setConnected(true);
         setStatus("Connected. Waiting for streamer video...");
+
+        await KeepAwake.keepAwake().catch((error) => {
+          console.warn("Viewer keep awake failed:", error);
+        });
 
         room.remoteParticipants.forEach((participant) => {
           participant.trackPublications.forEach((publication) => {
@@ -796,6 +848,7 @@ export default function WatchPage() {
       isMounted = false;
 
       removeViewerRecord();
+      KeepAwake.allowSleep().catch(() => {});
 
       audioElementsRef.current.forEach((audio) => {
         try {
