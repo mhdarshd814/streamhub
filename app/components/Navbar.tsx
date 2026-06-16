@@ -432,7 +432,9 @@ export default function Navbar() {
 
       <nav
         className="mobile-top-nav fixed inset-x-0 top-0 z-[9997] flex items-center border-b border-red-900/40 bg-gray-950/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-gray-950/80 xl:hidden"
-        style={{ height: "64px" }}
+        style={{ height: "calc(64px + var(--app-status-top, 0px))",
+		paddingTop: "var(--app-status-top, 0px)",
+		}}
       >
         <div className="flex w-full items-center justify-between">
           <button type="button" onClick={() => goTo("/")} className="flex items-center gap-3">

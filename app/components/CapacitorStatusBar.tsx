@@ -8,7 +8,14 @@ export default function CapacitorStatusBar() {
       try {
         const { Capacitor } = await import("@capacitor/core");
 
-        if (!Capacitor.isNativePlatform()) return;
+        if (!Capacitor.isNativePlatform()) {
+          document.documentElement.style.setProperty("--app-status-top", "0px");
+          document.documentElement.style.setProperty("--app-bottom-extra", "0px");
+          return;
+        }
+
+        document.documentElement.style.setProperty("--app-status-top", "32px");
+        document.documentElement.style.setProperty("--app-bottom-extra", "24px");
 
         const { StatusBar, Style } = await import("@capacitor/status-bar");
 
