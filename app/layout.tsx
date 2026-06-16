@@ -58,7 +58,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
         <Navbar />
 
-        <main className="min-h-screen pt-16 pb-[90px] xl:pt-0 xl:pb-0">
+        <main className="min-h-screen pt-[calc(64px+var(--app-status-top,0px))] pb-[calc(120px+var(--app-bottom-extra,0px))] xl:pt-0 xl:pb-0">
           {children}
         </main>
       </body>
