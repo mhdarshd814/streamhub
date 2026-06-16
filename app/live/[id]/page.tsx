@@ -97,6 +97,66 @@ export default function LiveRoomPage() {
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
 
+  function isMobileDevice() {
+    if (typeof navigator === "undefined") return false;
+
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
+  function getVideoQualityProfile(facingMode: "user" | "environment" = "user") {
+    const mobile = isMobileDevice();
+
+    return {
+      facingMode,
+      resolution: {
+        width: mobile ? 960 : 1280,
+        height: mobile ? 540 : 720,
+        frameRate: mobile ? 24 : 30,
+      },
+      frameRate: mobile ? 24 : 30,
+    };
+  }
+
+  function getMediaVideoConstraints(
+    facingMode: "user" | "environment" = "user"
+  ): MediaTrackConstraints {
+    const mobile = isMobileDevice();
+
+    return {
+      facingMode,
+      width: { ideal: mobile ? 960 : 1280, max: 1280 },
+      height: { ideal: mobile ? 540 : 720, max: 720 },
+      frameRate: { ideal: mobile ? 24 : 30, max: 30 },
+    };
+  }
+
+  function getMediaAudioConstraints(): MediaTrackConstraints {
+    return {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      channelCount: 1,
+      sampleRate: 48000,
+    };
+  }
+
+  function getOptimizedRoomOptions() {
+    const mobile = isMobileDevice();
+
+    return {
+      adaptiveStream: true,
+      dynacast: true,
+      publishDefaults: {
+        simulcast: true,
+        videoCodec: "vp8",
+        videoEncoding: {
+          maxBitrate: mobile ? 1_200_000 : 1_800_000,
+          maxFramerate: mobile ? 24 : 30,
+        },
+      },
+    };
+  }
+
   useEffect(() => {
     let chatChannel: any;
     let streamChannel: any;
@@ -837,7 +897,10 @@ export default function LiveRoomPage() {
 
     try {
       if (!cameraOn) {
-        await activeRoom.localParticipant.setCameraEnabled(true);
+        await activeRoom.localParticipant.setCameraEnabled(
+          true,
+          getVideoQualityProfile(usingFrontCamera ? "user" : "environment") as any
+        );
         setCameraOn(true);
       }
 
@@ -850,9 +913,9 @@ export default function LiveRoomPage() {
       const videoTrack: any = videoPublication?.track;
 
       if (videoTrack?.restartTrack) {
-        await videoTrack.restartTrack({
-          facingMode: nextFacingMode,
-        });
+        await videoTrack.restartTrack(
+          getVideoQualityProfile(nextFacingMode as "user" | "environment") as any
+        );
 
         setUsingFrontCamera(!usingFrontCamera);
         setTimeout(() => attachLocalVideoTrack(activeRoom), 250);
@@ -976,12 +1039,10 @@ export default function LiveRoomPage() {
 
       try {
         const permissionStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
+          video: getMediaVideoConstraints(
+            usingFrontCamera ? "user" : "environment"
+          ),
+          audio: getMediaAudioConstraints(),
         });
 
         permissionStream.getTracks().forEach((track) => track.stop());
@@ -992,10 +1053,7 @@ export default function LiveRoomPage() {
         throw permissionError;
       }
 
-      const newRoom = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-      });
+      const newRoom = new Room(getOptimizedRoomOptions() as any);
 
       newRoom.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
         if (track.kind === Track.Kind.Audio) {
@@ -1023,10 +1081,34 @@ export default function LiveRoomPage() {
         console.log("Local track published:", publication.kind);
       });
 
+      (newRoom as any).on((RoomEvent as any).Reconnecting, () => {
+        setStatusText("Connection unstable. Reconnecting...");
+      });
+
+      (newRoom as any).on((RoomEvent as any).Reconnected, () => {
+        setStatusText(
+          role === "host"
+            ? "You are live as host."
+            : "You reconnected as guest streamer."
+        );
+      });
+
+      newRoom.on(RoomEvent.Disconnected, () => {
+        setStatusText("Disconnected from LiveKit room.");
+        setRoom(null);
+        setRemoteVideos([]);
+      });
+
       await newRoom.connect(livekitUrl, tokenData.token);
 
-      await newRoom.localParticipant.setCameraEnabled(true);
-      await newRoom.localParticipant.setMicrophoneEnabled(true);
+      await newRoom.localParticipant.setCameraEnabled(
+        true,
+        getVideoQualityProfile(usingFrontCamera ? "user" : "environment") as any
+      );
+      await newRoom.localParticipant.setMicrophoneEnabled(
+        true,
+        getMediaAudioConstraints() as any
+      );
 
       newRoom.remoteParticipants.forEach((participant) => {
         participant.trackPublications.forEach((publication) => {
@@ -1120,7 +1202,10 @@ export default function LiveRoomPage() {
 
     const nextCameraState = !cameraOn;
 
-    await roomRef.current.localParticipant.setCameraEnabled(nextCameraState);
+    await roomRef.current.localParticipant.setCameraEnabled(
+      nextCameraState,
+      getVideoQualityProfile(usingFrontCamera ? "user" : "environment") as any
+    );
     setCameraOn(nextCameraState);
   }
 
@@ -1132,7 +1217,10 @@ export default function LiveRoomPage() {
 
     const nextMicState = !micOn;
 
-    await roomRef.current.localParticipant.setMicrophoneEnabled(nextMicState);
+    await roomRef.current.localParticipant.setMicrophoneEnabled(
+      nextMicState,
+      getMediaAudioConstraints() as any
+    );
     setMicOn(nextMicState);
   }
 
