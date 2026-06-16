@@ -438,12 +438,12 @@ export default function Navbar() {
       >
         <div className="flex w-full items-center justify-between">
           <button type="button" onClick={() => goTo("/")} className="flex items-center gap-3">
-            <div className="h-9 w-9 overflow-hidden rounded-xl">
+            <div className="h-12 w-12 overflow-hidden rounded-xl">
               <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
             </div>
 
             <div className="leading-none text-left">
-              <h1 className="text-lg font-black tracking-tight">
+              <h1 className="text-2xl font-black tracking-tight">
                 <span className="text-white">Stream</span>
                 <span className="text-red-500">Hub</span>
               </h1>
@@ -468,7 +468,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => goTo("/login")}
-              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20"
+              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-600/20"
             >
               Login
             </button>
