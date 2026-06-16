@@ -1570,7 +1570,8 @@ export default function LiveRoomPage() {
                   autoPlay
                   muted
                   playsInline
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
 
                 {remoteVideos.length > 0 ? (
@@ -1614,7 +1615,8 @@ export default function LiveRoomPage() {
                     autoPlay
                     muted
                     playsInline
-                    className="h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
 
                   <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
@@ -1860,11 +1862,11 @@ export default function LiveRoomPage() {
               <div
                 className={
                   isCompactStudio
-                    ? "relative flex h-[220px] items-center justify-center overflow-hidden bg-black sm:h-[300px] lg:h-[420px]"
-                    : "relative flex h-[320px] items-center justify-center overflow-hidden bg-black sm:h-[520px] lg:h-[560px]"
+                    ? "relative flex h-[260px] items-center justify-center overflow-hidden bg-black sm:h-[360px] lg:h-[420px]"
+                    : "relative flex h-[68dvh] min-h-[420px] items-center justify-center overflow-hidden bg-black sm:h-[620px] lg:h-[680px]"
                 }
               >
-                <div className="relative h-full w-full p-2">
+                <div className="relative h-full w-full bg-black">
                   {focusedVideo === "local" ? (
                     <>
                       <div
@@ -1876,7 +1878,8 @@ export default function LiveRoomPage() {
                           autoPlay
                           muted
                           playsInline
-                          className="h-full w-full object-cover"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
 
                         <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
@@ -1885,7 +1888,7 @@ export default function LiveRoomPage() {
                       </div>
 
                       {remoteVideos.length > 0 ? (
-                        <div className="absolute bottom-4 right-4 h-28 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:h-40 sm:w-32">
+                        <div className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36">
                           <RemoteVideoTile
                             track={remoteVideos[0].track}
                             identity={remoteVideos[0].identity}
@@ -1894,7 +1897,7 @@ export default function LiveRoomPage() {
                           />
                         </div>
                       ) : (
-                        <div className="absolute bottom-4 right-4 flex h-28 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
+                        <div className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
                           Waiting
                         </div>
                       )}
@@ -1918,14 +1921,15 @@ export default function LiveRoomPage() {
 
                       <div
                         onClick={() => setFocusedVideo("local")}
-                        className="absolute bottom-4 right-4 h-28 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:h-40 sm:w-32"
+                        className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36"
                       >
                         <video
                           ref={localVideoRef}
                           autoPlay
                           muted
                           playsInline
-                          className="h-full w-full object-cover"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
 
                         <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
@@ -2405,13 +2409,14 @@ function RemoteVideoTile({
   return (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl bg-gray-950 ${onClick ? "cursor-pointer" : ""} ${className}`}
+      className={`relative h-full w-full overflow-hidden rounded-2xl bg-black ${onClick ? "cursor-pointer" : ""} ${className}`}
     >
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        className="h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
 
       <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
