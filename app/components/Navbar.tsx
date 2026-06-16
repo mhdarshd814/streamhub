@@ -23,13 +23,13 @@ type Notification = {
 };
 
 export default function Navbar() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState<boolean>(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [pendingInvites, setPendingInvites] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [notificationOpen, setNotificationOpen] = useState<boolean>(false);
+  const [pendingInvites, setPendingInvites] = useState<number>(0);
+  const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -37,11 +37,12 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    let inviteChannel: any = null;
-    let notificationChannel: any = null;
+    let inviteChannel: ReturnType<typeof supabase.channel> | null = null;
+    let notificationChannel: ReturnType<typeof supabase.channel> | null = null;
 
     async function init() {
       const id = await checkUser();
+
       if (id) {
         inviteChannel = subscribeToInvites(id);
         notificationChannel = subscribeToNotifications(id);
@@ -98,7 +99,7 @@ export default function Navbar() {
 
   function subscribeToInvites(id: string) {
     return supabase
-      .channel("navbar-invites-" + id + "-" + Date.now())
+      .channel(`navbar-invites-${id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -116,7 +117,7 @@ export default function Navbar() {
 
   function subscribeToNotifications(id: string) {
     return supabase
-      .channel("navbar-notifications-" + id + "-" + Date.now())
+      .channel(`navbar-notifications-${id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -132,7 +133,7 @@ export default function Navbar() {
       .subscribe();
   }
 
-  async function checkUser() {
+  async function checkUser(): Promise<string | null> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -156,7 +157,8 @@ export default function Navbar() {
       .eq("id", user.id)
       .maybeSingle();
 
-    setProfile(data || null);
+    setProfile((data as Profile) || null);
+
     await loadPendingInvites(user.id);
     await loadNotifications(user.id);
 
@@ -183,8 +185,10 @@ export default function Navbar() {
 
     if (error) return;
 
-    setNotifications((data || []) as Notification[]);
-    setUnreadNotifications((data || []).filter((item) => !item.is_read).length);
+    const list = (data || []) as Notification[];
+
+    setNotifications(list);
+    setUnreadNotifications(list.filter((item) => !item.is_read).length);
   }
 
   async function openNotification(notification: Notification) {
@@ -235,50 +239,40 @@ export default function Navbar() {
     <>
       <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 xl:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div
+          <button
+            type="button"
             onClick={() => goTo("/")}
             className="flex cursor-pointer items-center gap-3"
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
-  <img
-    src="/icon-512.png"
-    alt="StreamHub"
-    className="h-full w-full object-cover"
-  />
-</div>
+              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+            </div>
 
-            <div className="leading-none">
+            <div className="leading-none text-left">
               <h1 className="text-4xl font-black tracking-tight">
                 <span className="text-white">Stream</span>
                 <span className="text-red-500">Hub</span>
               </h1>
-
               <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">
                 Live Platform
               </p>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-5">
-            <button onClick={() => goTo("/")} className="font-bold text-gray-100 hover:text-red-400">
-              Home
-            </button>
-
-            <button onClick={() => goTo("/explore")} className="font-bold text-gray-100 hover:text-red-400">
-              Explore
-            </button>
-
-            <button onClick={() => goTo("/streams/upcoming")} className="font-bold text-gray-100 hover:text-red-400">
-              Upcoming
-            </button>
+            <DesktopLink label="Home" href="/" />
+            <DesktopLink label="Explore" href="/explore" />
+            <DesktopLink label="Upcoming" href="/streams/upcoming" />
 
             {loggedIn ? (
               <>
-                <button onClick={() => goTo("/following")} className="font-bold text-gray-100 hover:text-red-400">
-                  Following
-                </button>
+                <DesktopLink label="Following" href="/following" />
 
-                <button onClick={() => goTo("/invites")} className="relative font-bold text-gray-100 hover:text-red-400">
+                <button
+                  type="button"
+                  onClick={() => goTo("/invites")}
+                  className="relative font-bold text-gray-100 hover:text-red-400"
+                >
                   Invites
                   {pendingInvites > 0 && (
                     <span className="absolute -right-4 -top-3 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
@@ -287,12 +281,11 @@ export default function Navbar() {
                   )}
                 </button>
 
-                <button onClick={() => goTo("/dashboard")} className="font-bold text-gray-100 hover:text-red-400">
-                  Dashboard
-                </button>
+                <DesktopLink label="Dashboard" href="/dashboard" />
 
                 {profile?.is_admin && (
                   <button
+                    type="button"
                     onClick={() => goTo("/admin")}
                     className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 font-black text-yellow-300 hover:bg-yellow-500 hover:text-black"
                   >
@@ -302,6 +295,7 @@ export default function Navbar() {
 
                 <div ref={notificationRef} className="relative">
                   <button
+                    type="button"
                     onClick={() => {
                       setNotificationOpen(!notificationOpen);
                       setMenuOpen(false);
@@ -325,7 +319,7 @@ export default function Navbar() {
                         </div>
 
                         {unreadNotifications > 0 && (
-                          <button onClick={markAllNotificationsRead} className="text-xs font-bold text-red-400">
+                          <button type="button" onClick={markAllNotificationsRead} className="text-xs font-bold text-red-400">
                             Mark all read
                           </button>
                         )}
@@ -337,6 +331,7 @@ export default function Navbar() {
                         ) : (
                           notifications.map((notification) => (
                             <button
+                              type="button"
                               key={notification.id}
                               onClick={() => openNotification(notification)}
                               className={
@@ -355,6 +350,7 @@ export default function Navbar() {
                       </div>
 
                       <button
+                        type="button"
                         onClick={() => goTo("/notifications")}
                         className="w-full bg-gray-950 px-5 py-3 text-sm font-bold text-white hover:bg-red-600"
                       >
@@ -366,6 +362,7 @@ export default function Navbar() {
 
                 <div ref={menuRef} className="relative">
                   <button
+                    type="button"
                     onClick={() => {
                       setMenuOpen(!menuOpen);
                       setNotificationOpen(false);
@@ -398,6 +395,7 @@ export default function Navbar() {
 
                       {profile?.is_admin && (
                         <button
+                          type="button"
                           onClick={() => goTo("/admin")}
                           className="w-full bg-gray-900 px-5 py-3 text-left font-black text-yellow-300 hover:bg-yellow-500 hover:text-black"
                         >
@@ -405,7 +403,11 @@ export default function Navbar() {
                         </button>
                       )}
 
-                      <button onClick={logout} className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600">
+                      <button
+                        type="button"
+                        onClick={logout}
+                        className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600"
+                      >
                         Logout
                       </button>
                     </div>
@@ -414,11 +416,12 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <button onClick={() => goTo("/login")} className="font-bold text-gray-100 hover:text-red-400">
-                  Login
-                </button>
-
-                <button onClick={() => goTo("/signup")} className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700">
+                <DesktopLink label="Login" href="/login" />
+                <button
+                  type="button"
+                  onClick={() => goTo("/signup")}
+                  className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
+                >
                   Sign Up
                 </button>
               </>
@@ -427,31 +430,28 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <nav className="fixed inset-x-0 top-0 z-[9997] border-b border-red-900/40 bg-gray-950/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
-        <div className="flex items-center justify-between">
-          <button onClick={() => goTo("/")} className="flex items-center gap-3">
-            <div className="h-12 w-12 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
- 		 <img
- 		 src="/icon-512.png"
-   		 alt="StreamHub"
-    		className="h-full w-full object-cover"
- 		 />
-		</div>
+      <nav
+        className="mobile-top-nav fixed inset-x-0 top-0 z-[9997] flex items-center border-b border-red-900/40 bg-gray-950/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-gray-950/80 xl:hidden"
+        style={{ height: "64px" }}
+      >
+        <div className="flex w-full items-center justify-between">
+          <button type="button" onClick={() => goTo("/")} className="flex items-center gap-3">
+            <div className="h-9 w-9 overflow-hidden rounded-xl">
+              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+            </div>
 
             <div className="leading-none text-left">
-              <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+              <h1 className="text-lg font-black tracking-tight">
                 <span className="text-white">Stream</span>
                 <span className="text-red-500">Hub</span>
               </h1>
-
-              <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">
-                Live Platform
-              </p>
+              <p className="hidden">Live Platform</p>
             </div>
           </button>
 
           {loggedIn ? (
             <button
+              type="button"
               onClick={() => goTo("/notifications")}
               className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl"
             >
@@ -463,7 +463,11 @@ export default function Navbar() {
               )}
             </button>
           ) : (
-            <button onClick={() => goTo("/login")} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20">
+            <button
+              type="button"
+              onClick={() => goTo("/login")}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-red-600/20"
+            >
               Login
             </button>
           )}
@@ -472,16 +476,17 @@ export default function Navbar() {
 
       <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
         <div
-          className="relative mx-auto grid h-[76px] max-w-5xl grid-cols-5 items-center px-2"
+          className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
           style={{
             height: "calc(76px + env(safe-area-inset-bottom))",
             paddingBottom: "env(safe-area-inset-bottom)",
           }}
         >
           <MobileItem icon="🏠" label="Home" href="/" />
-          <MobileItem icon="🔥" label="Discover" href="/explore" />
+          <MobileItem icon="🔎" label="Discover" href="/explore" />
 
           <button
+            type="button"
             onClick={() => goTo(loggedIn ? "/go-live" : "/login")}
             className="absolute left-1/2 top-0 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
           >
@@ -496,11 +501,13 @@ export default function Navbar() {
           <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} badge={pendingInvites} />
 
           <button
+            type="button"
             onClick={() => {
               if (!loggedIn) {
                 goTo("/login");
                 return;
               }
+
               setMobileMenuOpen(true);
             }}
             className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
@@ -524,7 +531,7 @@ export default function Navbar() {
             style={{
               paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-gray-700" />
 
@@ -557,6 +564,7 @@ export default function Navbar() {
               <MobileSheetItem label="⚙️ Settings" href="/notifications/settings" />
 
               <button
+                type="button"
                 onClick={logout}
                 className="rounded-2xl bg-red-600 px-4 py-4 text-left text-sm font-black text-white active:scale-95"
               >
@@ -565,6 +573,7 @@ export default function Navbar() {
             </div>
 
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(false)}
               className="mt-4 w-full rounded-2xl bg-gray-800 px-4 py-4 text-sm font-bold text-white"
             >
@@ -577,18 +586,51 @@ export default function Navbar() {
   );
 }
 
-function MenuItem({ label, href }: { label: string; href: string }) {
+function DesktopLink({ label, href }: { label: string; href: string }) {
   return (
-    <button onClick={() => (window.location.href = href)} className="w-full bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600">
+    <button
+      type="button"
+      onClick={() => {
+        window.location.href = href;
+      }}
+      className="font-bold text-gray-100 hover:text-red-400"
+    >
       {label}
     </button>
   );
 }
 
-function MobileItem({ icon, label, href, badge }: { icon: ReactNode; label: string; href: string; badge?: number }) {
+function MenuItem({ label, href }: { label: string; href: string }) {
   return (
     <button
-      onClick={() => (window.location.href = href)}
+      type="button"
+      onClick={() => {
+        window.location.href = href;
+      }}
+      className="w-full bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600"
+    >
+      {label}
+    </button>
+  );
+}
+
+function MobileItem({
+  icon,
+  label,
+  href,
+  badge,
+}: {
+  icon: ReactNode;
+  label: string;
+  href: string;
+  badge?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        window.location.href = href;
+      }}
       className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
     >
       <span className="flex h-7 items-center justify-center text-2xl">{icon}</span>
@@ -606,7 +648,10 @@ function MobileItem({ icon, label, href, badge }: { icon: ReactNode; label: stri
 function MobileSheetItem({ label, href }: { label: string; href: string }) {
   return (
     <button
-      onClick={() => (window.location.href = href)}
+      type="button"
+      onClick={() => {
+        window.location.href = href;
+      }}
       className="rounded-2xl bg-gray-800 px-4 py-4 text-left text-sm font-bold text-white active:scale-95"
     >
       {label}

@@ -7,7 +7,12 @@ const config: CapacitorConfig = {
 
   server: {
     url: "https://streamhub-ebon.vercel.app",
-    cleartext: true,
+    cleartext: false,
+  },
+
+  android: {
+    allowMixedContent: false,
+    captureInput: true,
   },
 };
 
