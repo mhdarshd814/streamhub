@@ -88,6 +88,7 @@ export default function LiveRoomPage() {
   const [remoteVideos, setRemoteVideos] = useState<RemoteVideoTrack[]>([]);
   const [focusedVideo, setFocusedVideo] = useState<"local" | string>("local");
   const [isCompactStudio, setIsCompactStudio] = useState(false);
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -336,6 +337,20 @@ export default function LiveRoomPage() {
       setFocusedVideo("local");
     }
   }, [focusedVideo, remoteVideos]);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      if (!document.fullscreenElement) {
+        setIsTheaterMode(false);
+      }
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (role !== "host") return;
@@ -859,7 +874,37 @@ export default function LiveRoomPage() {
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [focusedVideo, isCompactStudio, remoteVideos.length, room]);
+  }, [focusedVideo, isCompactStudio, isTheaterMode, remoteVideos.length, room]);
+
+  async function enterTheaterMode() {
+    if (!roomRef.current) return;
+
+    setIsTheaterMode(true);
+
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn("Browser fullscreen request skipped:", error);
+    }
+
+    setTimeout(() => attachLocalVideoTrack(roomRef.current), 150);
+  }
+
+  async function exitTheaterMode() {
+    setIsTheaterMode(false);
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.warn("Browser fullscreen exit skipped:", error);
+    }
+
+    setTimeout(() => attachLocalVideoTrack(roomRef.current), 150);
+  }
 
   async function startLiveStream() {
     if (!stream || starting) return;
@@ -1034,6 +1079,8 @@ export default function LiveRoomPage() {
     } catch (error) {
       console.warn("Allow sleep failed:", error);
     }
+
+    await exitTheaterMode();
 
     cleanupRemoteAudio();
 
@@ -1512,7 +1559,145 @@ export default function LiveRoomPage() {
   const canSendChat = isLive && !!room && !isGlobalMuted;
 
   return (
-    <div className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10">
+    <>
+      {room && isTheaterMode && (
+        <div className="fixed inset-0 z-[10000] bg-black text-white">
+          <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
+            {focusedVideo === "local" ? (
+              <>
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+
+                {remoteVideos.length > 0 ? (
+                  <div className="absolute bottom-28 right-4 h-36 w-28 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
+                    <RemoteVideoTile
+                      track={remoteVideos[0].track}
+                      identity={remoteVideos[0].identity}
+                      onClick={() => setFocusedVideo(remoteVideos[0].id)}
+                      className="h-full w-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="absolute bottom-28 right-4 flex h-36 w-28 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
+                    Waiting
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {remoteVideos.length > 0 ? (
+                  <RemoteVideoTile
+                    track={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).track}
+                    identity={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).identity}
+                    className="h-full w-full rounded-none"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-black text-center text-gray-400">
+                    <div>
+                      <p className="mb-3 text-5xl">📞</p>
+                      <p>Waiting for the other person...</p>
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  onClick={() => setFocusedVideo("local")}
+                  className="absolute bottom-28 right-4 h-36 w-28 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
+                >
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+
+                  <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
+                    You
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 to-transparent px-4 pb-12 pt-[calc(18px+env(safe-area-inset-top))]">
+              <div className="pointer-events-auto flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-red-400">
+                    {role === "host" ? "Host Studio" : "Guest Studio"}
+                  </p>
+                  <h2 className="truncate text-lg font-black sm:text-2xl">
+                    {stream.title}
+                  </h2>
+                </div>
+
+                <button
+                  onClick={exitTheaterMode}
+                  className="shrink-0 rounded-full bg-white/10 px-4 py-2 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  Exit
+                </button>
+              </div>
+            </div>
+
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-16">
+              <div className="pointer-events-auto mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={toggleCamera}
+                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  {cameraOn ? "Camera Off" : "Camera On"}
+                </button>
+
+                <button
+                  onClick={toggleMic}
+                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  {micOn ? "Mute" : "Unmute"}
+                </button>
+
+                <button
+                  onClick={switchCameraView}
+                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
+                >
+                  Flip
+                </button>
+
+                <button
+                  onClick={() =>
+                    setFocusedVideo((current) =>
+                      current === "local" && remoteVideos.length > 0
+                        ? remoteVideos[0].id
+                        : "local"
+                    )
+                  }
+                  disabled={remoteVideos.length === 0}
+                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20 disabled:text-gray-500"
+                >
+                  Switch
+                </button>
+
+                <button
+                  onClick={stopLiveStream}
+                  className="rounded-full bg-red-600 px-5 py-3 text-sm font-black backdrop-blur hover:bg-red-700"
+                >
+                  {role === "host"
+                    ? isPrivate
+                      ? "End Call"
+                      : "End Stream"
+                    : "Leave"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -1783,6 +1968,13 @@ export default function LiveRoomPage() {
                     </button>
 
                     <button
+                      onClick={enterTheaterMode}
+                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                    >
+                      Fullscreen
+                    </button>
+
+                    <button
                       onClick={stopLiveStream}
                       className="rounded-full bg-red-600 px-3 py-2 text-xs font-black backdrop-blur hover:bg-red-700"
                     >
@@ -1906,6 +2098,14 @@ export default function LiveRoomPage() {
                   className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
                 >
                   Enable Audio
+                </button>
+
+                <button
+                  onClick={enterTheaterMode}
+                  disabled={!room}
+                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  Fullscreen
                 </button>
 
                 <button
@@ -2168,7 +2368,8 @@ export default function LiveRoomPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
