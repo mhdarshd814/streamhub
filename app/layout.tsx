@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import PushNotificationManager from "./components/PushNotificationManager";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import CapacitorStatusBar from "./components/CapacitorStatusBar";
+import AndroidBackButton from "./components/AndroidBackButton";
 import IncomingCallPopup from "../components/IncomingCallPopup";
 
 export const metadata: Metadata = {
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" className="h-full bg-black antialiased">
       <body className="min-h-screen bg-black text-white">
         <CapacitorStatusBar />
+        <AndroidBackButton />
 
         <PushNotificationManager />
         <IncomingCallPopup />

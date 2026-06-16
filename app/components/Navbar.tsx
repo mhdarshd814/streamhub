@@ -500,7 +500,7 @@ export default function Navbar() {
 
           <div className="pointer-events-none" />
 
-          <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} badge={pendingInvites} />
+          <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} />
 
           <button
             type="button"
