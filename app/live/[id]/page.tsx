@@ -132,9 +132,9 @@ export default function LiveRoomPage() {
     return {
       facingMode,
       resolution: {
-        width: mobile ? 960 : 1280,
-        height: mobile ? 540 : 720,
-        frameRate: mobile ? 24 : 30,
+        width: mobile ? 1280 : 1280,
+        height: mobile ? 720 : 720,
+        frameRate: mobile ? 30 : 30,
       },
       frameRate: mobile ? 24 : 30,
     };
@@ -147,9 +147,9 @@ export default function LiveRoomPage() {
 
     return {
       facingMode,
-      width: { ideal: mobile ? 960 : 1280, max: 1280 },
-      height: { ideal: mobile ? 540 : 720, max: 720 },
-      frameRate: { ideal: mobile ? 24 : 30, max: 30 },
+      width: { ideal: mobile ? 1280 : 1280, max: 1280 },
+      height: { ideal: mobile ? 720 : 720, max: 720 },
+      frameRate: { ideal: mobile ? 30 : 30, max: 30 },
     };
   }
 
@@ -173,8 +173,8 @@ export default function LiveRoomPage() {
         simulcast: true,
         videoCodec: "vp8",
         videoEncoding: {
-          maxBitrate: mobile ? 1_200_000 : 1_800_000,
-          maxFramerate: mobile ? 24 : 30,
+          maxBitrate: mobile ? 2_500_000 : 3_500_000,
+          maxFramerate: mobile ? 30 : 30,
         },
       },
     };
@@ -1974,7 +1974,7 @@ export default function LiveRoomPage() {
                 />
 
                 {remoteVideos.length > 0 ? (
-                  <div className="absolute bottom-28 right-4 h-36 w-28 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
+                  <div className="absolute bottom-[220px] right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
                     <RemoteVideoTile
                       track={remoteVideos[0].track}
                       identity={remoteVideos[0].identity}
@@ -1983,7 +1983,7 @@ export default function LiveRoomPage() {
                     />
                   </div>
                 ) : (
-                  <div className="absolute bottom-28 right-4 flex h-36 w-28 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
+                  <div className="absolute bottom-[220px] right-4 flex h-32 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
                     Waiting
                   </div>
                 )}
@@ -2007,7 +2007,7 @@ export default function LiveRoomPage() {
 
                 <div
                   onClick={() => setFocusedVideo("local")}
-                  className="absolute bottom-28 right-4 h-36 w-28 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
+                  className="absolute bottom-[220px] right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
                 >
                   <video
                     ref={theaterLocalVideoRef}
