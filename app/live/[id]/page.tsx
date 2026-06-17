@@ -157,6 +157,107 @@ export default function LiveRoomPage() {
     };
   }
 
+
+  async function verifyMediaPermissions() {
+    try {
+      const permissionStream = await navigator.mediaDevices.getUserMedia({
+        video: getMediaVideoConstraints(
+          usingFrontCamera ? "user" : "environment"
+        ),
+        audio: getMediaAudioConstraints(),
+      });
+
+      permissionStream.getTracks().forEach((track) => track.stop());
+      return true;
+    } catch (optimizedError) {
+      console.warn("Optimized media permission request failed. Trying basic permission request.", optimizedError);
+
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+
+        fallbackStream.getTracks().forEach((track) => track.stop());
+        return true;
+      } catch (basicError) {
+        console.error("Basic camera/microphone permission request failed:", basicError);
+        alert(
+          "Camera or microphone permission was denied. Please allow both camera and microphone access in your browser/app settings, then try again."
+        );
+        return false;
+      }
+    }
+  }
+
+  async function enableCameraSafely(
+    targetRoom: Room,
+    facingMode: "user" | "environment" = "user"
+  ) {
+    const attempts = [
+      getVideoQualityProfile(facingMode),
+      getMediaVideoConstraints(facingMode),
+      { facingMode },
+      true,
+    ];
+
+    for (const options of attempts) {
+      try {
+        await targetRoom.localParticipant.setCameraEnabled(true, options as any);
+        setTimeout(() => attachLocalVideoTrack(targetRoom), 150);
+        setTimeout(() => attachLocalVideoTrack(targetRoom), 500);
+        return true;
+      } catch (error) {
+        console.warn("Camera enable attempt failed. Trying fallback.", error);
+        try {
+          await targetRoom.localParticipant.setCameraEnabled(false);
+        } catch {}
+      }
+    }
+
+    alert(
+      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin."
+    );
+    return false;
+  }
+
+  async function enableMicrophoneSafely(targetRoom: Room) {
+    const attempts = [getMediaAudioConstraints(), true];
+
+    for (const options of attempts) {
+      try {
+        await targetRoom.localParticipant.setMicrophoneEnabled(true, options as any);
+        return true;
+      } catch (error) {
+        console.warn("Microphone enable attempt failed. Trying fallback.", error);
+        try {
+          await targetRoom.localParticipant.setMicrophoneEnabled(false);
+        } catch {}
+      }
+    }
+
+    alert(
+      "Microphone could not start on this device. Please check microphone permission, then rejoin."
+    );
+    return false;
+  }
+
+  async function disableCameraSafely(targetRoom: Room) {
+    try {
+      await targetRoom.localParticipant.setCameraEnabled(false);
+    } catch (error) {
+      console.warn("Camera disable failed:", error);
+    }
+  }
+
+  async function disableMicrophoneSafely(targetRoom: Room) {
+    try {
+      await targetRoom.localParticipant.setMicrophoneEnabled(false);
+    } catch (error) {
+      console.warn("Microphone disable failed:", error);
+    }
+  }
+
   useEffect(() => {
     let chatChannel: any;
     let streamChannel: any;
@@ -897,11 +998,14 @@ export default function LiveRoomPage() {
 
     try {
       if (!cameraOn) {
-        await activeRoom.localParticipant.setCameraEnabled(
-          true,
-          getVideoQualityProfile(usingFrontCamera ? "user" : "environment") as any
+        const cameraStarted = await enableCameraSafely(
+          activeRoom,
+          usingFrontCamera ? "user" : "environment"
         );
-        setCameraOn(true);
+
+        setCameraOn(cameraStarted);
+
+        if (!cameraStarted) return;
       }
 
       const nextFacingMode = usingFrontCamera ? "environment" : "user";
@@ -925,6 +1029,17 @@ export default function LiveRoomPage() {
       alert("Camera switch is not supported by this browser/device.");
     } catch (error) {
       console.error("Camera switch error:", error);
+
+      const nextFacingMode = usingFrontCamera ? "environment" : "user";
+      const recovered = await enableCameraSafely(activeRoom, nextFacingMode);
+
+      if (recovered) {
+        setUsingFrontCamera(!usingFrontCamera);
+        setCameraOn(true);
+        setTimeout(() => attachLocalVideoTrack(activeRoom), 250);
+        return;
+      }
+
       alert("Unable to switch camera. Some desktop browsers and devices do not expose a second camera.");
     }
   }
@@ -1037,20 +1152,10 @@ export default function LiveRoomPage() {
 
       cleanupRemoteAudio();
 
-      try {
-        const permissionStream = await navigator.mediaDevices.getUserMedia({
-          video: getMediaVideoConstraints(
-            usingFrontCamera ? "user" : "environment"
-          ),
-          audio: getMediaAudioConstraints(),
-        });
+      const permissionAllowed = await verifyMediaPermissions();
 
-        permissionStream.getTracks().forEach((track) => track.stop());
-      } catch (permissionError: any) {
-        alert(
-          "Camera or microphone permission was denied. Please allow both camera and microphone access in your browser, then try again."
-        );
-        throw permissionError;
+      if (!permissionAllowed) {
+        return;
       }
 
       const newRoom = new Room(getOptimizedRoomOptions() as any);
@@ -1101,14 +1206,11 @@ export default function LiveRoomPage() {
 
       await newRoom.connect(livekitUrl, tokenData.token);
 
-      await newRoom.localParticipant.setCameraEnabled(
-        true,
-        getVideoQualityProfile(usingFrontCamera ? "user" : "environment") as any
+      const cameraStarted = await enableCameraSafely(
+        newRoom,
+        usingFrontCamera ? "user" : "environment"
       );
-      await newRoom.localParticipant.setMicrophoneEnabled(
-        true,
-        getMediaAudioConstraints() as any
-      );
+      const micStarted = await enableMicrophoneSafely(newRoom);
 
       newRoom.remoteParticipants.forEach((participant) => {
         participant.trackPublications.forEach((publication) => {
@@ -1129,8 +1231,8 @@ export default function LiveRoomPage() {
 
       roomRef.current = newRoom;
       setRoom(newRoom);
-      setCameraOn(true);
-      setMicOn(true);
+      setCameraOn(cameraStarted);
+      setMicOn(micStarted);
 
       try {
         await KeepAwake.keepAwake();
@@ -1202,11 +1304,17 @@ export default function LiveRoomPage() {
 
     const nextCameraState = !cameraOn;
 
-    await roomRef.current.localParticipant.setCameraEnabled(
-      nextCameraState,
-      getVideoQualityProfile(usingFrontCamera ? "user" : "environment") as any
-    );
-    setCameraOn(nextCameraState);
+    if (nextCameraState) {
+      const cameraStarted = await enableCameraSafely(
+        roomRef.current,
+        usingFrontCamera ? "user" : "environment"
+      );
+      setCameraOn(cameraStarted);
+      return;
+    }
+
+    await disableCameraSafely(roomRef.current);
+    setCameraOn(false);
   }
 
   async function toggleMic() {
@@ -1217,11 +1325,14 @@ export default function LiveRoomPage() {
 
     const nextMicState = !micOn;
 
-    await roomRef.current.localParticipant.setMicrophoneEnabled(
-      nextMicState,
-      getMediaAudioConstraints() as any
-    );
-    setMicOn(nextMicState);
+    if (nextMicState) {
+      const micStarted = await enableMicrophoneSafely(roomRef.current);
+      setMicOn(micStarted);
+      return;
+    }
+
+    await disableMicrophoneSafely(roomRef.current);
+    setMicOn(false);
   }
 
   async function sendMessage() {
