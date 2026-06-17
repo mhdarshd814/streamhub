@@ -27,6 +27,9 @@ type ChatMessage = {
   username: string;
   message: string;
   created_at: string;
+  paid_amount?: number | null;
+  is_paid?: boolean | null;
+  message_type?: string | null;
 };
 
 type Profile = {
@@ -96,6 +99,26 @@ export default function LiveRoomPage() {
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
+
+  function getPaidMessageAmount(chat: ChatMessage) {
+    if (typeof chat.paid_amount === "number" && chat.paid_amount > 0) {
+      return chat.paid_amount;
+    }
+
+    const match = chat.message.match(/^\[PAID_MESSAGE:AED\s*(\d+(?:\.\d+)?)\]\s*/i);
+
+    if (!match) return 0;
+
+    return Number(match[1] || 0);
+  }
+
+  function isPaidMessage(chat: ChatMessage) {
+    return !!chat.is_paid || chat.message_type === "paid_message" || getPaidMessageAmount(chat) > 0;
+  }
+
+  function getDisplayMessage(chat: ChatMessage) {
+    return chat.message.replace(/^\[PAID_MESSAGE:AED\s*\d+(?:\.\d+)?\]\s*/i, "");
+  }
 
   function isMobileDevice() {
     if (typeof navigator === "undefined") return false;
@@ -738,8 +761,12 @@ export default function LiveRoomPage() {
       setMessage("");
     }
 
-    if (status === "live" && !wasAlreadyLive && stream.visibility !== "private") {
-      await sendStreamStartedNotifications();
+    if (status === "live" && !wasAlreadyLive) {
+      if (stream.visibility === "private") {
+        await sendPrivateCallStartedNotifications();
+      } else {
+        await sendStreamStartedNotifications();
+      }
     }
 
     setStream({
@@ -831,6 +858,114 @@ export default function LiveRoomPage() {
     return Array.from(reminderIds);
   }
 
+  async function sendPrivateCallStartedNotifications() {
+    if (!stream || !currentUserId) return;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const { data: hostProfile } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", currentUserId)
+      .maybeSingle();
+
+    const hostName =
+      hostProfile?.display_name || hostProfile?.username || "A creator";
+
+    const { data: invites, error: inviteError } = await supabase
+      .from("stream_guests")
+      .select("guest_id, status")
+      .eq("stream_id", stream.id)
+      .in("status", ["pending", "accepted"]);
+
+    if (inviteError) {
+      console.error("Private call invite lookup error:", inviteError.message);
+      return;
+    }
+
+    const recipients = Array.from(
+      new Set(
+        (invites || [])
+          .map((invite: any) => invite.guest_id)
+          .filter((guestId: string | null) => guestId && guestId !== currentUserId)
+      )
+    ) as string[];
+
+    if (recipients.length === 0) {
+      setStatusText("Private call started. No invited guest was found to notify.");
+      return;
+    }
+
+    const title = "Private Call Started";
+    const message = `${hostName} started your private call: "${stream.title}". Tap to join.`;
+    const link = `/live/${stream.id}`;
+
+    const { data: existingNotifications } = await supabase
+      .from("notifications")
+      .select("user_id")
+      .eq("type", "private_call_started")
+      .eq("link", link);
+
+    const alreadyNotifiedIds = new Set(
+      (existingNotifications || []).map((item: any) => item.user_id)
+    );
+
+    const notifications = recipients
+      .filter((userId) => !alreadyNotifiedIds.has(userId))
+      .map((userId) => ({
+        user_id: userId,
+        type: "private_call_started",
+        title,
+        message,
+        link,
+        is_read: false,
+      }));
+
+    if (notifications.length > 0) {
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert(notifications);
+
+      if (notificationError) {
+        console.error("Private call notification error:", notificationError.message);
+      }
+    }
+
+    if (session?.access_token) {
+      await Promise.all(
+        recipients.map(async (userId) => {
+          try {
+            await fetch("/api/push/send", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                userId,
+                title,
+                message,
+                url: link,
+                streamId: stream.id,
+                notificationType: "private_call_started",
+              }),
+            });
+          } catch (error) {
+            console.error("Private call push send failed:", error);
+          }
+        })
+      );
+    }
+
+    setStatusText(
+      notifications.length > 0
+        ? "Private call started. Invited guest has been notified."
+        : "Private call started. Invited guest was already notified."
+    );
+  }
+
   async function sendStreamStartedNotifications() {
     if (!stream || !currentUserId) return;
 
@@ -847,7 +982,7 @@ export default function LiveRoomPage() {
     const hostName =
       hostProfile?.display_name || hostProfile?.username || "A creator";
 
-    const [{ data: followers }, { data: subscribers }] = await Promise.all([
+    const [{ data: followers }, { data: subscribers }, { data: invitedGuests }] = await Promise.all([
       supabase
         .from("follows")
         .select("follower_id")
@@ -857,6 +992,11 @@ export default function LiveRoomPage() {
         .select("subscriber_id")
         .eq("creator_id", currentUserId)
         .eq("status", "active"),
+      supabase
+        .from("stream_guests")
+        .select("guest_id, status")
+        .eq("stream_id", stream.id)
+        .in("status", ["pending", "accepted"]),
     ]);
 
     const activeSubscriberIds = new Set<string>();
@@ -884,6 +1024,12 @@ export default function LiveRoomPage() {
     }
 
     reminderRecipientIds.forEach((userId) => recipientIds.add(userId));
+
+    (invitedGuests || []).forEach((item: any) => {
+      if (item.guest_id && item.guest_id !== currentUserId) {
+        recipientIds.add(item.guest_id);
+      }
+    });
 
     const recipients = Array.from(recipientIds);
 
@@ -2492,16 +2638,40 @@ export default function LiveRoomPage() {
                   </div>
                 </div>
               ) : (
-                chatMessages.map((chat) => (
-                  <div key={chat.id} className="rounded-xl bg-gray-900 p-3">
+                chatMessages.map((chat) => {
+                  const paid = isPaidMessage(chat);
+                  const paidAmount = getPaidMessageAmount(chat);
+
+                  return (
+                  <div
+                    key={chat.id}
+                    className={
+                      paid
+                        ? "rounded-xl border border-yellow-400/40 bg-yellow-500/10 p-3 shadow-lg shadow-yellow-950/30"
+                        : "rounded-xl bg-gray-900 p-3"
+                    }
+                  >
+                    {paid && (
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-yellow-400 px-3 py-1 text-[11px] font-black text-black">
+                          💎 PAID MESSAGE
+                        </span>
+                        {paidAmount > 0 && (
+                          <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-bold text-yellow-200">
+                            AED {paidAmount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="mb-1 truncate font-bold text-red-400">
+                        <p className={paid ? "mb-1 truncate font-black text-yellow-300" : "mb-1 truncate font-bold text-red-400"}>
                           {chat.username}
                         </p>
 
-                        <p className="break-words text-white">
-                          {chat.message}
+                        <p className={paid ? "break-words text-base font-bold text-white" : "break-words text-white"}>
+                          {getDisplayMessage(chat)}
                         </p>
                       </div>
                     </div>
@@ -2544,7 +2714,8 @@ export default function LiveRoomPage() {
                       </div>
                     )}
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
 
