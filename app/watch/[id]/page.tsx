@@ -1461,15 +1461,15 @@ export default function WatchPage() {
 
                 <button
                   onClick={closeViewerFullscreen}
-                  className="shrink-0 rounded-full bg-white/10 px-4 py-2 text-sm font-black backdrop-blur hover:bg-white/20"
+                  className="shrink-0 rounded-2xl border border-white/15 bg-black/45 px-4 py-2 text-sm font-black shadow-xl backdrop-blur-xl hover:bg-white/15"
                 >
-                  Exit
+                  ✕ Exit
                 </button>
               </div>
             </div>
 
             {fullscreenChatOpen && (
-              <div className="absolute inset-x-3 bottom-24 max-h-[48dvh] overflow-hidden rounded-3xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl sm:left-auto sm:right-5 sm:w-[380px]">
+              <div className="absolute bottom-28 right-3 top-24 w-[82vw] max-w-[340px] overflow-hidden rounded-3xl border border-white/10 bg-black/45 p-3 shadow-2xl backdrop-blur-xl sm:right-5 sm:w-[360px]">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="font-black">Live Chat</h3>
                   <button
@@ -1480,7 +1480,7 @@ export default function WatchPage() {
                   </button>
                 </div>
 
-                <div className="max-h-[32dvh] space-y-2 overflow-auto pr-1">
+                <div className="h-[calc(100%-92px)] space-y-2 overflow-auto pr-1">
                   {messages.length === 0 ? (
                     <p className="py-6 text-center text-sm text-white/45">
                       No messages yet.
@@ -1522,46 +1522,37 @@ export default function WatchPage() {
               </div>
             )}
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-16">
-              <div className="pointer-events-auto mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
+            <div className="pointer-events-none absolute bottom-[calc(18px+env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-end gap-3 sm:right-5">
+              <button
+                onClick={() => setFullscreenChatOpen((current) => !current)}
+                className="pointer-events-auto rounded-full border border-white/10 bg-black/45 px-4 py-3 text-sm font-black shadow-xl backdrop-blur-xl hover:bg-white/15"
+              >
+                💬 {messages.length > 0 ? messages.length : "Chat"}
+              </button>
+
+              <button
+                onClick={toggleLike}
+                disabled={streamStatus !== "live" || blockedAccess}
+                className={`pointer-events-auto rounded-full border border-white/10 px-4 py-3 text-sm font-black shadow-xl backdrop-blur-xl ${
+                  liked
+                    ? "bg-white text-black hover:bg-white/90"
+                    : "bg-red-600/90 text-white hover:bg-red-500"
+                } disabled:bg-black/35 disabled:text-white/35`}
+              >
+                {liked ? "❤️" : "♡"}
+              </button>
+
+              {audioBlocked && (
                 <button
-                  onClick={toggleLike}
-                  disabled={streamStatus !== "live" || blockedAccess}
-                  className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur ${
-                    liked
-                      ? "bg-white text-black hover:bg-white/90"
-                      : "bg-red-600 text-white hover:bg-red-500"
-                  } disabled:bg-white/10 disabled:text-white/35`}
+                  onClick={enableAudioManually}
+                  className="pointer-events-auto rounded-full border border-white/10 bg-blue-600/90 px-4 py-3 text-sm font-black text-white shadow-xl backdrop-blur-xl hover:bg-blue-500"
                 >
-                  {liked ? "Liked ❤️" : "Like ❤️"}
+                  🔊
                 </button>
+              )}
 
-                <button
-                  onClick={() => setFullscreenChatOpen((current) => !current)}
-                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
-                >
-                  Chat {messages.length > 0 ? `(${messages.length})` : ""}
-                </button>
-
-                {audioBlocked && (
-                  <button
-                    onClick={enableAudioManually}
-                    className="rounded-full bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500"
-                  >
-                    Audio 🔊
-                  </button>
-                )}
-
-                <div className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
-                  👁 {viewerCount}
-                </div>
-
-                <button
-                  onClick={closeViewerFullscreen}
-                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
-                >
-                  Exit Fullscreen
-                </button>
+              <div className="pointer-events-auto rounded-full border border-white/10 bg-black/45 px-4 py-3 text-sm font-black shadow-xl backdrop-blur-xl">
+                👁 {viewerCount}
               </div>
             </div>
           </div>
@@ -1738,7 +1729,7 @@ export default function WatchPage() {
                     disabled={streamStatus !== "live" || !connected || blockedAccess}
                     className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:text-white/35 sm:px-6"
                   >
-                    Fullscreen ⛶
+                    ⛶ Fullscreen
                   </button>
 
                   <button
