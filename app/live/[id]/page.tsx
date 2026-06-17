@@ -125,6 +125,7 @@ export default function LiveRoomPage() {
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
+  const guestAutoJoinStartedRef = useRef(false);
 
   const MAX_ACCEPTED_GUESTS = 3;
   const MAX_TOTAL_PARTICIPANTS = 4;
@@ -1886,9 +1887,10 @@ export default function LiveRoomPage() {
       });
 
       newRoom.on(RoomEvent.Disconnected, () => {
-        setStatusText("Disconnected from LiveKit room.");
+        setStatusText("Disconnected from LiveKit room. Tap Join Stream to reconnect.");
         setRoom(null);
         setRemoteVideos([]);
+        guestAutoJoinStartedRef.current = false;
       });
 
       await newRoom.connect(livekitUrl, tokenData.token, {
@@ -1930,6 +1932,7 @@ export default function LiveRoomPage() {
       );
     } catch (error: any) {
       console.error("LiveKit Error:", error);
+      guestAutoJoinStartedRef.current = false;
       alert(
         `LiveKit Error\n\nName: ${error?.name}\nMessage: ${error?.message}`,
       );
@@ -1937,6 +1940,29 @@ export default function LiveRoomPage() {
       setStarting(false);
     }
   }
+
+
+
+  useEffect(() => {
+    if (!stream?.id) return;
+    if (role !== "guest") return;
+    if (pendingInvite) return;
+    if (roomRef.current || room || starting) return;
+    if (guestAutoJoinStartedRef.current) return;
+
+    guestAutoJoinStartedRef.current = true;
+    setStatusText("Host accepted your request. Starting your camera...");
+
+    const timer = setTimeout(() => {
+      startLiveStream().catch((error) => {
+        guestAutoJoinStartedRef.current = false;
+        console.error("Guest auto-join failed:", error);
+        setStatusText("Unable to auto-join. Tap Join Stream to try again.");
+      });
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [stream?.id, role, pendingInvite, room, starting]);
 
   async function stopLiveStream() {
     try {
