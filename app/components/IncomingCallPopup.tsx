@@ -28,6 +28,8 @@ type CallRequest = {
   created_at: string;
   accepted_at: string | null;
   declined_at: string | null;
+  expires_at?: string | null;
+  ring_status?: string | null;
   caller?: Profile | null;
   stream?: CallStream | null;
 };
@@ -36,10 +38,17 @@ export default function IncomingCallPopup() {
   const [userId, setUserId] = useState<string | null>(null);
   const [call, setCall] = useState<CallRequest | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [soundBlocked, setSoundBlocked] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const activeCallIdRef = useRef<string | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const vibrateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let mounted = true;
+    let channel: any = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     async function init() {
       const {
@@ -49,10 +58,10 @@ export default function IncomingCallPopup() {
       if (!mounted || !user) return;
 
       setUserId(user.id);
-      await loadLatestIncomingCall(user.id);
+      await loadLatestIncomingCall(user.id, false);
 
-      const channel = supabase
-        .channel(`incoming-private-calls-${user.id}`)
+      channel = supabase
+        .channel(`incoming-private-calls-${user.id}-${Date.now()}`)
         .on(
           "postgres_changes",
           {
@@ -63,10 +72,8 @@ export default function IncomingCallPopup() {
           },
           async (payload) => {
             const newCall = payload.new as CallRequest;
-
             if (newCall.status === "pending") {
-              await loadSingleCall(newCall.id);
-              playRing();
+              await loadSingleCall(newCall.id, true);
             }
           }
         )
@@ -81,21 +88,29 @@ export default function IncomingCallPopup() {
           async (payload) => {
             const updated = payload.new as CallRequest;
 
-            if (updated.status !== "pending") {
-              setCall((current) => {
-                if (current?.id === updated.id) return null;
-                return current;
-              });
-              stopRing();
+            if (updated.status === "pending") {
+              await loadSingleCall(updated.id, true);
+              return;
             }
+
+            setCall((current) => {
+              if (current?.id === updated.id) {
+                activeCallIdRef.current = null;
+                stopRing();
+                setLoadingAction(false);
+                return null;
+              }
+              return current;
+            });
           }
         )
         .subscribe();
 
-      return () => {
-        mounted = false;
-        supabase.removeChannel(channel);
-      };
+      // Android WebView / browser realtime can miss events after navigation or sleep.
+      // Polling keeps the popup reliable for repeat calls.
+      pollTimer = setInterval(async () => {
+        await loadLatestIncomingCall(user.id, true);
+      }, 3000);
     }
 
     init();
@@ -103,32 +118,86 @@ export default function IncomingCallPopup() {
     return () => {
       mounted = false;
       stopRing();
+      if (channel) supabase.removeChannel(channel);
+      if (pollTimer) clearInterval(pollTimer);
     };
   }, []);
 
-  async function loadLatestIncomingCall(currentUserId: string) {
-    const { data } = await supabase
+  useEffect(() => {
+    // Browsers and Android WebView block sound until the user has interacted once.
+    // This unlocks the audio after any tap/click/key press inside the app.
+    const unlock = async () => {
+      if (audioUnlockedRef.current || !audioRef.current) return;
+
+      try {
+        audioRef.current.volume = 0;
+        await audioRef.current.play();
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.volume = 1;
+        audioUnlockedRef.current = true;
+        setSoundBlocked(false);
+      } catch {
+        // Still blocked until a stronger user gesture occurs.
+      }
+    };
+
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("touchstart", unlock, { passive: true });
+    window.addEventListener("click", unlock);
+    window.addEventListener("keydown", unlock);
+
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  async function loadLatestIncomingCall(currentUserId: string, shouldRing: boolean) {
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
       .from("private_call_requests")
       .select("*")
       .eq("receiver_id", currentUserId)
       .eq("status", "pending")
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (data?.id) {
-      await loadSingleCall(data.id);
+    if (error) {
+      console.warn("Incoming call lookup skipped:", error.message);
+      return;
     }
+
+    if (!data?.id) return;
+    if (activeCallIdRef.current === data.id) return;
+
+    await loadSingleCall(data.id, shouldRing);
   }
 
-  async function loadSingleCall(callId: string) {
+  async function loadSingleCall(callId: string, shouldRing: boolean) {
+    const now = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("private_call_requests")
       .select("*")
       .eq("id", callId)
       .maybeSingle();
 
-    if (error || !data || data.status !== "pending") return;
+    if (error || !data) return;
+    if (data.status !== "pending") return;
+
+    if (data.expires_at && new Date(data.expires_at) <= new Date(now)) {
+      await supabase
+        .from("private_call_requests")
+        .update({ status: "missed", ring_status: "expired" })
+        .eq("id", data.id);
+      return;
+    }
 
     const [{ data: caller }, { data: stream }] = await Promise.all([
       supabase
@@ -145,22 +214,85 @@ export default function IncomingCallPopup() {
         : Promise.resolve({ data: null }),
     ]);
 
-    setCall({
-      ...data,
-      caller,
-      stream,
-    });
+    activeCallIdRef.current = data.id;
+    setLoadingAction(false);
+    setCall({ ...data, caller, stream });
+
+    if (shouldRing) playRing();
+  }
+
+  async function unlockAndPlayRing() {
+    if (!audioRef.current) return;
+
+    try {
+      audioRef.current.volume = 1;
+      audioRef.current.currentTime = 0;
+      await audioRef.current.play();
+      audioUnlockedRef.current = true;
+      setSoundBlocked(false);
+      startVibration();
+    } catch {
+      setSoundBlocked(true);
+      startVibration();
+    }
   }
 
   function playRing() {
     try {
-      if (!audioRef.current) return;
+      startVibration();
+
+      if (!audioRef.current) {
+        setSoundBlocked(true);
+        return;
+      }
+
+      audioRef.current.volume = 1;
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
+
+      audioRef.current
+        .play()
+        .then(() => {
+          audioUnlockedRef.current = true;
+          setSoundBlocked(false);
+        })
+        .catch(() => {
+          // This is normal on Android/browser until user taps once.
+          setSoundBlocked(true);
+        });
+    } catch {
+      setSoundBlocked(true);
+    }
+  }
+
+  function startVibration() {
+    try {
+      if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+
+      navigator.vibrate([700, 300, 700]);
+
+      if (vibrateTimerRef.current) clearInterval(vibrateTimerRef.current);
+      vibrateTimerRef.current = setInterval(() => {
+        try {
+          navigator.vibrate([700, 300, 700]);
+        } catch {}
+      }, 2500);
+    } catch {}
+  }
+
+  function stopVibration() {
+    try {
+      if (vibrateTimerRef.current) {
+        clearInterval(vibrateTimerRef.current);
+        vibrateTimerRef.current = null;
+      }
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(0);
+      }
     } catch {}
   }
 
   function stopRing() {
+    stopVibration();
     try {
       if (!audioRef.current) return;
       audioRef.current.pause();
@@ -172,7 +304,6 @@ export default function IncomingCallPopup() {
     if (!userId || !call || !call.stream_id || call.receiver_id !== userId) return;
 
     setLoadingAction(true);
-
     const price = Number(call.stream?.private_call_price || 0);
 
     if (price > 0) {
@@ -186,16 +317,16 @@ export default function IncomingCallPopup() {
         return;
       }
     } else {
-  const { error } = await supabase.rpc("accept_private_call_request", {
-    p_call_request_id: call.id,
-  });
+      const { error } = await supabase.rpc("accept_private_call_request", {
+        p_call_request_id: call.id,
+      });
 
-  if (error) {
-    setLoadingAction(false);
-    alert(error.message);
-    return;
-  }
-}
+      if (error) {
+        setLoadingAction(false);
+        alert(error.message);
+        return;
+      }
+    }
 
     await supabase.from("notifications").insert([
       {
@@ -212,6 +343,7 @@ export default function IncomingCallPopup() {
     ]);
 
     stopRing();
+    activeCallIdRef.current = null;
     window.location.href = `/live/${call.stream_id}`;
   }
 
@@ -224,6 +356,7 @@ export default function IncomingCallPopup() {
       .from("private_call_requests")
       .update({
         status: "declined",
+        ring_status: "declined",
         declined_at: new Date().toISOString(),
       })
       .eq("id", call.id);
@@ -234,45 +367,31 @@ export default function IncomingCallPopup() {
       return;
     }
 
-    if (call.stream_id) {
-      await supabase
-        .from("stream_guests")
-        .update({ status: "declined" })
-        .eq("stream_id", call.stream_id)
-        .eq("guest_id", userId);
-    }
-
     stopRing();
+    activeCallIdRef.current = null;
     setCall(null);
     setLoadingAction(false);
   }
 
-  if (!call) {
-    return (
-      <audio
-        ref={audioRef}
-        src="/sounds/incoming-call.mp3"
-        loop
-        preload="auto"
-        className="hidden"
-      />
-    );
-  }
+  const audioElement = (
+    <audio
+      ref={audioRef}
+      src="/sounds/incoming-call.mp3"
+      loop
+      preload="auto"
+      playsInline
+      className="hidden"
+    />
+  );
 
-  const callerName =
-    call.caller?.display_name || call.caller?.username || "Unknown caller";
+  if (!call) return audioElement;
 
+  const callerName = call.caller?.display_name || call.caller?.username || "Unknown caller";
   const price = Number(call.stream?.private_call_price || 0);
 
   return (
     <>
-      <audio
-        ref={audioRef}
-        src="/sounds/incoming-call.mp3"
-        loop
-        preload="auto"
-        className="hidden"
-      />
+      {audioElement}
 
       <div className="fixed inset-0 z-[99998] flex items-end justify-center bg-black/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:items-center sm:pb-4">
         <div className="w-full max-w-sm overflow-hidden rounded-[2rem] border border-purple-500/30 bg-zinc-950 text-white shadow-2xl">
@@ -305,6 +424,15 @@ export default function IncomingCallPopup() {
           </div>
 
           <div className="space-y-3 p-5">
+            {soundBlocked && (
+              <button
+                onClick={unlockAndPlayRing}
+                className="w-full rounded-2xl border border-yellow-400/40 bg-yellow-500/10 px-5 py-3 text-sm font-black text-yellow-200 hover:bg-yellow-500/20"
+              >
+                🔊 Tap to Enable Ringtone
+              </button>
+            )}
+
             <button
               onClick={acceptCall}
               disabled={loadingAction}
