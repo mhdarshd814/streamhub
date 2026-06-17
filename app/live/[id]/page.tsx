@@ -117,7 +117,9 @@ export default function LiveRoomPage() {
       return chat.paid_amount;
     }
 
-    const match = chat.message.match(/^\[PAID_MESSAGE:AED\s*(\d+(?:\.\d+)?)\]\s*/i);
+    const match = chat.message.match(
+      /^\[PAID_MESSAGE:AED\s*(\d+(?:\.\d+)?)\]\s*/i,
+    );
 
     if (!match) return 0;
 
@@ -125,11 +127,18 @@ export default function LiveRoomPage() {
   }
 
   function isPaidMessage(chat: ChatMessage) {
-    return !!chat.is_paid || chat.message_type === "paid_message" || getPaidMessageAmount(chat) > 0;
+    return (
+      !!chat.is_paid ||
+      chat.message_type === "paid_message" ||
+      getPaidMessageAmount(chat) > 0
+    );
   }
 
   function getDisplayMessage(chat: ChatMessage) {
-    return chat.message.replace(/^\[PAID_MESSAGE:AED\s*\d+(?:\.\d+)?\]\s*/i, "");
+    return chat.message.replace(
+      /^\[PAID_MESSAGE:AED\s*\d+(?:\.\d+)?\]\s*/i,
+      "",
+    );
   }
 
   function isMobileDevice() {
@@ -156,7 +165,7 @@ export default function LiveRoomPage() {
   }
 
   function getFallbackVideoProfiles(
-    facingMode: "user" | "environment" = "user"
+    facingMode: "user" | "environment" = "user",
   ) {
     const mobile = isMobileDevice();
 
@@ -187,7 +196,7 @@ export default function LiveRoomPage() {
   }
 
   function getMediaVideoConstraints(
-    facingMode: "user" | "environment" = "user"
+    facingMode: "user" | "environment" = "user",
   ): MediaTrackConstraints {
     const mobile = isMobileDevice();
 
@@ -229,7 +238,7 @@ export default function LiveRoomPage() {
       dynacast: true,
       audioCaptureDefaults: getMediaAudioConstraints(),
       videoCaptureDefaults: getMediaVideoConstraints(
-        usingFrontCamera ? "user" : "environment"
+        usingFrontCamera ? "user" : "environment",
       ),
       publishDefaults: {
         simulcast: true,
@@ -248,12 +257,11 @@ export default function LiveRoomPage() {
     };
   }
 
-
   async function verifyMediaPermissions() {
     try {
       const permissionStream = await navigator.mediaDevices.getUserMedia({
         video: getMediaVideoConstraints(
-          usingFrontCamera ? "user" : "environment"
+          usingFrontCamera ? "user" : "environment",
         ),
         audio: getMediaAudioConstraints(),
       });
@@ -261,7 +269,10 @@ export default function LiveRoomPage() {
       permissionStream.getTracks().forEach((track) => track.stop());
       return true;
     } catch (optimizedError) {
-      console.warn("Optimized media permission request failed. Trying basic permission request.", optimizedError);
+      console.warn(
+        "Optimized media permission request failed. Trying basic permission request.",
+        optimizedError,
+      );
 
       try {
         const fallbackStream = await navigator.mediaDevices.getUserMedia({
@@ -272,9 +283,12 @@ export default function LiveRoomPage() {
         fallbackStream.getTracks().forEach((track) => track.stop());
         return true;
       } catch (basicError) {
-        console.error("Basic camera/microphone permission request failed:", basicError);
+        console.error(
+          "Basic camera/microphone permission request failed:",
+          basicError,
+        );
         alert(
-          "Camera or microphone permission was denied. Please allow both camera and microphone access in your browser/app settings, then try again."
+          "Camera or microphone permission was denied. Please allow both camera and microphone access in your browser/app settings, then try again.",
         );
         return false;
       }
@@ -283,13 +297,16 @@ export default function LiveRoomPage() {
 
   async function enableCameraSafely(
     targetRoom: Room,
-    facingMode: "user" | "environment" = "user"
+    facingMode: "user" | "environment" = "user",
   ) {
     const attempts = getFallbackVideoProfiles(facingMode);
 
     for (const options of attempts) {
       try {
-        await targetRoom.localParticipant.setCameraEnabled(true, options as any);
+        await targetRoom.localParticipant.setCameraEnabled(
+          true,
+          options as any,
+        );
         setTimeout(() => attachLocalVideoTrack(targetRoom), 150);
         setTimeout(() => attachLocalVideoTrack(targetRoom), 500);
         return true;
@@ -302,7 +319,7 @@ export default function LiveRoomPage() {
     }
 
     alert(
-      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin."
+      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.",
     );
     return false;
   }
@@ -312,10 +329,16 @@ export default function LiveRoomPage() {
 
     for (const options of attempts) {
       try {
-        await targetRoom.localParticipant.setMicrophoneEnabled(true, options as any);
+        await targetRoom.localParticipant.setMicrophoneEnabled(
+          true,
+          options as any,
+        );
         return true;
       } catch (error) {
-        console.warn("Microphone enable attempt failed. Trying fallback.", error);
+        console.warn(
+          "Microphone enable attempt failed. Trying fallback.",
+          error,
+        );
         try {
           await targetRoom.localParticipant.setMicrophoneEnabled(false);
         } catch {}
@@ -323,7 +346,7 @@ export default function LiveRoomPage() {
     }
 
     alert(
-      "Microphone could not start on this device. Please check microphone permission, then rejoin."
+      "Microphone could not start on this device. Please check microphone permission, then rejoin.",
     );
     return false;
   }
@@ -480,7 +503,7 @@ export default function LiveRoomPage() {
               if (exists) return current;
               return [...current, newMessage];
             });
-          }
+          },
         )
         .on(
           "postgres_changes",
@@ -495,10 +518,10 @@ export default function LiveRoomPage() {
 
             if (deletedMessage?.id) {
               setChatMessages((current) =>
-                current.filter((item) => item.id !== deletedMessage.id)
+                current.filter((item) => item.id !== deletedMessage.id),
               );
             }
-          }
+          },
         )
         .subscribe();
 
@@ -522,7 +545,7 @@ export default function LiveRoomPage() {
             if (updatedStream.status !== "live") {
               setChatMessages([]);
             }
-          }
+          },
         )
         .subscribe();
 
@@ -538,7 +561,7 @@ export default function LiveRoomPage() {
           },
           async () => {
             await getRealViewerCount();
-          }
+          },
         )
         .subscribe();
 
@@ -554,7 +577,7 @@ export default function LiveRoomPage() {
           },
           async () => {
             await loadGuestInvites();
-          }
+          },
         )
         .subscribe();
 
@@ -589,7 +612,7 @@ export default function LiveRoomPage() {
               setStatusText("Private call missed. No answer.");
               await loadGuestInvites();
             }
-          }
+          },
         )
         .subscribe();
 
@@ -628,7 +651,10 @@ export default function LiveRoomPage() {
   }, [chatMessages]);
 
   useEffect(() => {
-    if (focusedVideo !== "local" && !remoteVideos.some((item) => item.id === focusedVideo)) {
+    if (
+      focusedVideo !== "local" &&
+      !remoteVideos.some((item) => item.id === focusedVideo)
+    ) {
       setFocusedVideo("local");
     }
   }, [focusedVideo, remoteVideos]);
@@ -654,15 +680,16 @@ export default function LiveRoomPage() {
       .lt("expires_at", now);
 
     if (expiredLookupError) {
-      console.warn("Private call expiry lookup skipped:", expiredLookupError.message);
+      console.warn(
+        "Private call expiry lookup skipped:",
+        expiredLookupError.message,
+      );
       return;
     }
 
     if (!expiredCalls || expiredCalls.length === 0) return;
 
-    const expiredIds = expiredCalls
-      .map((item: any) => item.id)
-      .filter(Boolean);
+    const expiredIds = expiredCalls.map((item: any) => item.id).filter(Boolean);
 
     if (expiredIds.length === 0) return;
 
@@ -689,7 +716,7 @@ export default function LiveRoomPage() {
           .eq("stream_id", item.stream_id)
           .eq("guest_id", item.receiver_id)
           .eq("status", "pending");
-      })
+      }),
     );
 
     await loadGuestInvites();
@@ -776,7 +803,7 @@ export default function LiveRoomPage() {
 
     setRemoteVideos((current) => {
       const exists = current.some(
-        (item) => item.id === trackId || item.track === track
+        (item) => item.id === trackId || item.track === track,
       );
 
       if (exists) return current;
@@ -804,7 +831,7 @@ export default function LiveRoomPage() {
     const trackId = track.sid || track.trackSid || track.mediaStreamTrack?.id;
 
     setRemoteVideos((current) =>
-      current.filter((item) => item.id !== trackId && item.track !== track)
+      current.filter((item) => item.id !== trackId && item.track !== track),
     );
   }
 
@@ -814,7 +841,10 @@ export default function LiveRoomPage() {
     targetRoom.remoteParticipants.forEach((participant: any) => {
       participant.trackPublications.forEach((publication: any) => {
         try {
-          if (publication?.setSubscribed && publication.isSubscribed === false) {
+          if (
+            publication?.setSubscribed &&
+            publication.isSubscribed === false
+          ) {
             publication.setSubscribed(true);
           }
         } catch (error) {
@@ -865,7 +895,9 @@ export default function LiveRoomPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Failed to remove participant from LiveKit");
+      throw new Error(
+        data.error || "Failed to remove participant from LiveKit",
+      );
     }
   }
 
@@ -882,7 +914,7 @@ export default function LiveRoomPage() {
           avatar_url,
           is_banned
         )
-      `
+      `,
       )
       .eq("stream_id", streamId)
       .order("created_at", { ascending: false });
@@ -920,14 +952,16 @@ export default function LiveRoomPage() {
     }
 
     const alreadyInvitedIds = guestInvites
-      .filter((invite) => invite.status === "pending" || invite.status === "accepted")
+      .filter(
+        (invite) => invite.status === "pending" || invite.status === "accepted",
+      )
       .map((invite) => invite.guest_id);
 
     const filtered = (data || []).filter(
       (profile) =>
         profile.id !== currentUserId &&
         !profile.is_banned &&
-        !alreadyInvitedIds.includes(profile.id)
+        !alreadyInvitedIds.includes(profile.id),
     );
 
     setCreatorResults(filtered);
@@ -1018,7 +1052,10 @@ export default function LiveRoomPage() {
       .limit(3);
 
     if (titleMatchError) {
-      console.warn("Scheduled stream title lookup skipped:", titleMatchError.message);
+      console.warn(
+        "Scheduled stream title lookup skipped:",
+        titleMatchError.message,
+      );
       return [];
     }
 
@@ -1049,7 +1086,10 @@ export default function LiveRoomPage() {
     (reminders || []).forEach((item: any) => {
       if (!item.user_id || item.user_id === currentUserId) return;
 
-      if (stream?.visibility === "subscribers" && !activeSubscriberIds.has(item.user_id)) {
+      if (
+        stream?.visibility === "subscribers" &&
+        !activeSubscriberIds.has(item.user_id)
+      ) {
         return;
       }
 
@@ -1090,12 +1130,16 @@ export default function LiveRoomPage() {
       new Set(
         (invites || [])
           .map((invite: any) => invite.guest_id)
-          .filter((guestId: string | null) => guestId && guestId !== currentUserId)
-      )
+          .filter(
+            (guestId: string | null) => guestId && guestId !== currentUserId,
+          ),
+      ),
     ) as string[];
 
     if (recipients.length === 0) {
-      setStatusText("Private call started. No invited guest was found to notify.");
+      setStatusText(
+        "Private call started. No invited guest was found to notify.",
+      );
       return;
     }
 
@@ -1110,7 +1154,7 @@ export default function LiveRoomPage() {
       .eq("link", link);
 
     const alreadyNotifiedIds = new Set(
-      (existingNotifications || []).map((item: any) => item.user_id)
+      (existingNotifications || []).map((item: any) => item.user_id),
     );
 
     const notifications = recipients
@@ -1130,7 +1174,10 @@ export default function LiveRoomPage() {
         .insert(notifications);
 
       if (notificationError) {
-        console.error("Private call notification error:", notificationError.message);
+        console.error(
+          "Private call notification error:",
+          notificationError.message,
+        );
       }
     }
 
@@ -1156,14 +1203,14 @@ export default function LiveRoomPage() {
           } catch (error) {
             console.error("Private call push send failed:", error);
           }
-        })
+        }),
       );
     }
 
     setStatusText(
       notifications.length > 0
         ? "Private call started. Invited guest has been notified."
-        : "Private call started. Invited guest was already notified."
+        : "Private call started. Invited guest was already notified.",
     );
   }
 
@@ -1183,7 +1230,11 @@ export default function LiveRoomPage() {
     const hostName =
       hostProfile?.display_name || hostProfile?.username || "A creator";
 
-    const [{ data: followers }, { data: subscribers }, { data: invitedGuests }] = await Promise.all([
+    const [
+      { data: followers },
+      { data: subscribers },
+      { data: invitedGuests },
+    ] = await Promise.all([
       supabase
         .from("follows")
         .select("follower_id")
@@ -1208,7 +1259,8 @@ export default function LiveRoomPage() {
       }
     });
 
-    const reminderRecipientIds = await loadReminderRecipientIds(activeSubscriberIds);
+    const reminderRecipientIds =
+      await loadReminderRecipientIds(activeSubscriberIds);
 
     const recipientIds = new Set<string>();
 
@@ -1255,7 +1307,7 @@ export default function LiveRoomPage() {
       .eq("link", link);
 
     const alreadyNotifiedIds = new Set(
-      (existingNotifications || []).map((item: any) => item.user_id)
+      (existingNotifications || []).map((item: any) => item.user_id),
     );
 
     const notifications = recipients
@@ -1302,7 +1354,7 @@ export default function LiveRoomPage() {
         } catch (error) {
           console.error("Push send failed:", error);
         }
-      })
+      }),
     );
   }
 
@@ -1310,29 +1362,31 @@ export default function LiveRoomPage() {
     if (!targetRoom) return;
 
     const videoPublication = Array.from(
-      targetRoom.localParticipant.videoTrackPublications.values()
+      targetRoom.localParticipant.videoTrackPublications.values(),
     )[0];
 
     const videoTrack = videoPublication?.track;
 
     if (!videoTrack) return;
 
-    [localVideoRef.current, theaterLocalVideoRef.current].forEach((videoElement) => {
-      if (!videoElement) return;
+    [localVideoRef.current, theaterLocalVideoRef.current].forEach(
+      (videoElement) => {
+        if (!videoElement) return;
 
-      try {
-        videoTrack.attach(videoElement);
-        videoElement.muted = true;
-        videoElement.playsInline = true;
-        videoElement.autoplay = true;
-        videoElement.style.width = "100%";
-        videoElement.style.height = "100%";
-        videoElement.style.objectFit = "cover";
-        videoElement.play().catch(() => {});
-      } catch (error) {
-        console.error("Local video attach error:", error);
-      }
-    });
+        try {
+          videoTrack.attach(videoElement);
+          videoElement.muted = true;
+          videoElement.playsInline = true;
+          videoElement.autoplay = true;
+          videoElement.style.width = "100%";
+          videoElement.style.height = "100%";
+          videoElement.style.objectFit = "cover";
+          videoElement.play().catch(() => {});
+        } catch (error) {
+          console.error("Local video attach error:", error);
+        }
+      },
+    );
   }
 
   async function switchCameraView() {
@@ -1347,7 +1401,7 @@ export default function LiveRoomPage() {
       if (!cameraOn) {
         const cameraStarted = await enableCameraSafely(
           activeRoom,
-          usingFrontCamera ? "user" : "environment"
+          usingFrontCamera ? "user" : "environment",
         );
 
         setCameraOn(cameraStarted);
@@ -1358,14 +1412,16 @@ export default function LiveRoomPage() {
       const nextFacingMode = usingFrontCamera ? "environment" : "user";
 
       const videoPublication = Array.from(
-        activeRoom.localParticipant.videoTrackPublications.values()
+        activeRoom.localParticipant.videoTrackPublications.values(),
       )[0];
 
       const videoTrack: any = videoPublication?.track;
 
       if (videoTrack?.restartTrack) {
         await videoTrack.restartTrack(
-          getVideoQualityProfile(nextFacingMode as "user" | "environment") as any
+          getVideoQualityProfile(
+            nextFacingMode as "user" | "environment",
+          ) as any,
         );
 
         setUsingFrontCamera(!usingFrontCamera);
@@ -1387,7 +1443,9 @@ export default function LiveRoomPage() {
         return;
       }
 
-      alert("Unable to switch camera. Some desktop browsers and devices do not expose a second camera.");
+      alert(
+        "Unable to switch camera. Some desktop browsers and devices do not expose a second camera.",
+      );
     }
   }
 
@@ -1462,8 +1520,7 @@ export default function LiveRoomPage() {
 
       if (!session?.access_token) {
         router.push("/login");
-        return;        
-        
+        return;
       }
 
       const participantName =
@@ -1512,25 +1569,31 @@ export default function LiveRoomPage() {
         setTimeout(() => syncRemoteParticipantTracks(newRoom), 1000);
       });
 
-      (newRoom as any).on((RoomEvent as any).TrackPublished, (publication: any) => {
-        try {
-          if (publication?.setSubscribed) publication.setSubscribed(true);
-        } catch (error) {
-          console.warn("Track subscription request failed:", error);
-        }
+      (newRoom as any).on(
+        (RoomEvent as any).TrackPublished,
+        (publication: any) => {
+          try {
+            if (publication?.setSubscribed) publication.setSubscribed(true);
+          } catch (error) {
+            console.warn("Track subscription request failed:", error);
+          }
 
-        setTimeout(() => syncRemoteParticipantTracks(newRoom), 250);
-      });
+          setTimeout(() => syncRemoteParticipantTracks(newRoom), 250);
+        },
+      );
 
-      newRoom.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
-        if (track.kind === Track.Kind.Audio) {
-          attachRemoteAudio(track);
-        }
+      newRoom.on(
+        RoomEvent.TrackSubscribed,
+        (track, _publication, participant) => {
+          if (track.kind === Track.Kind.Audio) {
+            attachRemoteAudio(track);
+          }
 
-        if (track.kind === Track.Kind.Video) {
-          addRemoteVideo(track, participant.name || participant.identity);
-        }
-      });
+          if (track.kind === Track.Kind.Video) {
+            addRemoteVideo(track, participant.name || participant.identity);
+          }
+        },
+      );
 
       newRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
         try {
@@ -1556,7 +1619,7 @@ export default function LiveRoomPage() {
         setStatusText(
           role === "host"
             ? "You are live as host."
-            : "You reconnected as guest streamer."
+            : "You reconnected as guest streamer.",
         );
       });
 
@@ -1572,7 +1635,7 @@ export default function LiveRoomPage() {
 
       const cameraStarted = await enableCameraSafely(
         newRoom,
-        usingFrontCamera ? "user" : "environment"
+        usingFrontCamera ? "user" : "environment",
       );
       const micStarted = await enableMicrophoneSafely(newRoom);
 
@@ -1601,12 +1664,12 @@ export default function LiveRoomPage() {
       setStatusText(
         role === "host"
           ? "You are live as host."
-          : "You joined as guest streamer."
+          : "You joined as guest streamer.",
       );
     } catch (error: any) {
       console.error("LiveKit Error:", error);
       alert(
-        `LiveKit Error\n\nName: ${error?.name}\nMessage: ${error?.message}`
+        `LiveKit Error\n\nName: ${error?.name}\nMessage: ${error?.message}`,
       );
     } finally {
       setStarting(false);
@@ -1661,7 +1724,7 @@ export default function LiveRoomPage() {
     if (nextCameraState) {
       const cameraStarted = await enableCameraSafely(
         roomRef.current,
-        usingFrontCamera ? "user" : "environment"
+        usingFrontCamera ? "user" : "environment",
       );
       setCameraOn(cameraStarted);
       return;
@@ -1801,7 +1864,7 @@ export default function LiveRoomPage() {
     }
 
     const confirmed = confirm(
-      `Mute ${chat.username}? They will not be able to send chat messages in this stream.`
+      `Mute ${chat.username}? They will not be able to send chat messages in this stream.`,
     );
 
     if (!confirmed) return;
@@ -1836,7 +1899,7 @@ export default function LiveRoomPage() {
     }
 
     const confirmed = confirm(
-      `Remove ${chat.username} from this stream? This will kick them from LiveKit, block them, mute them, and remove their viewer record.`
+      `Remove ${chat.username} from this stream? This will kick them from LiveKit, block them, mute them, and remove their viewer record.`,
     );
 
     if (!confirmed) return;
@@ -1884,7 +1947,7 @@ export default function LiveRoomPage() {
       .eq("user_id", chat.user_id);
 
     setChatMessages((current) =>
-      current.filter((item) => item.user_id !== chat.user_id)
+      current.filter((item) => item.user_id !== chat.user_id),
     );
 
     setModeratingUserId(null);
@@ -1936,61 +1999,34 @@ export default function LiveRoomPage() {
       return;
     }
 
+    const isPrivateCall = stream.visibility === "private";
+
     const alreadyInvited = guestInvites.some(
-     (invite) =>
-    invite.guest_id === profile.id &&
-    (invite.status === "pending" || invite.status === "accepted")
+      (invite) =>
+        invite.guest_id === profile.id &&
+        (invite.status === "pending" || invite.status === "accepted"),
     );
 
-    if (alreadyInvited) {
+    if (!isPrivateCall && alreadyInvited) {
       alert("This creator is already invited.");
       return;
     }
 
     setInviteSendingId(profile.id);
 
-    // Clean old declined/removed guest rows before creating a fresh private-call invite.
-    // Without this, old failed tests keep showing as declined/removed and can confuse the call flow.
-    await supabase
-      .from("stream_guests")
-      .delete()
-      .eq("stream_id", stream.id)
-      .eq("guest_id", profile.id)
-      .in("status", ["declined", "removed"]);
-
-    await supabase
-      .from("private_call_requests")
-      .update({
-        status: "missed",
-        ring_status: "expired",
-      })
-      .eq("stream_id", stream.id)
-      .eq("receiver_id", profile.id)
-      .eq("status", "pending");
-
-    const { data: guestInvite, error } = await supabase
-      .from("stream_guests")
-      .insert([
-        {
-          stream_id: stream.id,
-          host_id: currentUserId,
-          guest_id: profile.id,
-          status: "pending",
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      setInviteSendingId(null);
-      alert(error.message);
-      return;
-    }
-
-    const isPrivateCall = stream.visibility === "private";
-    const expiresAt = new Date(Date.now() + 30000).toISOString();
-
     if (isPrivateCall) {
+      // Private calls must NOT create a pending stream_guests row here.
+      // The accepted stream_guests row is created only after the receiver accepts
+      // through accept_private_call_request(). This prevents Access Denied caused
+      // by stale pending/declined guest rows.
+      await supabase
+        .from("stream_guests")
+        .delete()
+        .eq("stream_id", stream.id)
+        .eq("guest_id", profile.id);
+
+      const expiresAt = new Date(Date.now() + 30000).toISOString();
+
       const { error: callRequestError } = await supabase
         .from("private_call_requests")
         .insert([
@@ -2005,14 +2041,28 @@ export default function LiveRoomPage() {
         ]);
 
       if (callRequestError) {
-        await supabase
-          .from("stream_guests")
-          .update({ status: "removed" })
-          .eq("id", guestInvite.id);
-
         setInviteSendingId(null);
         alert(callRequestError.message);
         await loadGuestInvites();
+        return;
+      }
+    } else {
+      const { error } = await supabase
+        .from("stream_guests")
+        .insert([
+          {
+            stream_id: stream.id,
+            host_id: currentUserId,
+            guest_id: profile.id,
+            status: "pending",
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        setInviteSendingId(null);
+        alert(error.message);
         return;
       }
     }
@@ -2138,7 +2188,7 @@ export default function LiveRoomPage() {
     if (!allowed) return;
 
     const confirmed = confirm(
-      "Remove this guest from the stream? They will be kicked from LiveKit and will no longer be allowed to join this room."
+      "Remove this guest from the stream? They will be kicked from LiveKit and will no longer be allowed to join this room.",
     );
 
     if (!confirmed) return;
@@ -2236,7 +2286,7 @@ export default function LiveRoomPage() {
   const isSubscribersOnly = stream.visibility === "subscribers";
   const canSendChat = isLive && !!room && !isGlobalMuted;
   const activeGuestInvites = guestInvites.filter(
-    (invite) => invite.status === "pending" || invite.status === "accepted"
+    (invite) => invite.status === "pending" || invite.status === "accepted",
   );
 
   return (
@@ -2274,8 +2324,18 @@ export default function LiveRoomPage() {
               <>
                 {remoteVideos.length > 0 ? (
                   <RemoteVideoTile
-                    track={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).track}
-                    identity={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).identity}
+                    track={
+                      (
+                        remoteVideos.find((item) => item.id === focusedVideo) ||
+                        remoteVideos[0]
+                      ).track
+                    }
+                    identity={
+                      (
+                        remoteVideos.find((item) => item.id === focusedVideo) ||
+                        remoteVideos[0]
+                      ).identity
+                    }
                     className="h-full w-full rounded-none"
                   />
                 ) : (
@@ -2297,7 +2357,11 @@ export default function LiveRoomPage() {
                     muted
                     playsInline
                     className="absolute inset-0 h-full w-full object-cover"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
 
                   <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
@@ -2355,7 +2419,7 @@ export default function LiveRoomPage() {
                     setFocusedVideo((current) =>
                       current === "local" && remoteVideos.length > 0
                         ? remoteVideos[0].id
-                        : "local"
+                        : "local",
                     )
                   }
                   disabled={remoteVideos.length === 0}
@@ -2381,703 +2445,745 @@ export default function LiveRoomPage() {
       )}
 
       <div className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <p className="mb-2 text-sm font-semibold text-red-400">
-              {role === "host" ? "Host Studio" : "Guest Studio"}
-            </p>
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-6 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="mb-2 text-sm font-semibold text-red-400">
+                {role === "host" ? "Host Studio" : "Guest Studio"}
+              </p>
 
-            <h1 className="mb-3 break-words text-3xl font-black sm:text-4xl lg:text-5xl">
-              {stream.title}
-            </h1>
+              <h1 className="mb-3 break-words text-3xl font-black sm:text-4xl lg:text-5xl">
+                {stream.title}
+              </h1>
 
-            <p className="text-sm text-gray-400 sm:text-base lg:text-lg">
-              {stream.category} •{" "}
-              <span className={isLive ? "text-green-500" : "text-gray-500"}>
-                {isLive ? "Live Now" : "Offline"}
-              </span>{" "}
-              •{" "}
-              <span
-                className={
-                  isPrivate
-                    ? "text-purple-400"
+              <p className="text-sm text-gray-400 sm:text-base lg:text-lg">
+                {stream.category} •{" "}
+                <span className={isLive ? "text-green-500" : "text-gray-500"}>
+                  {isLive ? "Live Now" : "Offline"}
+                </span>{" "}
+                •{" "}
+                <span
+                  className={
+                    isPrivate
+                      ? "text-purple-400"
+                      : isSubscribersOnly
+                        ? "text-yellow-300"
+                        : "text-green-400"
+                  }
+                >
+                  {isPrivate
+                    ? "Private Video Call"
                     : isSubscribersOnly
-                    ? "text-yellow-300"
-                    : "text-green-400"
+                      ? "Subscribers Only"
+                      : "Public Stream"}
+                </span>
+              </p>
+
+              <p className="mt-2 text-sm text-gray-500">{statusText}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+              <button
+                onClick={copyViewerLink}
+                className="rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold hover:border-red-600 sm:px-5"
+              >
+                {copied
+                  ? "Copied!"
+                  : isPrivate
+                    ? "Copy Private Link"
+                    : "Copy Watch Link"}
+              </button>
+
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold hover:bg-gray-700 sm:px-5"
+              >
+                Dashboard
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:mb-8 lg:grid-cols-4 lg:gap-6">
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+              <p className="mb-2 text-sm text-gray-400">
+                {isPrivate ? "Private Viewers" : "Live Viewers"}
+              </p>
+              <h2 className="text-3xl font-black sm:text-4xl">{viewerCount}</h2>
+            </div>
+
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+              <p className="mb-2 text-sm text-gray-400">Likes</p>
+              <h2 className="text-3xl font-black text-red-500 sm:text-4xl">
+                {isPrivate ? "Off" : likes}
+              </h2>
+            </div>
+
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+              <p className="mb-2 text-sm text-gray-400">Camera</p>
+              <h2
+                className={
+                  cameraOn
+                    ? "text-2xl font-black text-green-500 sm:text-3xl"
+                    : "text-2xl font-black text-gray-500 sm:text-3xl"
                 }
               >
-                {isPrivate
-                  ? "Private Video Call"
-                  : isSubscribersOnly
-                  ? "Subscribers Only"
-                  : "Public Stream"}
-              </span>
-            </p>
+                {cameraOn ? "On" : "Off"}
+              </h2>
+            </div>
 
-            <p className="mt-2 text-sm text-gray-500">{statusText}</p>
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+              <p className="mb-2 text-sm text-gray-400">Microphone</p>
+              <h2
+                className={
+                  micOn
+                    ? "text-2xl font-black text-green-500 sm:text-3xl"
+                    : "text-2xl font-black text-gray-500 sm:text-3xl"
+                }
+              >
+                {micOn ? "On" : "Muted"}
+              </h2>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
-            <button
-              onClick={copyViewerLink}
-              className="rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold hover:border-red-600 sm:px-5"
-            >
-              {copied
-                ? "Copied!"
-                : isPrivate
-                ? "Copy Private Link"
-                : "Copy Watch Link"}
-            </button>
+          <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
+            <div className="lg:col-span-2">
+              <div className="sticky top-[84px] z-40 overflow-hidden rounded-2xl border border-red-900/40 bg-gray-950 shadow-2xl shadow-red-950/30 lg:static lg:z-auto">
+                <div className="flex flex-col gap-3 border-b border-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                  <div>
+                    <h2 className="text-2xl font-black">Live Preview</h2>
+                    <p className="text-sm text-gray-400">
+                      {isPrivate
+                        ? "Private room for host and invited guest streamers only."
+                        : "Host and guest streamers join the same LiveKit room."}
+                    </p>
+                  </div>
 
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold hover:bg-gray-700 sm:px-5"
-            >
-              Dashboard
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:mb-8 lg:grid-cols-4 lg:gap-6">
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-            <p className="mb-2 text-sm text-gray-400">
-              {isPrivate ? "Private Viewers" : "Live Viewers"}
-            </p>
-            <h2 className="text-3xl font-black sm:text-4xl">{viewerCount}</h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-            <p className="mb-2 text-sm text-gray-400">Likes</p>
-            <h2 className="text-3xl font-black text-red-500 sm:text-4xl">
-              {isPrivate ? "Off" : likes}
-            </h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-            <p className="mb-2 text-sm text-gray-400">Camera</p>
-            <h2
-              className={
-                cameraOn
-                  ? "text-2xl font-black text-green-500 sm:text-3xl"
-                  : "text-2xl font-black text-gray-500 sm:text-3xl"
-              }
-            >
-              {cameraOn ? "On" : "Off"}
-            </h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-            <p className="mb-2 text-sm text-gray-400">Microphone</p>
-            <h2
-              className={
-                micOn
-                  ? "text-2xl font-black text-green-500 sm:text-3xl"
-                  : "text-2xl font-black text-gray-500 sm:text-3xl"
-              }
-            >
-              {micOn ? "On" : "Muted"}
-            </h2>
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
-          <div className="lg:col-span-2">
-            <div className="sticky top-[84px] z-40 overflow-hidden rounded-2xl border border-red-900/40 bg-gray-950 shadow-2xl shadow-red-950/30 lg:static lg:z-auto">
-              <div className="flex flex-col gap-3 border-b border-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                <div>
-                  <h2 className="text-2xl font-black">Live Preview</h2>
-                  <p className="text-sm text-gray-400">
-                    {isPrivate
-                      ? "Private room for host and invited guest streamers only."
-                      : "Host and guest streamers join the same LiveKit room."}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setFocusedVideo("local")}
-                    disabled={!room}
-                    className={
-                      focusedVideo === "local"
-                        ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
-                        : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
-                    }
-                  >
-                    You Big
-                  </button>
-
-                  {remoteVideos.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => setFocusedVideo(remoteVideos[0].id)}
+                      onClick={() => setFocusedVideo("local")}
                       disabled={!room}
                       className={
-                        focusedVideo !== "local"
+                        focusedVideo === "local"
                           ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
                           : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
                       }
                     >
-                      Guest Big
+                      You Big
                     </button>
+
+                    {remoteVideos.length > 0 && (
+                      <button
+                        onClick={() => setFocusedVideo(remoteVideos[0].id)}
+                        disabled={!room}
+                        className={
+                          focusedVideo !== "local"
+                            ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
+                            : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
+                        }
+                      >
+                        Guest Big
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setIsCompactStudio((current) => !current)}
+                      className="rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700"
+                    >
+                      {isCompactStudio ? "Large View" : "Small View"}
+                    </button>
+
+                    <span
+                      className={
+                        isLive
+                          ? "w-fit rounded-full bg-red-600 px-4 py-1 text-sm font-black"
+                          : "w-fit rounded-full bg-gray-800 px-4 py-1 text-sm font-black text-gray-400"
+                      }
+                    >
+                      {isLive ? "LIVE" : "OFFLINE"}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className={
+                    isCompactStudio
+                      ? "relative flex h-[260px] items-center justify-center overflow-hidden bg-black sm:h-[360px] lg:h-[420px]"
+                      : "relative flex h-[68dvh] min-h-[420px] items-center justify-center overflow-hidden bg-black sm:h-[620px] lg:h-[680px]"
+                  }
+                >
+                  <div className="relative h-full w-full bg-black">
+                    {focusedVideo === "local" ? (
+                      <>
+                        <div
+                          onClick={() => setFocusedVideo("local")}
+                          className="relative h-full w-full overflow-hidden rounded-2xl bg-gray-950"
+                        >
+                          <video
+                            ref={localVideoRef}
+                            autoPlay
+                            muted
+                            playsInline
+                            className="absolute inset-0 h-full w-full object-cover"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+
+                          <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
+                            You
+                          </div>
+                        </div>
+
+                        {remoteVideos.length > 0 ? (
+                          <div className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36">
+                            <RemoteVideoTile
+                              track={remoteVideos[0].track}
+                              identity={remoteVideos[0].identity}
+                              onClick={() =>
+                                setFocusedVideo(remoteVideos[0].id)
+                              }
+                              className="h-full w-full"
+                            />
+                          </div>
+                        ) : (
+                          <div className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
+                            Waiting
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {remoteVideos.length > 0 ? (
+                          <RemoteVideoTile
+                            track={
+                              (
+                                remoteVideos.find(
+                                  (item) => item.id === focusedVideo,
+                                ) || remoteVideos[0]
+                              ).track
+                            }
+                            identity={
+                              (
+                                remoteVideos.find(
+                                  (item) => item.id === focusedVideo,
+                                ) || remoteVideos[0]
+                              ).identity
+                            }
+                            className="h-full w-full"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
+                            <div>
+                              <p className="mb-2 text-4xl">📞</p>
+                              <p className="text-sm">
+                                Waiting for the other person...
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div
+                          onClick={() => setFocusedVideo("local")}
+                          className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36"
+                        >
+                          <video
+                            ref={localVideoRef}
+                            autoPlay
+                            muted
+                            playsInline
+                            className="absolute inset-0 h-full w-full object-cover"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+
+                          <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
+                            You
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {room && (
+                    <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={toggleCamera}
+                        className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                      >
+                        {cameraOn ? "Camera Off" : "Camera On"}
+                      </button>
+
+                      <button
+                        onClick={toggleMic}
+                        className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                      >
+                        {micOn ? "Mute" : "Unmute"}
+                      </button>
+
+                      <button
+                        onClick={switchCameraView}
+                        className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                      >
+                        Flip Camera
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setFocusedVideo((current) =>
+                            current === "local" && remoteVideos.length > 0
+                              ? remoteVideos[0].id
+                              : "local",
+                          )
+                        }
+                        disabled={remoteVideos.length === 0}
+                        className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90 disabled:text-gray-500"
+                      >
+                        Switch Focus
+                      </button>
+
+                      <button
+                        onClick={enterTheaterMode}
+                        className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
+                      >
+                        Fullscreen
+                      </button>
+
+                      <button
+                        onClick={stopLiveStream}
+                        className="rounded-full bg-red-600 px-3 py-2 text-xs font-black backdrop-blur hover:bg-red-700"
+                      >
+                        {role === "host"
+                          ? isPrivate
+                            ? "End Call"
+                            : "End Stream"
+                          : "Leave Stream"}
+                      </button>
+                    </div>
                   )}
 
-                  <button
-                    onClick={() => setIsCompactStudio((current) => !current)}
-                    className="rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700"
-                  >
-                    {isCompactStudio ? "Large View" : "Small View"}
-                  </button>
+                  {!room && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
+                      <div className="max-w-md text-center">
+                        <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
+                          {isPrivate ? "🔒" : isSubscribersOnly ? "⭐" : "🎥"}
+                        </div>
 
-                  <span
-                    className={
-                      isLive
-                        ? "w-fit rounded-full bg-red-600 px-4 py-1 text-sm font-black"
-                        : "w-fit rounded-full bg-gray-800 px-4 py-1 text-sm font-black text-gray-400"
-                    }
-                  >
-                    {isLive ? "LIVE" : "OFFLINE"}
-                  </span>
+                        <h2 className="mb-3 text-3xl font-black sm:text-4xl">
+                          {role === "host"
+                            ? isPrivate
+                              ? "Ready to Start Private Call?"
+                              : isSubscribersOnly
+                                ? "Ready to Start Subscriber Stream?"
+                                : "Ready to Go Live?"
+                            : "Ready to Join?"}
+                        </h2>
+
+                        <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
+                          {role === "host"
+                            ? isPrivate
+                              ? "Start your private video call. Only invited guests can join."
+                              : isSubscribersOnly
+                                ? "Start your premium stream. Active subscribers will be notified."
+                                : "Start your camera and microphone to begin broadcasting."
+                            : "Join with your camera and microphone as guest streamer."}
+                        </p>
+
+                        <button
+                          onClick={startLiveStream}
+                          disabled={starting}
+                          className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
+                        >
+                          {starting
+                            ? "Starting..."
+                            : role === "host"
+                              ? isPrivate
+                                ? "Start Private Call"
+                                : "Start Live Stream"
+                              : "Join Stream"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div
-                className={
-                  isCompactStudio
-                    ? "relative flex h-[260px] items-center justify-center overflow-hidden bg-black sm:h-[360px] lg:h-[420px]"
-                    : "relative flex h-[68dvh] min-h-[420px] items-center justify-center overflow-hidden bg-black sm:h-[620px] lg:h-[680px]"
-                }
-              >
-                <div className="relative h-full w-full bg-black">
-                  {focusedVideo === "local" ? (
-                    <>
-                      <div
-                        onClick={() => setFocusedVideo("local")}
-                        className="relative h-full w-full overflow-hidden rounded-2xl bg-gray-950"
-                      >
-                        <video
-                          ref={localVideoRef}
-                          autoPlay
-                          muted
-                          playsInline
-                          className="absolute inset-0 h-full w-full object-cover"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
+              <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+                <h2 className="mb-5 text-2xl font-black">Studio Controls</h2>
 
-                        <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                          You
-                        </div>
-                      </div>
-
-                      {remoteVideos.length > 0 ? (
-                        <div className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36">
-                          <RemoteVideoTile
-                            track={remoteVideos[0].track}
-                            identity={remoteVideos[0].identity}
-                            onClick={() => setFocusedVideo(remoteVideos[0].id)}
-                            className="h-full w-full"
-                          />
-                        </div>
-                      ) : (
-                        <div className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
-                          Waiting
-                        </div>
-                      )}
-                    </>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+                  {!room ? (
+                    <button
+                      onClick={startLiveStream}
+                      disabled={starting}
+                      className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700 disabled:bg-gray-700"
+                    >
+                      {starting
+                        ? "Starting..."
+                        : role === "host"
+                          ? isPrivate
+                            ? "Start Private Call"
+                            : "Start Stream"
+                          : "Join Stream"}
+                    </button>
                   ) : (
-                    <>
-                      {remoteVideos.length > 0 ? (
-                        <RemoteVideoTile
-                          track={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).track}
-                          identity={(remoteVideos.find((item) => item.id === focusedVideo) || remoteVideos[0]).identity}
-                          className="h-full w-full"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
-                          <div>
-                            <p className="mb-2 text-4xl">📞</p>
-                            <p className="text-sm">Waiting for the other person...</p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div
-                        onClick={() => setFocusedVideo("local")}
-                        className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36"
-                      >
-                        <video
-                          ref={localVideoRef}
-                          autoPlay
-                          muted
-                          playsInline
-                          className="absolute inset-0 h-full w-full object-cover"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-
-                        <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold">
-                          You
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {room && (
-                  <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={toggleCamera}
-                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
-                    >
-                      {cameraOn ? "Camera Off" : "Camera On"}
-                    </button>
-
-                    <button
-                      onClick={toggleMic}
-                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
-                    >
-                      {micOn ? "Mute" : "Unmute"}
-                    </button>
-
-                    <button
-                      onClick={switchCameraView}
-                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
-                    >
-                      Flip Camera
-                    </button>
-
-                    <button
-                      onClick={() => setFocusedVideo((current) => current === "local" && remoteVideos.length > 0 ? remoteVideos[0].id : "local")}
-                      disabled={remoteVideos.length === 0}
-                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90 disabled:text-gray-500"
-                    >
-                      Switch Focus
-                    </button>
-
-                    <button
-                      onClick={enterTheaterMode}
-                      className="rounded-full bg-black/70 px-3 py-2 text-xs font-black backdrop-blur hover:bg-black/90"
-                    >
-                      Fullscreen
-                    </button>
-
                     <button
                       onClick={stopLiveStream}
-                      className="rounded-full bg-red-600 px-3 py-2 text-xs font-black backdrop-blur hover:bg-red-700"
+                      className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700"
                     >
                       {role === "host"
                         ? isPrivate
-                          ? "End Call"
+                          ? "End Private Call"
                           : "End Stream"
                         : "Leave Stream"}
                     </button>
-                  </div>
-                )}
+                  )}
 
-                {!room && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
-                    <div className="max-w-md text-center">
-                      <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                        {isPrivate ? "🔒" : isSubscribersOnly ? "⭐" : "🎥"}
+                  <button
+                    onClick={toggleCamera}
+                    disabled={!room}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                  >
+                    {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
+                  </button>
+
+                  <button
+                    onClick={switchCameraView}
+                    disabled={!room}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                  >
+                    Flip Camera
+                  </button>
+
+                  <button
+                    onClick={toggleMic}
+                    disabled={!room}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                  >
+                    {micOn ? "Mute Mic" : "Unmute Mic"}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      remoteAudioElementsRef.current.forEach((audio) => {
+                        audio.play().catch(() => {});
+                      });
+                    }}
+                    disabled={!room}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                  >
+                    Enable Audio
+                  </button>
+
+                  <button
+                    onClick={enterTheaterMode}
+                    disabled={!room}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                  >
+                    Fullscreen
+                  </button>
+
+                  <button
+                    onClick={copyViewerLink}
+                    className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700"
+                  >
+                    {copied
+                      ? "Link Copied"
+                      : isPrivate
+                        ? "Share Private Room"
+                        : "Share Stream"}
+                  </button>
+                </div>
+              </div>
+
+              {role === "host" && (
+                <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+                  <h2 className="mb-2 text-2xl font-black">
+                    Invite Guest Streamer
+                  </h2>
+
+                  <p className="mb-5 text-sm text-gray-400">
+                    Search creators by name or username, then invite them to
+                    join this room.
+                  </p>
+
+                  <div className="mb-5">
+                    <input
+                      value={guestInput}
+                      onChange={(e) => setGuestInput(e.target.value)}
+                      placeholder="Search creator name or username..."
+                      className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 focus:border-red-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {guestInput.trim().length > 0 && (
+                    <div className="mb-6 rounded-2xl border border-gray-800 bg-black/30 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="font-bold">Search Results</p>
+                        {creatorSearching && (
+                          <p className="text-sm text-gray-400">Searching...</p>
+                        )}
                       </div>
 
-                      <h2 className="mb-3 text-3xl font-black sm:text-4xl">
-                        {role === "host"
-                          ? isPrivate
-                            ? "Ready to Start Private Call?"
-                            : isSubscribersOnly
-                            ? "Ready to Start Subscriber Stream?"
-                            : "Ready to Go Live?"
-                          : "Ready to Join?"}
-                      </h2>
+                      {guestInput.trim().length < 2 ? (
+                        <p className="text-sm text-gray-500">
+                          Type at least 2 characters to search creators.
+                        </p>
+                      ) : creatorResults.length === 0 && !creatorSearching ? (
+                        <p className="text-sm text-gray-500">
+                          No matching creators found.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {creatorResults.map((profile) => (
+                            <div
+                              key={profile.id}
+                              className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-gray-900 p-3 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <img
+                                  src={
+                                    profile.avatar_url || "/default-avatar.png"
+                                  }
+                                  alt={profile.username || "Creator"}
+                                  className="h-11 w-11 shrink-0 rounded-full object-cover"
+                                />
 
-                      <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
-                        {role === "host"
-                          ? isPrivate
-                            ? "Start your private video call. Only invited guests can join."
-                            : isSubscribersOnly
-                            ? "Start your premium stream. Active subscribers will be notified."
-                            : "Start your camera and microphone to begin broadcasting."
-                          : "Join with your camera and microphone as guest streamer."}
-                      </p>
+                                <div className="min-w-0">
+                                  <p className="truncate font-bold">
+                                    {profile.display_name ||
+                                      profile.username ||
+                                      "Unnamed Creator"}
+                                  </p>
 
-                      <button
-                        onClick={startLiveStream}
-                        disabled={starting}
-                        className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
-                      >
-                        {starting
-                          ? "Starting..."
-                          : role === "host"
-                          ? isPrivate
-                            ? "Start Private Call"
-                            : "Start Live Stream"
-                          : "Join Stream"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+                                  <p className="truncate text-sm text-gray-400">
+                                    @{profile.username || "no-username"}
+                                  </p>
+                                </div>
+                              </div>
 
-            <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-              <h2 className="mb-5 text-2xl font-black">Studio Controls</h2>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
-                {!room ? (
-                  <button
-                    onClick={startLiveStream}
-                    disabled={starting}
-                    className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700 disabled:bg-gray-700"
-                  >
-                    {starting
-                      ? "Starting..."
-                      : role === "host"
-                      ? isPrivate
-                        ? "Start Private Call"
-                        : "Start Stream"
-                      : "Join Stream"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={stopLiveStream}
-                    className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700"
-                  >
-                    {role === "host"
-                      ? isPrivate
-                        ? "End Private Call"
-                        : "End Stream"
-                      : "Leave Stream"}
-                  </button>
-                )}
-
-                <button
-                  onClick={toggleCamera}
-                  disabled={!room}
-                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
-                >
-                  {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
-                </button>
-
-                <button
-                  onClick={switchCameraView}
-                  disabled={!room}
-                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
-                >
-                  Flip Camera
-                </button>
-
-                <button
-                  onClick={toggleMic}
-                  disabled={!room}
-                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
-                >
-                  {micOn ? "Mute Mic" : "Unmute Mic"}
-                </button>
-
-                <button
-                  onClick={() => {
-                    remoteAudioElementsRef.current.forEach((audio) => {
-                      audio.play().catch(() => {});
-                    });
-                  }}
-                  disabled={!room}
-                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
-                >
-                  Enable Audio
-                </button>
-
-                <button
-                  onClick={enterTheaterMode}
-                  disabled={!room}
-                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
-                >
-                  Fullscreen
-                </button>
-
-                <button
-                  onClick={copyViewerLink}
-                  className="rounded-xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700"
-                >
-                  {copied
-                    ? "Link Copied"
-                    : isPrivate
-                    ? "Share Private Room"
-                    : "Share Stream"}
-                </button>
-              </div>
-            </div>
-
-            {role === "host" && (
-              <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-                <h2 className="mb-2 text-2xl font-black">
-                  Invite Guest Streamer
-                </h2>
-
-                <p className="mb-5 text-sm text-gray-400">
-                  Search creators by name or username, then invite them to join
-                  this room.
-                </p>
-
-                <div className="mb-5">
-                  <input
-                    value={guestInput}
-                    onChange={(e) => setGuestInput(e.target.value)}
-                    placeholder="Search creator name or username..."
-                    className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 focus:border-red-500 focus:outline-none"
-                  />
-                </div>
-
-                {guestInput.trim().length > 0 && (
-                  <div className="mb-6 rounded-2xl border border-gray-800 bg-black/30 p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <p className="font-bold">Search Results</p>
-                      {creatorSearching && (
-                        <p className="text-sm text-gray-400">Searching...</p>
+                              <button
+                                onClick={() => inviteCreator(profile)}
+                                disabled={inviteSendingId === profile.id}
+                                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700 disabled:bg-gray-700"
+                              >
+                                {inviteSendingId === profile.id
+                                  ? "Inviting..."
+                                  : "Invite"}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
+                  )}
 
-                    {guestInput.trim().length < 2 ? (
-                      <p className="text-sm text-gray-500">
-                        Type at least 2 characters to search creators.
-                      </p>
-                    ) : creatorResults.length === 0 && !creatorSearching ? (
-                      <p className="text-sm text-gray-500">
-                        No matching creators found.
-                      </p>
+                  <div className="space-y-3">
+                    <h3 className="font-black">Guest Invites</h3>
+
+                    {activeGuestInvites.length === 0 ? (
+                      <p className="text-gray-500">No guests invited yet.</p>
                     ) : (
-                      <div className="space-y-3">
-                        {creatorResults.map((profile) => (
-                          <div
-                            key={profile.id}
-                            className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-gray-900 p-3 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <img
-                                src={
-                                  profile.avatar_url || "/default-avatar.png"
-                                }
-                                alt={profile.username || "Creator"}
-                                className="h-11 w-11 shrink-0 rounded-full object-cover"
-                              />
+                      activeGuestInvites.map((invite) => (
+                        <div
+                          key={invite.id}
+                          className="flex flex-col gap-3 rounded-xl border border-gray-700 bg-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <img
+                              src={
+                                invite.profiles?.avatar_url ||
+                                "/default-avatar.png"
+                              }
+                              alt="Guest"
+                              className="h-11 w-11 shrink-0 rounded-full object-cover"
+                            />
 
-                              <div className="min-w-0">
-                                <p className="truncate font-bold">
-                                  {profile.display_name ||
-                                    profile.username ||
-                                    "Unnamed Creator"}
-                                </p>
+                            <div className="min-w-0">
+                              <p className="truncate font-bold">
+                                {invite.profiles?.display_name ||
+                                  invite.profiles?.username ||
+                                  invite.guest_id}
+                              </p>
 
-                                <p className="truncate text-sm text-gray-400">
-                                  @{profile.username || "no-username"}
-                                </p>
-                              </div>
+                              <p className="text-sm text-gray-400">
+                                Status: {invite.status}
+                              </p>
                             </div>
-
-                            <button
-                              onClick={() => inviteCreator(profile)}
-                              disabled={inviteSendingId === profile.id}
-                              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700 disabled:bg-gray-700"
-                            >
-                              {inviteSendingId === profile.id
-                                ? "Inviting..."
-                                : "Invite"}
-                            </button>
                           </div>
-                        ))}
-                      </div>
+
+                          {invite.status !== "removed" && (
+                            <button
+                              onClick={() =>
+                                removeGuest(invite.id, invite.guest_id)
+                              }
+                              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-bold hover:bg-red-600"
+                            >
+                              Remove Guest
+                            </button>
+                          )}
+                        </div>
+                      ))
                     )}
                   </div>
-                )}
+                </div>
+              )}
+            </div>
 
-                <div className="space-y-3">
-                  <h3 className="font-black">Guest Invites</h3>
+            <div className="flex h-[580px] flex-col rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:h-[720px]">
+              <div className="mb-5">
+                <h2 className="text-2xl font-black sm:text-3xl">
+                  {isPrivate ? "Private Chat" : "Live Chat"}
+                </h2>
+                <p className="text-sm text-gray-400">
+                  {isGlobalMuted
+                    ? "Your account is globally muted."
+                    : isShadowBanned
+                      ? "Your messages appear sent but are hidden from others."
+                      : canSendChat
+                        ? "Chat is active."
+                        : "Chat unlocks only when this room is live and connected."}
+                </p>
+              </div>
 
-                  {activeGuestInvites.length === 0 ? (
-                    <p className="text-gray-500">No active guest invites.</p>
-                  ) : (
-                    activeGuestInvites.map((invite) => (
+              <div
+                ref={chatBoxRef}
+                className="mb-4 flex-1 space-y-4 overflow-auto rounded-2xl bg-gray-800 p-3 sm:p-4"
+              >
+                {chatMessages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-center text-gray-400">
+                    <div>
+                      <p className="mb-3 text-4xl">💬</p>
+                      <p>No chat messages yet.</p>
+                    </div>
+                  </div>
+                ) : (
+                  chatMessages.map((chat) => {
+                    const paid = isPaidMessage(chat);
+                    const paidAmount = getPaidMessageAmount(chat);
+
+                    return (
                       <div
-                        key={invite.id}
-                        className="flex flex-col gap-3 rounded-xl border border-gray-700 bg-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        key={chat.id}
+                        className={
+                          paid
+                            ? "rounded-xl border border-yellow-400/40 bg-yellow-500/10 p-3 shadow-lg shadow-yellow-950/30"
+                            : "rounded-xl bg-gray-900 p-3"
+                        }
                       >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <img
-                            src={
-                              invite.profiles?.avatar_url ||
-                              "/default-avatar.png"
-                            }
-                            alt="Guest"
-                            className="h-11 w-11 shrink-0 rounded-full object-cover"
-                          />
+                        {paid && (
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-yellow-400 px-3 py-1 text-[11px] font-black text-black">
+                              💎 PAID MESSAGE
+                            </span>
+                            {paidAmount > 0 && (
+                              <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-bold text-yellow-200">
+                                AED {paidAmount}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
-                          <div className="min-w-0">
-                            <p className="truncate font-bold">
-                              {invite.profiles?.display_name ||
-                                invite.profiles?.username ||
-                                invite.guest_id}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={
+                                paid
+                                  ? "mb-1 truncate font-black text-yellow-300"
+                                  : "mb-1 truncate font-bold text-red-400"
+                              }
+                            >
+                              {chat.username}
                             </p>
 
-                            <p className="text-sm text-gray-400">
-                              Status: {invite.status}
+                            <p
+                              className={
+                                paid
+                                  ? "break-words text-base font-bold text-white"
+                                  : "break-words text-white"
+                              }
+                            >
+                              {getDisplayMessage(chat)}
                             </p>
                           </div>
                         </div>
 
-                        {invite.status !== "removed" && (
-                          <button
-                            onClick={() =>
-                              removeGuest(invite.id, invite.guest_id)
-                            }
-                            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-bold hover:bg-red-600"
-                          >
-                            Remove Guest
-                          </button>
+                        {role === "host" && chat.user_id !== currentUserId && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              onClick={() => deleteChatMessage(chat.id)}
+                              disabled={deletingChatId === chat.id}
+                              className="rounded-lg bg-gray-800 px-3 py-1 text-xs font-bold text-gray-300 hover:bg-red-600 hover:text-white disabled:bg-gray-700 disabled:text-gray-500"
+                            >
+                              {deletingChatId === chat.id
+                                ? "..."
+                                : "Delete Message"}
+                            </button>
+
+                            {chat.user_id && (
+                              <>
+                                <button
+                                  onClick={() => muteChatUser(chat)}
+                                  disabled={moderatingUserId === chat.user_id}
+                                  className="rounded-lg bg-yellow-600/20 px-3 py-1 text-xs font-bold text-yellow-300 hover:bg-yellow-600 hover:text-white disabled:bg-gray-700 disabled:text-gray-500"
+                                >
+                                  {moderatingUserId === chat.user_id
+                                    ? "..."
+                                    : "Mute User"}
+                                </button>
+
+                                <button
+                                  onClick={() => removeUserFromStream(chat)}
+                                  disabled={moderatingUserId === chat.user_id}
+                                  className="rounded-lg bg-red-600/20 px-3 py-1 text-xs font-bold text-red-300 hover:bg-red-600 hover:text-white disabled:bg-gray-700 disabled:text-gray-500"
+                                >
+                                  {moderatingUserId === chat.user_id
+                                    ? "..."
+                                    : "Remove User"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
-                    ))
-                  )}
-                </div>
+                    );
+                  })
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="flex h-[580px] flex-col rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:h-[720px]">
-            <div className="mb-5">
-              <h2 className="text-2xl font-black sm:text-3xl">
-                {isPrivate ? "Private Chat" : "Live Chat"}
-              </h2>
-              <p className="text-sm text-gray-400">
-                {isGlobalMuted
-                  ? "Your account is globally muted."
-                  : isShadowBanned
-                  ? "Your messages appear sent but are hidden from others."
-                  : canSendChat
-                  ? "Chat is active."
-                  : "Chat unlocks only when this room is live and connected."}
-              </p>
-            </div>
+              <div className="flex gap-2">
+                <input
+                  placeholder={
+                    isGlobalMuted
+                      ? "Your account is muted"
+                      : canSendChat
+                        ? "Type a message..."
+                        : "Chat is available only during a live connected stream"
+                  }
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && canSendChat) sendMessage();
+                  }}
+                  disabled={!canSendChat}
+                  className="min-w-0 flex-1 rounded-xl border border-gray-700 bg-gray-800 p-3 focus:border-red-500 focus:outline-none disabled:cursor-not-allowed disabled:text-gray-500 disabled:placeholder:text-gray-600 sm:p-4"
+                />
 
-            <div
-              ref={chatBoxRef}
-              className="mb-4 flex-1 space-y-4 overflow-auto rounded-2xl bg-gray-800 p-3 sm:p-4"
-            >
-              {chatMessages.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-center text-gray-400">
-                  <div>
-                    <p className="mb-3 text-4xl">💬</p>
-                    <p>No chat messages yet.</p>
-                  </div>
-                </div>
-              ) : (
-                chatMessages.map((chat) => {
-                  const paid = isPaidMessage(chat);
-                  const paidAmount = getPaidMessageAmount(chat);
-
-                  return (
-                  <div
-                    key={chat.id}
-                    className={
-                      paid
-                        ? "rounded-xl border border-yellow-400/40 bg-yellow-500/10 p-3 shadow-lg shadow-yellow-950/30"
-                        : "rounded-xl bg-gray-900 p-3"
-                    }
-                  >
-                    {paid && (
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-yellow-400 px-3 py-1 text-[11px] font-black text-black">
-                          💎 PAID MESSAGE
-                        </span>
-                        {paidAmount > 0 && (
-                          <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-bold text-yellow-200">
-                            AED {paidAmount}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className={paid ? "mb-1 truncate font-black text-yellow-300" : "mb-1 truncate font-bold text-red-400"}>
-                          {chat.username}
-                        </p>
-
-                        <p className={paid ? "break-words text-base font-bold text-white" : "break-words text-white"}>
-                          {getDisplayMessage(chat)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {role === "host" && chat.user_id !== currentUserId && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          onClick={() => deleteChatMessage(chat.id)}
-                          disabled={deletingChatId === chat.id}
-                          className="rounded-lg bg-gray-800 px-3 py-1 text-xs font-bold text-gray-300 hover:bg-red-600 hover:text-white disabled:bg-gray-700 disabled:text-gray-500"
-                        >
-                          {deletingChatId === chat.id
-                            ? "..."
-                            : "Delete Message"}
-                        </button>
-
-                        {chat.user_id && (
-                          <>
-                            <button
-                              onClick={() => muteChatUser(chat)}
-                              disabled={moderatingUserId === chat.user_id}
-                              className="rounded-lg bg-yellow-600/20 px-3 py-1 text-xs font-bold text-yellow-300 hover:bg-yellow-600 hover:text-white disabled:bg-gray-700 disabled:text-gray-500"
-                            >
-                              {moderatingUserId === chat.user_id
-                                ? "..."
-                                : "Mute User"}
-                            </button>
-
-                            <button
-                              onClick={() => removeUserFromStream(chat)}
-                              disabled={moderatingUserId === chat.user_id}
-                              className="rounded-lg bg-red-600/20 px-3 py-1 text-xs font-bold text-red-300 hover:bg-red-600 hover:text-white disabled:bg-gray-700 disabled:text-gray-500"
-                            >
-                              {moderatingUserId === chat.user_id
-                                ? "..."
-                                : "Remove User"}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                placeholder={
-                  isGlobalMuted
-                    ? "Your account is muted"
-                    : canSendChat
-                    ? "Type a message..."
-                    : "Chat is available only during a live connected stream"
-                }
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && canSendChat) sendMessage();
-                }}
-                disabled={!canSendChat}
-                className="min-w-0 flex-1 rounded-xl border border-gray-700 bg-gray-800 p-3 focus:border-red-500 focus:outline-none disabled:cursor-not-allowed disabled:text-gray-500 disabled:placeholder:text-gray-600 sm:p-4"
-              />
-
-              <button
-                onClick={sendMessage}
-                disabled={!canSendChat}
-                className="rounded-xl bg-red-600 px-4 font-bold hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500 sm:px-5"
-              >
-                Send
-              </button>
+                <button
+                  onClick={sendMessage}
+                  disabled={!canSendChat}
+                  className="rounded-xl bg-red-600 px-4 font-bold hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500 sm:px-5"
+                >
+                  Send
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );
