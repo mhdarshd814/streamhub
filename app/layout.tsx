@@ -1,13 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
 import "./globals.css";
 
 import Navbar from "./components/Navbar";
 import PushNotificationManager from "./components/PushNotificationManager";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import IncomingCallPopup from "./components/IncomingCallPopup";
 import CapacitorStatusBar from "./components/CapacitorStatusBar";
-import AndroidBackButton from "./components/AndroidBackButton";
-import IncomingCallPopup from "../components/IncomingCallPopup";
 
 export const metadata: Metadata = {
   title: "StreamHub",
@@ -25,44 +23,36 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [
-      {
-        url: "/apple-touch-icon.png",
-        sizes: "180x180",
-        type: "image/png",
-      },
-    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
 export const viewport: Viewport = {
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#020617",
 };
 
-type RootLayoutProps = {
-  children: ReactNode;
-};
-
-export default function RootLayout({ children }: RootLayoutProps) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en" className="h-full bg-black antialiased">
-      <body className="min-h-screen bg-black text-white">
+    <html lang="en">
+      <body className="min-h-screen bg-black text-white antialiased">
         <CapacitorStatusBar />
-        <AndroidBackButton />
-
         <PushNotificationManager />
-        <IncomingCallPopup />
         <PWAInstallPrompt />
+        <IncomingCallPopup />
 
         <Navbar />
 
-        <main className="min-h-screen pt-[calc(64px+var(--app-status-top,0px))] pb-[calc(120px+var(--app-bottom-extra,0px))] xl:pt-0 xl:pb-0">
+        <div className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">
           {children}
-        </main>
+        </div>
       </body>
     </html>
   );

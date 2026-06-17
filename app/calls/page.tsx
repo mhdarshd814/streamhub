@@ -44,6 +44,29 @@ export default function CallsPage() {
     loadCalls();
   }, []);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`calls-page-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "private_call_requests",
+        },
+        async () => {
+          await loadCalls();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
   async function loadCalls() {
     setLoading(true);
 
@@ -249,6 +272,7 @@ export default function CallsPage() {
 
   const incoming = calls.filter((call) => call.receiver_id === userId);
   const outgoing = calls.filter((call) => call.caller_id === userId);
+  const pending = calls.filter((call) => call.status === "pending");
   const paidCalls = calls.filter(
     (call) => Number(call.stream?.private_call_price || 0) > 0
   ).length;
@@ -259,7 +283,7 @@ export default function CallsPage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="mb-2 text-sm font-bold text-purple-300">
-              Paid Private Video Calls
+              WhatsApp-Style Private Video Calls
             </p>
 
             <h1 className="text-4xl font-black sm:text-5xl">
@@ -267,8 +291,7 @@ export default function CallsPage() {
             </h1>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              Manage incoming and outgoing private call requests. Paid calls use
-              wallet balance first, then unlock the LiveKit room after payment.
+              Manage incoming and outgoing private call requests. Incoming calls now also appear as a popup anywhere in the app.
             </p>
           </div>
 
@@ -292,11 +315,7 @@ export default function CallsPage() {
         <section className="mb-8 grid gap-4 sm:grid-cols-4">
           <Stat label="Incoming" value={incoming.length} color="text-purple-300" />
           <Stat label="Outgoing" value={outgoing.length} color="text-blue-400" />
-          <Stat
-            label="Pending"
-            value={calls.filter((call) => call.status === "pending").length}
-            color="text-yellow-300"
-          />
+          <Stat label="Pending" value={pending.length} color="text-yellow-300" />
           <Stat label="Paid Calls" value={paidCalls} color="text-green-400" />
         </section>
 
