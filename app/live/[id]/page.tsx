@@ -920,7 +920,7 @@ export default function LiveRoomPage() {
     }
 
     const alreadyInvitedIds = guestInvites
-      .filter((invite) => invite.status !== "removed")
+      .filter((invite) => invite.status === "pending" || invite.status === "accepted")
       .map((invite) => invite.guest_id);
 
     const filtered = (data || []).filter(
@@ -1937,7 +1937,9 @@ export default function LiveRoomPage() {
     }
 
     const alreadyInvited = guestInvites.some(
-      (invite) => invite.guest_id === profile.id && invite.status !== "removed"
+     (invite) =>
+    invite.guest_id === profile.id &&
+    (invite.status === "pending" || invite.status === "accepted")
     );
 
     if (alreadyInvited) {
@@ -1946,6 +1948,25 @@ export default function LiveRoomPage() {
     }
 
     setInviteSendingId(profile.id);
+
+    // Clean old declined/removed guest rows before creating a fresh private-call invite.
+    // Without this, old failed tests keep showing as declined/removed and can confuse the call flow.
+    await supabase
+      .from("stream_guests")
+      .delete()
+      .eq("stream_id", stream.id)
+      .eq("guest_id", profile.id)
+      .in("status", ["declined", "removed"]);
+
+    await supabase
+      .from("private_call_requests")
+      .update({
+        status: "missed",
+        ring_status: "expired",
+      })
+      .eq("stream_id", stream.id)
+      .eq("receiver_id", profile.id)
+      .eq("status", "pending");
 
     const { data: guestInvite, error } = await supabase
       .from("stream_guests")
@@ -2214,6 +2235,9 @@ export default function LiveRoomPage() {
   const isPrivate = stream.visibility === "private";
   const isSubscribersOnly = stream.visibility === "subscribers";
   const canSendChat = isLive && !!room && !isGlobalMuted;
+  const activeGuestInvites = guestInvites.filter(
+    (invite) => invite.status === "pending" || invite.status === "accepted"
+  );
 
   return (
     <>
@@ -2867,10 +2891,10 @@ export default function LiveRoomPage() {
                 <div className="space-y-3">
                   <h3 className="font-black">Guest Invites</h3>
 
-                  {guestInvites.length === 0 ? (
-                    <p className="text-gray-500">No guests invited yet.</p>
+                  {activeGuestInvites.length === 0 ? (
+                    <p className="text-gray-500">No active guest invites.</p>
                   ) : (
-                    guestInvites.map((invite) => (
+                    activeGuestInvites.map((invite) => (
                       <div
                         key={invite.id}
                         className="flex flex-col gap-3 rounded-xl border border-gray-700 bg-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between"
