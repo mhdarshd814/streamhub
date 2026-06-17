@@ -121,6 +121,24 @@ export default function WatchPage() {
   const viewerRoomRef = useRef<Room | null>(null);
   const autoJoinTriggeredRef = useRef(false);
 
+  async function getSafeDisplayName(user: any, fallback = "Viewer") {
+    if (!user?.id) return fallback;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    return (
+      data?.display_name?.trim?.() ||
+      data?.username?.trim?.() ||
+      user.user_metadata?.display_name ||
+      user.user_metadata?.username ||
+      fallback
+    );
+  }
+
   function isMobileDevice() {
     if (typeof navigator === "undefined") return false;
 
@@ -417,11 +435,9 @@ export default function WatchPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const viewerName =
-        user?.user_metadata?.username ||
-        user?.user_metadata?.display_name ||
-        user?.email ||
-        "Guest Viewer";
+      const viewerName = user
+        ? await getSafeDisplayName(user, "Guest Viewer")
+        : "Guest Viewer";
 
       const { data, error } = await supabase
         .from("stream_viewers")
@@ -952,6 +968,8 @@ export default function WatchPage() {
           return;
         }
 
+        const viewerDisplayName = await getSafeDisplayName(user, "Viewer");
+
         const response = await fetch("/api/livekit-token", {
           method: "POST",
           headers: {
@@ -961,7 +979,7 @@ export default function WatchPage() {
           body: JSON.stringify({
             roomName: streamId,
             streamId,
-            participantName: "viewer-" + (user.email || user.id),
+            participantName: `viewer-${viewerDisplayName}`,
             mode: "viewer",
           }),
         });
@@ -1212,11 +1230,7 @@ export default function WatchPage() {
       return;
     }
 
-    const username =
-      user.user_metadata?.username ||
-      user.user_metadata?.display_name ||
-      user.email ||
-      "Viewer";
+    const username = await getSafeDisplayName(user, "Viewer");
 
     if (isShadowBanned) {
       const fakeMessage: ChatMessage = {
@@ -1452,12 +1466,14 @@ export default function WatchPage() {
       },
     ]);
 
+    const tipperName = await getSafeDisplayName(user, "A viewer");
+
     setMessages((current) => [
       ...current,
       {
         id: `tip-${Date.now()}`,
         username: "StreamHub",
-        message: `💰 ${user.email || "A viewer"} sent AED ${amount} tip!`,
+        message: `💰 ${tipperName} sent AED ${amount} tip!`,
         created_at: new Date().toISOString(),
       },
     ]);
@@ -1561,12 +1577,14 @@ export default function WatchPage() {
 
     setJoinRequest((data || null) as StreamJoinRequest | null);
 
+    const requesterName = await getSafeDisplayName(user, "A viewer");
+
     await supabase.from("notifications").insert([
       {
         user_id: stream.user_id,
         type: "stream_join_request",
         title: "Viewer wants to join",
-        message: `${user.user_metadata?.display_name || user.user_metadata?.username || user.email || "A viewer"} requested to join "${stream.title || "your live stream"}".`,
+        message: `${requesterName} requested to join "${stream.title || "your live stream"}".`,
         link: `/live/${stream.id}`,
         is_read: false,
       },
@@ -1587,7 +1605,7 @@ export default function WatchPage() {
           body: JSON.stringify({
             userId: stream.user_id,
             title: "Viewer wants to join",
-            message: `${user.user_metadata?.display_name || user.user_metadata?.username || user.email || "A viewer"} requested to join your live stream.`,
+            message: `${requesterName} requested to join your live stream.`,
             url: `/live/${stream.id}`,
             streamId: stream.id,
             notificationType: "stream_join_request",
