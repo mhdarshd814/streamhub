@@ -745,6 +745,29 @@ export default function LiveRoomPage() {
     return () => clearTimeout(timer);
   }, [guestInput, role, currentUserId, guestInvites]);
 
+
+  useEffect(() => {
+    if (role !== "host" || !stream?.id) return;
+
+    let cancelled = false;
+
+    async function refreshJoinRequests() {
+      if (cancelled) return;
+      await loadJoinRequests();
+    }
+
+    refreshJoinRequests();
+
+    const joinRequestPollTimer = setInterval(() => {
+      refreshJoinRequests();
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      clearInterval(joinRequestPollTimer);
+    };
+  }, [role, stream?.id, streamId]);
+
   async function expireStalePrivateCalls() {
     const now = new Date().toISOString();
 
