@@ -127,6 +127,24 @@ export default function LiveRoomPage() {
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
   const guestAutoJoinStartedRef = useRef(false);
 
+  async function getSafeDisplayName(user: any, fallback = "Viewer") {
+    if (!user?.id) return fallback;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("username, display_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    return (
+      data?.display_name?.trim?.() ||
+      data?.username?.trim?.() ||
+      user.user_metadata?.display_name ||
+      user.user_metadata?.username ||
+      fallback
+    );
+  }
+
   const MAX_ACCEPTED_GUESTS = 3;
   const MAX_TOTAL_PARTICIPANTS = 4;
 
@@ -1786,8 +1804,8 @@ export default function LiveRoomPage() {
         return;
       }
 
-      const participantName =
-        role + "-" + (user.user_metadata?.username || user.email || "Streamer");
+      const displayName = await getSafeDisplayName(user, "Streamer");
+      const participantName = `${role}-${displayName}`;
 
       const tokenResponse = await fetch("/api/livekit-token", {
         method: "POST",
@@ -2065,11 +2083,7 @@ export default function LiveRoomPage() {
       return;
     }
 
-    const username =
-      user.user_metadata?.username ||
-      user.user_metadata?.display_name ||
-      user.email ||
-      "User";
+    const username = await getSafeDisplayName(user, "User");
 
     if (isShadowBanned) {
       const fakeMessage: ChatMessage = {
