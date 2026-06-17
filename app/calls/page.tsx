@@ -183,32 +183,16 @@ export default function CallsPage() {
         return;
       }
     } else {
-      const { error: callError } = await supabase
-        .from("private_call_requests")
-        .update({
-          status: "accepted",
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", call.id);
+  const { error } = await supabase.rpc("accept_private_call_request", {
+    p_call_request_id: call.id,
+  });
 
-      if (callError) {
-        setUpdatingId(null);
-        alert(callError.message);
-        return;
-      }
-
-      const { error: guestError } = await supabase
-        .from("stream_guests")
-        .update({ status: "accepted" })
-        .eq("stream_id", call.stream_id)
-        .eq("guest_id", userId);
-
-      if (guestError) {
-        setUpdatingId(null);
-        alert(guestError.message);
-        return;
-      }
-    }
+  if (error) {
+    setUpdatingId(null);
+    alert(error.message);
+    return;
+  }
+}
 
     await supabase.from("notifications").insert([
       {
