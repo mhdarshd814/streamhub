@@ -118,6 +118,7 @@ export default function WatchPage() {
   const watchStartRef = useRef<number | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const remoteVideoTrackRef = useRef<RemoteTrack | null>(null);
+  const viewerRoomRef = useRef<Room | null>(null);
   const autoJoinTriggeredRef = useRef(false);
 
   function isMobileDevice() {
@@ -272,6 +273,56 @@ export default function WatchPage() {
     setFullscreenChatOpen(false);
     document.documentElement.style.overflow = "";
     document.body.style.overflow = "";
+  }
+
+
+  async function cleanupViewerBeforeAutoJoin() {
+    try {
+      if (viewerRoomRef.current) {
+        viewerRoomRef.current.disconnect();
+        viewerRoomRef.current = null;
+      }
+    } catch (error) {
+      console.warn("Viewer room cleanup before guest join failed:", error);
+    }
+
+    try {
+      const viewerRecordId = viewerRecordIdRef.current;
+
+      if (viewerRecordId) {
+        await supabase.from("stream_viewers").delete().eq("id", viewerRecordId);
+        viewerRecordIdRef.current = null;
+      }
+    } catch (error) {
+      console.warn("Viewer record cleanup before guest join failed:", error);
+    }
+
+    try {
+      audioElementsRef.current.forEach((audio) => {
+        try {
+          audio.pause();
+          audio.srcObject = null;
+          audio.remove();
+        } catch {}
+      });
+      audioElementsRef.current = [];
+    } catch {}
+
+    await KeepAwake.allowSleep().catch(() => {});
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+  }
+
+  async function openAcceptedGuestStudio() {
+    if (autoJoinTriggeredRef.current) return;
+
+    autoJoinTriggeredRef.current = true;
+    setStatus("Host accepted your request. Opening live studio...");
+    await cleanupViewerBeforeAutoJoin();
+
+    // Force a clean page transition so the old viewer LiveKit identity is fully disconnected
+    // before the same user joins again as a publishing guest.
+    window.location.assign(`/live/${streamId}?autojoin=1`);
   }
 
   async function incrementDailyAnalytics(input: {
@@ -717,6 +768,7 @@ export default function WatchPage() {
       KeepAwake.allowSleep().catch(() => {});
 
               if (room) room.disconnect();
+      if (viewerRoomRef.current === room) viewerRoomRef.current = null;
               return;
             }
 
@@ -727,6 +779,7 @@ export default function WatchPage() {
               removeViewerRecord();
 
               if (room) room.disconnect();
+      if (viewerRoomRef.current === room) viewerRoomRef.current = null;
 
               setTimeout(() => {
                 router.push("/explore");
@@ -922,6 +975,7 @@ export default function WatchPage() {
         }
 
         room = new Room(getViewerRoomOptions() as any);
+        viewerRoomRef.current = room;
 
         room.on(
           RoomEvent.TrackSubscribed,
@@ -947,6 +1001,14 @@ export default function WatchPage() {
 
         room.on(RoomEvent.Disconnected, async () => {
           setConnected(false);
+
+          if (autoJoinTriggeredRef.current) {
+            setStatus("Switching from viewer to guest studio...");
+            await removeViewerRecord();
+            await KeepAwake.allowSleep().catch(() => {});
+            return;
+          }
+
           setStatus("Stream ended. Redirecting to Explore...");
           await removeViewerRecord();
           await KeepAwake.allowSleep().catch(() => {});
@@ -1007,6 +1069,7 @@ export default function WatchPage() {
       audioElementsRef.current = [];
 
       if (room) room.disconnect();
+      if (viewerRoomRef.current === room) viewerRoomRef.current = null;
       if (chatChannel) supabase.removeChannel(chatChannel);
       if (streamChannel) supabase.removeChannel(streamChannel);
       if (viewerChannel) supabase.removeChannel(viewerChannel);
@@ -1066,10 +1129,8 @@ export default function WatchPage() {
       const latestRequest = (data || null) as StreamJoinRequest | null;
       setJoinRequest(latestRequest);
 
-      if (latestRequest?.status === "accepted" && !autoJoinTriggeredRef.current) {
-        autoJoinTriggeredRef.current = true;
-        setStatus("Host accepted your request. Opening live studio...");
-        router.push(`/live/${streamId}`);
+      if (latestRequest?.status === "accepted") {
+        await openAcceptedGuestStudio();
       }
 
       if (latestRequest?.status === "declined") {
@@ -1100,10 +1161,8 @@ export default function WatchPage() {
 
           setJoinRequest(updated);
 
-          if (updated.status === "accepted" && !autoJoinTriggeredRef.current) {
-            autoJoinTriggeredRef.current = true;
-            setStatus("Host accepted your request. Opening live studio...");
-            router.push(`/live/${streamId}`);
+          if (updated.status === "accepted") {
+            await openAcceptedGuestStudio();
           }
 
           if (updated.status === "declined") {
