@@ -1831,6 +1831,39 @@ export default function WatchPage() {
                   👁 {viewerCount}
                 </div>
 
+                {(showJoinRequestButton || joinRequest?.status === "pending" || joinRequest?.status === "accepted" || joinRequest?.status === "declined") && (
+                  <button
+                    onClick={() => {
+                      if (joinRequest?.status === "accepted") {
+                        router.push(`/live/${streamId}`);
+                        return;
+                      }
+
+                      requestToJoinStream();
+                    }}
+                    disabled={
+                      joinRequestLoading ||
+                      joinRequest?.status === "pending" ||
+                      streamStatus !== "live" ||
+                      !connected
+                    }
+                    className={`rounded-full px-4 py-3 text-sm font-black shadow-2xl backdrop-blur ${
+                      joinRequest?.status === "accepted"
+                        ? "bg-green-600 text-white hover:bg-green-500"
+                        : joinRequest?.status === "pending"
+                          ? "bg-yellow-500 text-black"
+                          : joinRequest?.status === "declined"
+                            ? "bg-purple-600 text-white hover:bg-purple-500"
+                            : "bg-purple-600 text-white hover:bg-purple-500"
+                    } disabled:opacity-70`}
+                  >
+                    {joinRequest?.status === "accepted"
+                      ? "Join Stream Now"
+                      : joinRequestButtonLabel}
+                  </button>
+                )}
+
+
                 <button
                   onClick={closeViewerFullscreen}
                   className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
