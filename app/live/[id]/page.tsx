@@ -15,6 +15,7 @@ type Stream = {
   viewers: number;
   likes: number;
   user_id: string;
+  private_call_price?: number | null;
   description?: string | null;
   thumbnail_url?: string | null;
   created_at: string;
@@ -48,6 +49,17 @@ type StreamGuest = {
   status: "pending" | "accepted" | "declined" | "removed";
   created_at: string;
   profiles?: Profile | null;
+};
+
+type PrivateCallRequest = {
+  id: string;
+  caller_id: string;
+  receiver_id: string;
+  stream_id: string | null;
+  status: "pending" | "accepted" | "declined" | "missed";
+  ring_status?: "ringing" | "answered" | "declined" | "expired" | null;
+  expires_at?: string | null;
+  created_at: string;
 };
 
 type RemoteVideoTrack = {
@@ -337,6 +349,8 @@ export default function LiveRoomPage() {
     let streamChannel: any;
     let guestChannel: any;
     let viewerChannel: any;
+    let privateCallChannel: any;
+    let callExpiryTimer: ReturnType<typeof setInterval> | null = null;
 
     async function getRealViewerCount() {
       const { count, error } = await supabase
@@ -366,6 +380,8 @@ export default function LiveRoomPage() {
       }
 
       setCurrentUserId(user.id);
+
+      await expireStalePrivateCalls();
 
       const { data: moderationProfile, error: moderationError } = await supabase
         .from("profiles")
@@ -541,6 +557,45 @@ export default function LiveRoomPage() {
           }
         )
         .subscribe();
+
+      privateCallChannel = supabase
+        .channel("studio-private-calls-" + channelKey)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "private_call_requests",
+            filter: `caller_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            const updatedCall = payload.new as PrivateCallRequest;
+
+            if (updatedCall.stream_id !== streamId) return;
+
+            if (updatedCall.status === "accepted") {
+              setStatusText("Private call accepted. Opening room...");
+              router.push(`/live/${streamId}`);
+              return;
+            }
+
+            if (updatedCall.status === "declined") {
+              setStatusText("Private call declined.");
+              await loadGuestInvites();
+              return;
+            }
+
+            if (updatedCall.status === "missed") {
+              setStatusText("Private call missed. No answer.");
+              await loadGuestInvites();
+            }
+          }
+        )
+        .subscribe();
+
+      callExpiryTimer = setInterval(async () => {
+        await expireStalePrivateCalls();
+      }, 10000);
     }
 
     loadData();
@@ -554,6 +609,8 @@ export default function LiveRoomPage() {
       if (streamChannel) supabase.removeChannel(streamChannel);
       if (guestChannel) supabase.removeChannel(guestChannel);
       if (viewerChannel) supabase.removeChannel(viewerChannel);
+      if (privateCallChannel) supabase.removeChannel(privateCallChannel);
+      if (callExpiryTimer) clearInterval(callExpiryTimer);
 
       cleanupRemoteAudio();
 
@@ -585,6 +642,58 @@ export default function LiveRoomPage() {
 
     return () => clearTimeout(timer);
   }, [guestInput, role, currentUserId, guestInvites]);
+
+  async function expireStalePrivateCalls() {
+    const now = new Date().toISOString();
+
+    const { data: expiredCalls, error: expiredLookupError } = await supabase
+      .from("private_call_requests")
+      .select("id, stream_id, receiver_id")
+      .eq("stream_id", streamId)
+      .eq("status", "pending")
+      .lt("expires_at", now);
+
+    if (expiredLookupError) {
+      console.warn("Private call expiry lookup skipped:", expiredLookupError.message);
+      return;
+    }
+
+    if (!expiredCalls || expiredCalls.length === 0) return;
+
+    const expiredIds = expiredCalls
+      .map((item: any) => item.id)
+      .filter(Boolean);
+
+    if (expiredIds.length === 0) return;
+
+    const { error: expireError } = await supabase
+      .from("private_call_requests")
+      .update({
+        status: "missed",
+        ring_status: "expired",
+      })
+      .in("id", expiredIds);
+
+    if (expireError) {
+      console.warn("Private call expiry update skipped:", expireError.message);
+      return;
+    }
+
+    await Promise.all(
+      expiredCalls.map(async (item: any) => {
+        if (!item.stream_id || !item.receiver_id) return;
+
+        await supabase
+          .from("stream_guests")
+          .update({ status: "declined" })
+          .eq("stream_id", item.stream_id)
+          .eq("guest_id", item.receiver_id)
+          .eq("status", "pending");
+      })
+    );
+
+    await loadGuestInvites();
+  }
 
   async function checkCurrentUserStillAllowed() {
     const {
@@ -1809,6 +1918,8 @@ export default function LiveRoomPage() {
     const allowed = await checkCurrentUserStillAllowed();
     if (!allowed) return;
 
+    await expireStalePrivateCalls();
+
     if (profile.id === currentUserId) {
       alert("You cannot invite yourself.");
       return;
@@ -1836,14 +1947,18 @@ export default function LiveRoomPage() {
 
     setInviteSendingId(profile.id);
 
-    const { error } = await supabase.from("stream_guests").insert([
-      {
-        stream_id: stream.id,
-        host_id: currentUserId,
-        guest_id: profile.id,
-        status: "pending",
-      },
-    ]);
+    const { data: guestInvite, error } = await supabase
+      .from("stream_guests")
+      .insert([
+        {
+          stream_id: stream.id,
+          host_id: currentUserId,
+          guest_id: profile.id,
+          status: "pending",
+        },
+      ])
+      .select()
+      .single();
 
     if (error) {
       setInviteSendingId(null);
@@ -1851,21 +1966,91 @@ export default function LiveRoomPage() {
       return;
     }
 
+    const isPrivateCall = stream.visibility === "private";
+    const expiresAt = new Date(Date.now() + 30000).toISOString();
+
+    if (isPrivateCall) {
+      const { error: callRequestError } = await supabase
+        .from("private_call_requests")
+        .insert([
+          {
+            caller_id: currentUserId,
+            receiver_id: profile.id,
+            stream_id: stream.id,
+            status: "pending",
+            ring_status: "ringing",
+            expires_at: expiresAt,
+          },
+        ]);
+
+      if (callRequestError) {
+        await supabase
+          .from("stream_guests")
+          .update({ status: "removed" })
+          .eq("id", guestInvite.id);
+
+        setInviteSendingId(null);
+        alert(callRequestError.message);
+        await loadGuestInvites();
+        return;
+      }
+    }
+
+    const notificationTitle = isPrivateCall
+      ? "Incoming Private Call"
+      : "Guest Stream Invite";
+
+    const notificationMessage = isPrivateCall
+      ? `You have an incoming private call: "${stream.title}".`
+      : `You have been invited to join "${stream.title}" as a guest streamer.`;
+
+    const notificationLink = isPrivateCall ? "/calls" : "/invites";
+
     const { error: notificationError } = await supabase
       .from("notifications")
       .insert([
         {
           user_id: profile.id,
-          type: "guest_invite",
-          title: "Guest Stream Invite",
-          message: `You have been invited to join "${stream.title}" as a guest streamer.`,
-          link: `/invites`,
+          type: isPrivateCall ? "incoming_private_call" : "guest_invite",
+          title: notificationTitle,
+          message: notificationMessage,
+          link: notificationLink,
           is_read: false,
         },
       ]);
 
     if (notificationError) {
       console.error("Notification error:", notificationError.message);
+    }
+
+    if (isPrivateCall) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        try {
+          await fetch("/api/push/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              userId: profile.id,
+              title: notificationTitle,
+              message: notificationMessage,
+              url: notificationLink,
+              streamId: stream.id,
+              notificationType: "incoming_private_call",
+            }),
+          });
+        } catch (pushError) {
+          console.error("Incoming private call push failed:", pushError);
+        }
+      }
+
+      setStatusText("Private call request sent. Waiting for answer...");
     }
 
     setInviteSendingId(null);
@@ -1890,6 +2075,17 @@ export default function LiveRoomPage() {
       return;
     }
 
+    await supabase
+      .from("private_call_requests")
+      .update({
+        status: "accepted",
+        ring_status: "answered",
+        accepted_at: new Date().toISOString(),
+      })
+      .eq("stream_id", pendingInvite.stream_id)
+      .eq("receiver_id", pendingInvite.guest_id)
+      .eq("status", "pending");
+
     setPendingInvite(null);
     await startLiveStream();
   }
@@ -1901,6 +2097,17 @@ export default function LiveRoomPage() {
       .from("stream_guests")
       .update({ status: "declined" })
       .eq("id", pendingInvite.id);
+
+    await supabase
+      .from("private_call_requests")
+      .update({
+        status: "declined",
+        ring_status: "declined",
+        declined_at: new Date().toISOString(),
+      })
+      .eq("stream_id", pendingInvite.stream_id)
+      .eq("receiver_id", pendingInvite.guest_id)
+      .eq("status", "pending");
 
     router.push("/dashboard");
   }
