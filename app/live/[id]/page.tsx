@@ -112,6 +112,49 @@ export default function LiveRoomPage() {
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
 
+  const MAX_ACCEPTED_GUESTS = 3;
+  const MAX_TOTAL_PARTICIPANTS = 4;
+
+  function getVisibleRemoteVideos() {
+    return remoteVideos.slice(0, MAX_ACCEPTED_GUESTS);
+  }
+
+  function getAcceptedGuestCount() {
+    return guestInvites.filter((invite) => invite.status === "accepted").length;
+  }
+
+  function getPendingOrAcceptedGuestCount() {
+    return guestInvites.filter(
+      (invite) => invite.status === "pending" || invite.status === "accepted",
+    ).length;
+  }
+
+  function getFocusedRemoteVideo() {
+    if (focusedVideo === "grid" || focusedVideo === "local") return null;
+
+    return (
+      remoteVideos.find((item) => item.id === focusedVideo) ||
+      remoteVideos[0] ||
+      null
+    );
+  }
+
+  function getGridClass(totalParticipants: number) {
+    if (totalParticipants <= 1) return "grid-cols-1";
+    if (totalParticipants === 2) return "grid-cols-1 sm:grid-cols-2";
+    return "grid-cols-2";
+  }
+
+  function getGridTileMinHeight(totalParticipants: number) {
+    if (totalParticipants <= 1) return "min-h-[420px] sm:min-h-[560px]";
+    if (totalParticipants === 2) return "min-h-[260px] sm:min-h-[420px]";
+    return "min-h-[220px] sm:min-h-[320px]";
+  }
+
+  function getParticipantLabel(identity: string) {
+    return identity.replace(/^host-/, "").replace(/^guest-/, "") || "Guest";
+  }
+
   function getPaidMessageAmount(chat: ChatMessage) {
     if (typeof chat.paid_amount === "number" && chat.paid_amount > 0) {
       return chat.paid_amount;
@@ -651,10 +694,9 @@ export default function LiveRoomPage() {
   }, [chatMessages]);
 
   useEffect(() => {
-    if (
-      focusedVideo !== "local" &&
-      !remoteVideos.some((item) => item.id === focusedVideo)
-    ) {
+    if (focusedVideo === "grid" || focusedVideo === "local") return;
+
+    if (!remoteVideos.some((item) => item.id === focusedVideo)) {
       setFocusedVideo("local");
     }
   }, [focusedVideo, remoteVideos]);
@@ -812,12 +854,12 @@ export default function LiveRoomPage() {
         ...current,
         {
           id: trackId,
-          identity,
+          identity: getParticipantLabel(identity),
           track,
         },
-      ];
+      ].slice(0, MAX_ACCEPTED_GUESTS);
 
-      if (focusedVideo !== "local") {
+      if (focusedVideo !== "local" && focusedVideo !== "grid") {
         setFocusedVideo(trackId);
       }
 
@@ -2012,6 +2054,11 @@ export default function LiveRoomPage() {
       return;
     }
 
+    if (!isPrivateCall && getPendingOrAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS) {
+      alert("This stream already has the maximum 3 guest slots.");
+      return;
+    }
+
     setInviteSendingId(profile.id);
 
     if (isPrivateCall) {
@@ -2288,6 +2335,12 @@ export default function LiveRoomPage() {
   const activeGuestInvites = guestInvites.filter(
     (invite) => invite.status === "pending" || invite.status === "accepted",
   );
+  const acceptedGuestCount = getAcceptedGuestCount();
+  const visibleRemoteVideos = getVisibleRemoteVideos();
+  const focusedRemoteVideo = getFocusedRemoteVideo();
+  const participantCount = Math.min(1 + visibleRemoteVideos.length, MAX_TOTAL_PARTICIPANTS);
+  const gridClass = getGridClass(participantCount);
+  const gridTileMinHeight = getGridTileMinHeight(participantCount);
 
   return (
     <>
@@ -2560,6 +2613,18 @@ export default function LiveRoomPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <button
+                      onClick={() => setFocusedVideo("grid")}
+                      disabled={!room}
+                      className={
+                        focusedVideo === "grid"
+                          ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
+                          : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
+                      }
+                    >
+                      Grid
+                    </button>
+
+                    <button
                       onClick={() => setFocusedVideo("local")}
                       disabled={!room}
                       className={
@@ -2571,19 +2636,20 @@ export default function LiveRoomPage() {
                       You Big
                     </button>
 
-                    {remoteVideos.length > 0 && (
+                    {visibleRemoteVideos.map((video, index) => (
                       <button
-                        onClick={() => setFocusedVideo(remoteVideos[0].id)}
+                        key={video.id}
+                        onClick={() => setFocusedVideo(video.id)}
                         disabled={!room}
                         className={
-                          focusedVideo !== "local"
+                          focusedVideo === video.id
                             ? "rounded-full bg-white px-3 py-1 text-xs font-black text-black"
                             : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-300 hover:bg-gray-700 disabled:text-gray-600"
                         }
                       >
-                        Guest Big
+                        Guest {index + 1}
                       </button>
-                    )}
+                    ))}
 
                     <button
                       onClick={() => setIsCompactStudio((current) => !current)}
@@ -2611,8 +2677,48 @@ export default function LiveRoomPage() {
                       : "relative flex h-[68dvh] min-h-[420px] items-center justify-center overflow-hidden bg-black sm:h-[620px] lg:h-[680px]"
                   }
                 >
-                  <div className="relative h-full w-full bg-black">
-                    {focusedVideo === "local" ? (
+                  <div className="relative h-full w-full bg-black p-2 sm:p-3">
+                    {focusedVideo === "grid" ? (
+                      <div className={`grid h-full w-full gap-2 sm:gap-3 ${gridClass}`}>
+                        <div
+                          onClick={() => setFocusedVideo("local")}
+                          className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gray-950 ${gridTileMinHeight}`}
+                        >
+                          <video
+                            ref={localVideoRef}
+                            autoPlay
+                            muted
+                            playsInline
+                            className="absolute inset-0 h-full w-full object-cover"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+
+                          <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
+                            You {role === "host" ? "• Host" : "• Guest"}
+                          </div>
+                        </div>
+
+                        {visibleRemoteVideos.map((video, index) => (
+                          <RemoteVideoTile
+                            key={video.id}
+                            track={video.track}
+                            identity={`${video.identity || `Guest ${index + 1}`}`}
+                            onClick={() => setFocusedVideo(video.id)}
+                            className={`border border-white/10 ${gridTileMinHeight}`}
+                          />
+                        ))}
+
+                        {visibleRemoteVideos.length === 0 && (
+                          <div className={`flex items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 ${gridTileMinHeight}`}>
+                            Waiting for guests
+                          </div>
+                        )}
+                      </div>
+                    ) : focusedVideo === "local" ? (
                       <>
                         <div
                           onClick={() => setFocusedVideo("local")}
@@ -2632,20 +2738,25 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You
+                            You {role === "host" ? "• Host" : "• Guest"}
                           </div>
                         </div>
 
-                        {remoteVideos.length > 0 ? (
-                          <div className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36">
-                            <RemoteVideoTile
-                              track={remoteVideos[0].track}
-                              identity={remoteVideos[0].identity}
-                              onClick={() =>
-                                setFocusedVideo(remoteVideos[0].id)
-                              }
-                              className="h-full w-full"
-                            />
+                        {visibleRemoteVideos.length > 0 ? (
+                          <div className="absolute bottom-4 right-4 flex max-w-[86vw] gap-2 overflow-x-auto rounded-3xl bg-black/20 p-1 backdrop-blur sm:max-w-none">
+                            {visibleRemoteVideos.map((video, index) => (
+                              <div
+                                key={video.id}
+                                className="h-32 w-24 shrink-0 overflow-hidden rounded-2xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36"
+                              >
+                                <RemoteVideoTile
+                                  track={video.track}
+                                  identity={video.identity || `Guest ${index + 1}`}
+                                  onClick={() => setFocusedVideo(video.id)}
+                                  className="h-full w-full"
+                                />
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <div className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
@@ -2655,22 +2766,10 @@ export default function LiveRoomPage() {
                       </>
                     ) : (
                       <>
-                        {remoteVideos.length > 0 ? (
+                        {focusedRemoteVideo ? (
                           <RemoteVideoTile
-                            track={
-                              (
-                                remoteVideos.find(
-                                  (item) => item.id === focusedVideo,
-                                ) || remoteVideos[0]
-                              ).track
-                            }
-                            identity={
-                              (
-                                remoteVideos.find(
-                                  (item) => item.id === focusedVideo,
-                                ) || remoteVideos[0]
-                              ).identity
-                            }
+                            track={focusedRemoteVideo.track}
+                            identity={focusedRemoteVideo.identity || "Guest"}
                             className="h-full w-full"
                           />
                         ) : (
@@ -2705,6 +2804,26 @@ export default function LiveRoomPage() {
                             You
                           </div>
                         </div>
+
+                        {visibleRemoteVideos.filter((video) => video.id !== focusedVideo).length > 0 && (
+                          <div className="absolute bottom-4 left-4 flex max-w-[55vw] gap-2 overflow-x-auto rounded-2xl bg-black/30 p-1 backdrop-blur">
+                            {visibleRemoteVideos
+                              .filter((video) => video.id !== focusedVideo)
+                              .map((video, index) => (
+                                <div
+                                  key={video.id}
+                                  className="h-24 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl"
+                                >
+                                  <RemoteVideoTile
+                                    track={video.track}
+                                    identity={video.identity || `Guest ${index + 1}`}
+                                    onClick={() => setFocusedVideo(video.id)}
+                                    className="h-full w-full"
+                                  />
+                                </div>
+                              ))}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -2908,7 +3027,8 @@ export default function LiveRoomPage() {
 
                   <p className="mb-5 text-sm text-gray-400">
                     Search creators by name or username, then invite them to
-                    join this room.
+                    join this room. Limit: host + 3 guests.
+                    {acceptedGuestCount >= MAX_ACCEPTED_GUESTS && " Guest limit reached."}
                   </p>
 
                   <div className="mb-5">
@@ -2968,12 +3088,17 @@ export default function LiveRoomPage() {
 
                               <button
                                 onClick={() => inviteCreator(profile)}
-                                disabled={inviteSendingId === profile.id}
+                                disabled={
+                                  inviteSendingId === profile.id ||
+                                  (!isPrivate && activeGuestInvites.length >= MAX_ACCEPTED_GUESTS)
+                                }
                                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700 disabled:bg-gray-700"
                               >
                                 {inviteSendingId === profile.id
                                   ? "Inviting..."
-                                  : "Invite"}
+                                  : !isPrivate && activeGuestInvites.length >= MAX_ACCEPTED_GUESTS
+                                    ? "Limit Reached"
+                                    : "Invite"}
                               </button>
                             </div>
                           ))}
