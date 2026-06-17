@@ -132,12 +132,46 @@ export default function LiveRoomPage() {
     return {
       facingMode,
       resolution: {
-        width: mobile ? 1280 : 1280,
-        height: mobile ? 720 : 720,
-        frameRate: mobile ? 30 : 30,
+        // StreamHub HD profile:
+        // Android/iPhone/iPad = 720p / 30fps
+        // Laptop/Desktop = 1080p / 30fps
+        width: mobile ? 1280 : 1920,
+        height: mobile ? 720 : 1080,
+        frameRate: 30,
       },
-      frameRate: mobile ? 24 : 30,
+      frameRate: 30,
     };
+  }
+
+  function getFallbackVideoProfiles(
+    facingMode: "user" | "environment" = "user"
+  ) {
+    const mobile = isMobileDevice();
+
+    return [
+      getVideoQualityProfile(facingMode),
+      {
+        facingMode,
+        resolution: {
+          width: 1280,
+          height: 720,
+          frameRate: 30,
+        },
+        frameRate: 30,
+      },
+      {
+        facingMode,
+        resolution: {
+          width: mobile ? 960 : 1280,
+          height: mobile ? 540 : 720,
+          frameRate: mobile ? 24 : 30,
+        },
+        frameRate: mobile ? 24 : 30,
+      },
+      getMediaVideoConstraints(facingMode),
+      { facingMode },
+      true,
+    ];
   }
 
   function getMediaVideoConstraints(
@@ -147,19 +181,31 @@ export default function LiveRoomPage() {
 
     return {
       facingMode,
-      width: { ideal: mobile ? 1280 : 1280, max: 1280 },
-      height: { ideal: mobile ? 720 : 720, max: 720 },
-      frameRate: { ideal: mobile ? 30 : 30, max: 30 },
+      width: {
+        ideal: mobile ? 1280 : 1920,
+        max: mobile ? 1280 : 1920,
+      },
+      height: {
+        ideal: mobile ? 720 : 1080,
+        max: mobile ? 720 : 1080,
+      },
+      frameRate: {
+        ideal: 30,
+        max: 30,
+      },
     };
   }
 
   function getMediaAudioConstraints(): MediaTrackConstraints {
+    const mobile = isMobileDevice();
+
     return {
       echoCancellation: true,
       noiseSuppression: true,
       autoGainControl: true,
-      channelCount: 1,
+      channelCount: mobile ? 1 : 1,
       sampleRate: 48000,
+      sampleSize: 16,
     };
   }
 
@@ -169,12 +215,22 @@ export default function LiveRoomPage() {
     return {
       adaptiveStream: true,
       dynacast: true,
+      audioCaptureDefaults: getMediaAudioConstraints(),
+      videoCaptureDefaults: getMediaVideoConstraints(
+        usingFrontCamera ? "user" : "environment"
+      ),
       publishDefaults: {
         simulcast: true,
         videoCodec: "vp8",
         videoEncoding: {
-          maxBitrate: mobile ? 2_500_000 : 3_500_000,
-          maxFramerate: mobile ? 30 : 30,
+          // Higher bitrate for less blurry video.
+          // Do not push this too high on Android or calls will freeze.
+          maxBitrate: mobile ? 3_200_000 : 5_500_000,
+          maxFramerate: 30,
+        },
+        screenShareEncoding: {
+          maxBitrate: mobile ? 2_500_000 : 6_000_000,
+          maxFramerate: 30,
         },
       },
     };
@@ -217,12 +273,7 @@ export default function LiveRoomPage() {
     targetRoom: Room,
     facingMode: "user" | "environment" = "user"
   ) {
-    const attempts = [
-      getVideoQualityProfile(facingMode),
-      getMediaVideoConstraints(facingMode),
-      { facingMode },
-      true,
-    ];
+    const attempts = getFallbackVideoProfiles(facingMode);
 
     for (const options of attempts) {
       try {
