@@ -62,6 +62,18 @@ type PrivateCallRequest = {
   created_at: string;
 };
 
+
+type StreamJoinRequest = {
+  id: string;
+  stream_id: string;
+  requester_id: string;
+  host_id: string;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+  responded_at?: string | null;
+  profiles?: Profile | null;
+};
+
 type RemoteVideoTrack = {
   id: string;
   identity: string;
@@ -97,6 +109,8 @@ export default function LiveRoomPage() {
 
   const [guestInput, setGuestInput] = useState("");
   const [guestInvites, setGuestInvites] = useState<StreamGuest[]>([]);
+  const [joinRequests, setJoinRequests] = useState<StreamJoinRequest[]>([]);
+  const [joinRequestUpdatingId, setJoinRequestUpdatingId] = useState<string | null>(null);
   const [creatorResults, setCreatorResults] = useState<Profile[]>([]);
   const [creatorSearching, setCreatorSearching] = useState(false);
   const [inviteSendingId, setInviteSendingId] = useState<string | null>(null);
@@ -416,6 +430,7 @@ export default function LiveRoomPage() {
     let guestChannel: any;
     let viewerChannel: any;
     let privateCallChannel: any;
+    let joinRequestChannel: any;
     let callExpiryTimer: ReturnType<typeof setInterval> | null = null;
 
     async function getRealViewerCount() {
@@ -492,6 +507,7 @@ export default function LiveRoomPage() {
         setRole("host");
         setStatusText("Host studio ready.");
         await loadGuestInvites();
+        await loadJoinRequests();
       } else {
         const { data: invite } = await supabase
           .from("stream_guests")
@@ -659,6 +675,23 @@ export default function LiveRoomPage() {
         )
         .subscribe();
 
+
+      joinRequestChannel = supabase
+        .channel("studio-join-requests-" + channelKey)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "stream_join_requests",
+            filter: `host_id=eq.${user.id}`,
+          },
+          async () => {
+            await loadJoinRequests();
+          },
+        )
+        .subscribe();
+
       callExpiryTimer = setInterval(async () => {
         await expireStalePrivateCalls();
       }, 10000);
@@ -676,6 +709,7 @@ export default function LiveRoomPage() {
       if (guestChannel) supabase.removeChannel(guestChannel);
       if (viewerChannel) supabase.removeChannel(viewerChannel);
       if (privateCallChannel) supabase.removeChannel(privateCallChannel);
+      if (joinRequestChannel) supabase.removeChannel(joinRequestChannel);
       if (callExpiryTimer) clearInterval(callExpiryTimer);
 
       cleanupRemoteAudio();
@@ -962,6 +996,169 @@ export default function LiveRoomPage() {
       .order("created_at", { ascending: false });
 
     setGuestInvites((data || []) as StreamGuest[]);
+  }
+
+  async function loadJoinRequests() {
+    if (!streamId) return;
+
+    const { data, error } = await supabase
+      .from("stream_join_requests")
+      .select(
+        `
+        *,
+        profiles:requester_id (
+          id,
+          username,
+          display_name,
+          avatar_url,
+          is_banned
+        )
+      `,
+      )
+      .eq("stream_id", streamId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.warn("Join request lookup skipped:", error.message);
+      return;
+    }
+
+    setJoinRequests((data || []) as StreamJoinRequest[]);
+  }
+
+  async function acceptJoinRequest(request: StreamJoinRequest) {
+    if (!stream || !currentUserId || role !== "host") return;
+
+    const allowed = await checkCurrentUserStillAllowed();
+    if (!allowed) return;
+
+    if (getAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS) {
+      alert("Guest limit reached. Remove a guest before accepting another request.");
+      return;
+    }
+
+    if (request.profiles?.is_banned) {
+      alert("This user is banned and cannot be added.");
+      return;
+    }
+
+    setJoinRequestUpdatingId(request.id);
+
+    const { error: requestError } = await supabase
+      .from("stream_join_requests")
+      .update({
+        status: "accepted",
+        responded_at: new Date().toISOString(),
+      })
+      .eq("id", request.id);
+
+    if (requestError) {
+      setJoinRequestUpdatingId(null);
+      alert(requestError.message);
+      return;
+    }
+
+    await supabase
+      .from("stream_guests")
+      .update({ status: "removed" })
+      .eq("stream_id", stream.id)
+      .eq("guest_id", request.requester_id);
+
+    const { error: guestError } = await supabase.from("stream_guests").insert([
+      {
+        stream_id: stream.id,
+        host_id: currentUserId,
+        guest_id: request.requester_id,
+        status: "accepted",
+      },
+    ]);
+
+    if (guestError) {
+      setJoinRequestUpdatingId(null);
+      alert(guestError.message);
+      await loadJoinRequests();
+      await loadGuestInvites();
+      return;
+    }
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: request.requester_id,
+        type: "join_request_accepted",
+        title: "Join Request Accepted",
+        message: `You were added to "${stream.title}". Tap to join the live room.`,
+        link: `/live/${stream.id}`,
+        is_read: false,
+      },
+    ]);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      try {
+        await fetch("/api/push/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            userId: request.requester_id,
+            title: "Join Request Accepted",
+            message: `You were added to "${stream.title}". Tap to join the live room.`,
+            url: `/live/${stream.id}`,
+            streamId: stream.id,
+            notificationType: "join_request_accepted",
+          }),
+        });
+      } catch (pushError) {
+        console.error("Join request push failed:", pushError);
+      }
+    }
+
+    setJoinRequestUpdatingId(null);
+    await loadJoinRequests();
+    await loadGuestInvites();
+  }
+
+  async function declineJoinRequest(request: StreamJoinRequest) {
+    if (!stream || !currentUserId || role !== "host") return;
+
+    const allowed = await checkCurrentUserStillAllowed();
+    if (!allowed) return;
+
+    setJoinRequestUpdatingId(request.id);
+
+    const { error } = await supabase
+      .from("stream_join_requests")
+      .update({
+        status: "declined",
+        responded_at: new Date().toISOString(),
+      })
+      .eq("id", request.id);
+
+    if (error) {
+      setJoinRequestUpdatingId(null);
+      alert(error.message);
+      return;
+    }
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: request.requester_id,
+        type: "join_request_declined",
+        title: "Join Request Declined",
+        message: `Your request to join "${stream.title}" was declined.`,
+        link: `/watch/${stream.id}`,
+        is_read: false,
+      },
+    ]);
+
+    setJoinRequestUpdatingId(null);
+    await loadJoinRequests();
   }
 
   async function searchCreators() {
@@ -2335,6 +2532,9 @@ export default function LiveRoomPage() {
   const activeGuestInvites = guestInvites.filter(
     (invite) => invite.status === "pending" || invite.status === "accepted",
   );
+  const pendingJoinRequests = joinRequests.filter(
+  (request) => request.status === "pending"
+  );
   const acceptedGuestCount = getAcceptedGuestCount();
   const visibleRemoteVideos = getVisibleRemoteVideos();
   const focusedRemoteVideo = getFocusedRemoteVideo();
@@ -3018,6 +3218,83 @@ export default function LiveRoomPage() {
                   </button>
                 </div>
               </div>
+
+              {role === "host" && !isPrivate && (
+                <div className="mt-6 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4 sm:p-6">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-2xl font-black">Join Requests</h2>
+                      <p className="text-sm text-gray-400">
+                        Viewers can request to join like TikTok Live. You can add up to 3 guests.
+                      </p>
+                    </div>
+
+                    <span className="w-fit rounded-full bg-black/40 px-3 py-1 text-xs font-black text-purple-200">
+                      {getAcceptedGuestCount()}/{MAX_ACCEPTED_GUESTS} guests
+                    </span>
+                  </div>
+
+                  {pendingJoinRequests.length === 0 ? (
+                    <p className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-500">
+                      No viewer requests right now.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingJoinRequests.map((request) => {
+                        const requesterName =
+                          request.profiles?.display_name ||
+                          request.profiles?.username ||
+                          request.requester_id;
+
+                        return (
+                          <div
+                            key={request.id}
+                            className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <img
+                                src={request.profiles?.avatar_url || "/default-avatar.png"}
+                                alt={requesterName}
+                                className="h-12 w-12 shrink-0 rounded-full object-cover"
+                              />
+
+                              <div className="min-w-0">
+                                <p className="truncate font-black">{requesterName}</p>
+                                <p className="text-sm text-gray-400">Requested to join live</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 sm:justify-end">
+                              <button
+                                onClick={() => acceptJoinRequest(request)}
+                                disabled={
+                                  joinRequestUpdatingId === request.id ||
+                                  getAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS
+                                }
+                                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-black hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-400"
+                              >
+                                {joinRequestUpdatingId === request.id
+                                  ? "Adding..."
+                                  : getAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS
+                                    ? "Limit Reached"
+                                    : "Add to Stream"}
+                              </button>
+
+                              <button
+                                onClick={() => declineJoinRequest(request)}
+                                disabled={joinRequestUpdatingId === request.id}
+                                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-black hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-400"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {role === "host" && (
                 <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
