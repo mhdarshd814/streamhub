@@ -118,6 +118,7 @@ export default function WatchPage() {
   const watchStartRef = useRef<number | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const remoteVideoTrackRef = useRef<RemoteTrack | null>(null);
+  const autoJoinTriggeredRef = useRef(false);
 
   function isMobileDevice() {
     if (typeof navigator === "undefined") return false;
@@ -1042,6 +1043,7 @@ export default function WatchPage() {
     if (stream.user_id === currentUserId || stream.visibility === "private") return;
 
     let joinRequestChannel: any = null;
+    let joinRequestPollTimer: ReturnType<typeof setInterval> | null = null;
     let active = true;
 
     async function loadMyJoinRequest() {
@@ -1061,10 +1063,25 @@ export default function WatchPage() {
         return;
       }
 
-      setJoinRequest((data || null) as StreamJoinRequest | null);
+      const latestRequest = (data || null) as StreamJoinRequest | null;
+      setJoinRequest(latestRequest);
+
+      if (latestRequest?.status === "accepted" && !autoJoinTriggeredRef.current) {
+        autoJoinTriggeredRef.current = true;
+        setStatus("Host accepted your request. Opening live studio...");
+        router.push(`/live/${streamId}`);
+      }
+
+      if (latestRequest?.status === "declined") {
+        setStatus("Host declined your request to join.");
+      }
     }
 
     loadMyJoinRequest();
+
+    joinRequestPollTimer = setInterval(() => {
+      loadMyJoinRequest();
+    }, 2500);
 
     joinRequestChannel = supabase
       .channel(`watch-join-request-${streamId}-${currentUserId}`)
@@ -1083,7 +1100,8 @@ export default function WatchPage() {
 
           setJoinRequest(updated);
 
-          if (updated.status === "accepted") {
+          if (updated.status === "accepted" && !autoJoinTriggeredRef.current) {
+            autoJoinTriggeredRef.current = true;
             setStatus("Host accepted your request. Opening live studio...");
             router.push(`/live/${streamId}`);
           }
@@ -1097,6 +1115,7 @@ export default function WatchPage() {
 
     return () => {
       active = false;
+      if (joinRequestPollTimer) clearInterval(joinRequestPollTimer);
       if (joinRequestChannel) supabase.removeChannel(joinRequestChannel);
     };
   }, [currentUserId, stream?.id, stream?.user_id, stream?.visibility, streamId, router]);
