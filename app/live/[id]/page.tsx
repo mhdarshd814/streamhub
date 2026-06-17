@@ -608,13 +608,20 @@ export default function LiveRoomPage() {
   function addRemoteVideo(track: any, identity: string) {
     if (!track || track.kind !== Track.Kind.Video) return;
 
-    const trackId = track.sid || `${identity}-${track.kind}`;
+    const trackId =
+      track.sid ||
+      track.trackSid ||
+      track.mediaStreamTrack?.id ||
+      `${identity}-${track.kind}-${Date.now()}`;
 
     setRemoteVideos((current) => {
-      const exists = current.some((item) => item.id === trackId);
+      const exists = current.some(
+        (item) => item.id === trackId || item.track === track
+      );
+
       if (exists) return current;
 
-      return [
+      const nextVideos = [
         ...current,
         {
           id: trackId,
@@ -622,17 +629,51 @@ export default function LiveRoomPage() {
           track,
         },
       ];
+
+      if (focusedVideo !== "local") {
+        setFocusedVideo(trackId);
+      }
+
+      return nextVideos;
     });
   }
 
   function removeRemoteVideo(track: any) {
     if (!track) return;
 
-    const trackId = track.sid || `${track.kind}`;
+    const trackId = track.sid || track.trackSid || track.mediaStreamTrack?.id;
 
     setRemoteVideos((current) =>
       current.filter((item) => item.id !== trackId && item.track !== track)
     );
+  }
+
+  function syncRemoteParticipantTracks(targetRoom: Room | null) {
+    if (!targetRoom) return;
+
+    targetRoom.remoteParticipants.forEach((participant: any) => {
+      participant.trackPublications.forEach((publication: any) => {
+        try {
+          if (publication?.setSubscribed && publication.isSubscribed === false) {
+            publication.setSubscribed(true);
+          }
+        } catch (error) {
+          console.warn("Remote subscription request skipped:", error);
+        }
+
+        const track = publication.track;
+
+        if (!track) return;
+
+        if (track.kind === Track.Kind.Audio) {
+          attachRemoteAudio(track);
+        }
+
+        if (track.kind === Track.Kind.Video) {
+          addRemoteVideo(track, participant.name || participant.identity);
+        }
+      });
+    });
   }
 
   async function removeLiveKitParticipant(participantIdentity: string) {
@@ -1306,6 +1347,21 @@ export default function LiveRoomPage() {
 
       const newRoom = new Room(getOptimizedRoomOptions() as any);
 
+      newRoom.on(RoomEvent.ParticipantConnected, () => {
+        setTimeout(() => syncRemoteParticipantTracks(newRoom), 250);
+        setTimeout(() => syncRemoteParticipantTracks(newRoom), 1000);
+      });
+
+      (newRoom as any).on((RoomEvent as any).TrackPublished, (publication: any) => {
+        try {
+          if (publication?.setSubscribed) publication.setSubscribed(true);
+        } catch (error) {
+          console.warn("Track subscription request failed:", error);
+        }
+
+        setTimeout(() => syncRemoteParticipantTracks(newRoom), 250);
+      });
+
       newRoom.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
         if (track.kind === Track.Kind.Audio) {
           attachRemoteAudio(track);
@@ -1350,7 +1406,9 @@ export default function LiveRoomPage() {
         setRemoteVideos([]);
       });
 
-      await newRoom.connect(livekitUrl, tokenData.token);
+      await newRoom.connect(livekitUrl, tokenData.token, {
+        autoSubscribe: true,
+      } as any);
 
       const cameraStarted = await enableCameraSafely(
         newRoom,
@@ -1358,19 +1416,9 @@ export default function LiveRoomPage() {
       );
       const micStarted = await enableMicrophoneSafely(newRoom);
 
-      newRoom.remoteParticipants.forEach((participant) => {
-        participant.trackPublications.forEach((publication) => {
-          const track = publication.track;
-
-          if (track && track.kind === Track.Kind.Audio) {
-            attachRemoteAudio(track);
-          }
-
-          if (track && track.kind === Track.Kind.Video) {
-            addRemoteVideo(track, participant.identity);
-          }
-        });
-      });
+      syncRemoteParticipantTracks(newRoom);
+      setTimeout(() => syncRemoteParticipantTracks(newRoom), 700);
+      setTimeout(() => syncRemoteParticipantTracks(newRoom), 1500);
 
       attachLocalVideoTrack(newRoom);
       setTimeout(() => attachLocalVideoTrack(newRoom), 500);
@@ -2770,6 +2818,12 @@ function RemoteVideoTile({
     if (!track || !videoRef.current) return;
 
     track.attach(videoRef.current);
+    videoRef.current.autoplay = true;
+    videoRef.current.playsInline = true;
+    videoRef.current.style.width = "100%";
+    videoRef.current.style.height = "100%";
+    videoRef.current.style.objectFit = "cover";
+    videoRef.current.play().catch(() => {});
 
     return () => {
       try {
