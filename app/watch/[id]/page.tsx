@@ -1923,7 +1923,7 @@ export default function WatchPage() {
 
         <section className="grid gap-4 lg:grid-cols-[1fr_380px] lg:gap-6">
           <div className="min-w-0">
-            <div className="overflow-hidden rounded-[22px] border border-white/10 bg-black shadow-2xl sm:rounded-[28px]">
+            <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black shadow-2xl sm:rounded-[28px]">
               <div
                 ref={videoContainerRef}
                 className="relative flex h-[230px] items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black sm:h-[360px] md:h-[520px] lg:h-[620px]"
@@ -1939,6 +1939,36 @@ export default function WatchPage() {
                   </p>
                 </div>
               </div>
+
+              {showJoinRequestButton && (
+                <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-20 flex justify-center sm:bottom-6">
+                  <button
+                    onClick={requestToJoinStream}
+                    disabled={
+                      joinRequestLoading ||
+                      joinRequest?.status === "pending" ||
+                      joinRequest?.status === "accepted"
+                    }
+                    className="pointer-events-auto rounded-full bg-green-600 px-6 py-3 text-sm font-black text-white shadow-2xl shadow-green-950/50 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/50 sm:px-8 sm:py-4 sm:text-base"
+                  >
+                    {joinRequestButtonLabel} 🎙️
+                  </button>
+                </div>
+              )}
+
+              {joinRequest?.status === "accepted" && streamStatus === "live" && (
+                <div className="absolute inset-x-4 bottom-4 z-20 rounded-3xl border border-green-400/40 bg-black/80 p-4 text-center shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:w-[420px] sm:-translate-x-1/2">
+                  <p className="mb-3 text-sm font-black text-green-300">
+                    Host accepted your request
+                  </p>
+                  <button
+                    onClick={() => router.push(`/live/${streamId}`)}
+                    className="w-full rounded-2xl bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-500"
+                  >
+                    Join Stream Now
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl sm:mt-5 sm:p-5">
