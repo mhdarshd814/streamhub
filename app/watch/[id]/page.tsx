@@ -47,6 +47,17 @@ type HostProfile = {
   is_verified?: boolean;
 };
 
+
+type StreamJoinRequest = {
+  id: string;
+  stream_id: string;
+  requester_id: string;
+  host_id: string;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+  responded_at?: string | null;
+};
+
 export default function WatchPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,6 +76,8 @@ export default function WatchPage() {
   const [viewerCount, setViewerCount] = useState(0);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [joinRequest, setJoinRequest] = useState<StreamJoinRequest | null>(null);
+  const [joinRequestLoading, setJoinRequestLoading] = useState(false);
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
@@ -1023,6 +1036,71 @@ export default function WatchPage() {
     return () => clearTimeout(timer);
   }, [isViewerFullscreen, connected, streamStatus, videoTrackVersion]);
 
+
+  useEffect(() => {
+    if (!currentUserId || !stream?.id || !stream.user_id) return;
+    if (stream.user_id === currentUserId || stream.visibility === "private") return;
+
+    let joinRequestChannel: any = null;
+    let active = true;
+
+    async function loadMyJoinRequest() {
+      const { data, error } = await supabase
+        .from("stream_join_requests")
+        .select("*")
+        .eq("stream_id", streamId)
+        .eq("requester_id", currentUserId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (error) {
+        console.warn("Join request lookup skipped:", error.message);
+        return;
+      }
+
+      setJoinRequest((data || null) as StreamJoinRequest | null);
+    }
+
+    loadMyJoinRequest();
+
+    joinRequestChannel = supabase
+      .channel(`watch-join-request-${streamId}-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stream_join_requests",
+          filter: `requester_id=eq.${currentUserId}`,
+        },
+        async (payload) => {
+          const updated = payload.new as StreamJoinRequest;
+
+          if (!updated || updated.stream_id !== streamId) return;
+
+          setJoinRequest(updated);
+
+          if (updated.status === "accepted") {
+            setStatus("Host accepted your request. Opening live studio...");
+            router.push(`/live/${streamId}`);
+          }
+
+          if (updated.status === "declined") {
+            setStatus("Host declined your request to join.");
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      if (joinRequestChannel) supabase.removeChannel(joinRequestChannel);
+    };
+  }, [currentUserId, stream?.id, stream?.user_id, stream?.visibility, streamId, router]);
+
   async function sendMessage() {
     if (!newMessage.trim()) return;
 
@@ -1341,6 +1419,111 @@ export default function WatchPage() {
     router.push(`/profile/${host.id}`);
   }
 
+  async function requestToJoinStream() {
+    if (!stream?.id || !stream.user_id) {
+      alert("Stream not ready.");
+      return;
+    }
+
+    if (stream.visibility === "private") {
+      alert("Private calls do not support public join requests.");
+      return;
+    }
+
+    if (streamStatus !== "live" || !connected) {
+      alert("You can request to join only while the stream is live.");
+      return;
+    }
+
+    if (blockedAccess || subscriberBlocked) {
+      alert("You cannot request to join this stream.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Please login to request joining this live.");
+      router.push("/login");
+      return;
+    }
+
+    if (user.id === stream.user_id) {
+      alert("You are the host of this stream.");
+      return;
+    }
+
+    if (joinRequest?.status === "pending") {
+      alert("Your request is already pending.");
+      return;
+    }
+
+    setJoinRequestLoading(true);
+
+    const { data, error } = await supabase
+      .from("stream_join_requests")
+      .insert([
+        {
+          stream_id: stream.id,
+          requester_id: user.id,
+          host_id: stream.user_id,
+          status: "pending",
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      setJoinRequestLoading(false);
+      alert(error.message);
+      return;
+    }
+
+    setJoinRequest((data || null) as StreamJoinRequest | null);
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: stream.user_id,
+        type: "stream_join_request",
+        title: "Viewer wants to join",
+        message: `${user.user_metadata?.display_name || user.user_metadata?.username || user.email || "A viewer"} requested to join "${stream.title || "your live stream"}".`,
+        link: `/live/${stream.id}`,
+        is_read: false,
+      },
+    ]);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      try {
+        await fetch("/api/push/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            userId: stream.user_id,
+            title: "Viewer wants to join",
+            message: `${user.user_metadata?.display_name || user.user_metadata?.username || user.email || "A viewer"} requested to join your live stream.`,
+            url: `/live/${stream.id}`,
+            streamId: stream.id,
+            notificationType: "stream_join_request",
+          }),
+        });
+      } catch (pushError) {
+        console.error("Join request push failed:", pushError);
+      }
+    }
+
+    setJoinRequestLoading(false);
+    setStatus("Request sent. Waiting for host approval...");
+  }
+
   const hostName =
     host?.display_name ||
     host?.username ||
@@ -1353,6 +1536,27 @@ export default function WatchPage() {
     stream.user_id !== currentUserId &&
     stream.visibility !== "private" &&
     !blockedAccess;
+
+  const showJoinRequestButton =
+    !!stream?.user_id &&
+    !!currentUserId &&
+    stream.user_id !== currentUserId &&
+    stream.visibility !== "private" &&
+    streamStatus === "live" &&
+    connected &&
+    !blockedAccess &&
+    !subscriberBlocked;
+
+  const joinRequestButtonLabel =
+    joinRequestLoading
+      ? "Sending..."
+      : joinRequest?.status === "pending"
+        ? "Request Sent"
+        : joinRequest?.status === "accepted"
+          ? "Joining..."
+          : joinRequest?.status === "declined"
+            ? "Request Again"
+            : "Request to Join";
 
   const chatDisabled =
     streamStatus !== "live" ||
@@ -1811,6 +2015,20 @@ export default function WatchPage() {
                   >
                     Fullscreen ⛶
                   </button>
+
+                  {showJoinRequestButton && (
+                    <button
+                      onClick={requestToJoinStream}
+                      disabled={
+                        joinRequestLoading ||
+                        joinRequest?.status === "pending" ||
+                        joinRequest?.status === "accepted"
+                      }
+                      className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-6"
+                    >
+                      {joinRequestButtonLabel} 🎙️
+                    </button>
+                  )}
 
                   <button
                     onClick={toggleLike}
