@@ -116,14 +116,17 @@ export default function WatchPage() {
     const mobile = isMobileDevice();
 
     return {
+      // Keep adaptive stream enabled, but ask for stronger receive quality by
+      // attaching the video at full container size and requesting HIGH quality
+      // from remote publications where LiveKit exposes that method.
       adaptiveStream: true,
       dynacast: true,
       stopLocalTrackOnUnpublish: true,
       videoCaptureDefaults: {
         resolution: {
-          width: mobile ? 960 : 1280,
-          height: mobile ? 540 : 720,
-          frameRate: mobile ? 24 : 30,
+          width: mobile ? 1280 : 1920,
+          height: mobile ? 720 : 1080,
+          frameRate: 30,
         },
       },
     };
@@ -132,9 +135,80 @@ export default function WatchPage() {
   function getViewerConnectOptions() {
     return {
       autoSubscribe: true,
-      maxRetries: 5,
-      peerConnectionTimeout: 20_000,
+      maxRetries: 8,
+      peerConnectionTimeout: 30_000,
     };
+  }
+
+  function requestBestRemoteVideoQuality(publication?: RemoteTrackPublication | any) {
+    if (!publication) return;
+
+    try {
+      if (publication.setSubscribed && publication.isSubscribed === false) {
+        publication.setSubscribed(true);
+      }
+    } catch (error) {
+      console.warn("Viewer subscription request skipped:", error);
+    }
+
+    try {
+      // LiveKit's high quality enum is commonly numeric value 2.
+      // Use optional call to avoid breaking older SDK builds.
+      publication.setVideoQuality?.(2);
+    } catch (error) {
+      console.warn("Viewer video quality request skipped:", error);
+    }
+  }
+
+  function syncViewerRemoteQuality(targetRoom: Room | null) {
+    if (!targetRoom) return;
+
+    targetRoom.remoteParticipants.forEach((participant) => {
+      participant.trackPublications.forEach((publication: any) => {
+        requestBestRemoteVideoQuality(publication);
+
+        if (publication.track) {
+  const track = publication.track;
+
+  if (track.kind === Track.Kind.Video) {
+    remoteVideoTrackRef.current = track as RemoteTrack;
+    setVideoTrackVersion((current) => current + 1);
+
+    attachVideoTrackToContainer(
+      track as RemoteTrack,
+      videoContainerRef.current,
+      "18px"
+    );
+
+    if (isViewerFullscreen) {
+      attachVideoTrackToContainer(
+        track as RemoteTrack,
+        fullscreenVideoContainerRef.current,
+        "0px"
+      );
+    }
+
+    setStatus("Live stream connected");
+  }
+
+  if (track.kind === Track.Kind.Audio) {
+    const element = track.attach();
+    const audioElement = element as HTMLAudioElement;
+    audioElement.autoplay = true;
+    audioElement.controls = false;
+    audioElement.style.display = "none";
+
+    document.body.appendChild(audioElement);
+    audioElementsRef.current.push(audioElement);
+
+    audioElement.play().catch(() => {
+      setAudioBlocked(true);
+      console.warn("Audio autoplay blocked. User must enable audio manually.");
+    });
+  }
+}
+      });
+    });
   }
 
   function attachVideoTrackToContainer(
@@ -842,6 +916,7 @@ export default function WatchPage() {
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
           ) => {
+            requestBestRemoteVideoQuality(publication);
             attachTrack(track);
           }
         );
@@ -882,13 +957,9 @@ export default function WatchPage() {
           console.warn("Viewer keep awake failed:", error);
         });
 
-        room.remoteParticipants.forEach((participant) => {
-          participant.trackPublications.forEach((publication) => {
-            if (publication.track) {
-              attachTrack(publication.track);
-            }
-          });
-        });
+        syncViewerRemoteQuality(room);
+        setTimeout(() => syncViewerRemoteQuality(room), 700);
+        setTimeout(() => syncViewerRemoteQuality(room), 1500);
 
         setLoading(false);
       } catch (error: any) {
