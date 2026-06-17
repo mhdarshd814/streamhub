@@ -1549,14 +1549,14 @@ export default function WatchPage() {
 
   const joinRequestButtonLabel =
     joinRequestLoading
-      ? "Sending..."
+      ? "..."
       : joinRequest?.status === "pending"
-        ? "Request Sent"
+        ? "Pending"
         : joinRequest?.status === "accepted"
-          ? "Joining..."
+          ? "Join"
           : joinRequest?.status === "declined"
-            ? "Request Again"
-            : "Request to Join";
+            ? "Request"
+            : "Request";
 
   const chatDisabled =
     streamStatus !== "live" ||
@@ -1743,6 +1743,33 @@ export default function WatchPage() {
               </div>
             </div>
 
+            {(showJoinRequestButton ||
+              joinRequest?.status === "pending" ||
+              joinRequest?.status === "accepted" ||
+              joinRequest?.status === "declined") && (
+              <div className="pointer-events-none absolute right-3 top-[calc(92px+env(safe-area-inset-top))] z-[75] sm:right-5 sm:top-[calc(104px+env(safe-area-inset-top))]">
+                <button
+                  onClick={() => {
+                    if (joinRequest?.status === "accepted") {
+                      router.push(`/live/${streamId}`);
+                      return;
+                    }
+
+                    requestToJoinStream();
+                  }}
+                  disabled={
+                    joinRequestLoading ||
+                    joinRequest?.status === "pending" ||
+                    streamStatus !== "live" ||
+                    !connected
+                  }
+                  className="pointer-events-auto rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-black text-white shadow-2xl backdrop-blur-md hover:bg-black/75 disabled:cursor-not-allowed disabled:text-white/45 sm:px-4 sm:py-2 sm:text-sm"
+                >
+                  {joinRequest?.status === "accepted" ? "Join" : joinRequestButtonLabel}
+                </button>
+              </div>
+            )}
+
             {fullscreenChatOpen && (
               <div className="absolute inset-x-3 bottom-24 max-h-[48dvh] overflow-hidden rounded-3xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl sm:left-auto sm:right-5 sm:w-[380px]">
                 <div className="mb-2 flex items-center justify-between">
@@ -1831,37 +1858,6 @@ export default function WatchPage() {
                   👁 {viewerCount}
                 </div>
 
-                {(showJoinRequestButton || joinRequest?.status === "pending" || joinRequest?.status === "accepted" || joinRequest?.status === "declined") && (
-                  <button
-                    onClick={() => {
-                      if (joinRequest?.status === "accepted") {
-                        router.push(`/live/${streamId}`);
-                        return;
-                      }
-
-                      requestToJoinStream();
-                    }}
-                    disabled={
-                      joinRequestLoading ||
-                      joinRequest?.status === "pending" ||
-                      streamStatus !== "live" ||
-                      !connected
-                    }
-                    className={`rounded-full px-4 py-3 text-sm font-black shadow-2xl backdrop-blur ${
-                      joinRequest?.status === "accepted"
-                        ? "bg-green-600 text-white hover:bg-green-500"
-                        : joinRequest?.status === "pending"
-                          ? "bg-yellow-500 text-black"
-                          : joinRequest?.status === "declined"
-                            ? "bg-purple-600 text-white hover:bg-purple-500"
-                            : "bg-purple-600 text-white hover:bg-purple-500"
-                    } disabled:opacity-70`}
-                  >
-                    {joinRequest?.status === "accepted"
-                      ? "Join Stream Now"
-                      : joinRequestButtonLabel}
-                  </button>
-                )}
 
 
                 <button
@@ -1973,32 +1969,29 @@ export default function WatchPage() {
                 </div>
               </div>
 
-              {showJoinRequestButton && (
-                <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-20 flex justify-center sm:bottom-6">
+              {(showJoinRequestButton ||
+                joinRequest?.status === "pending" ||
+                joinRequest?.status === "accepted" ||
+                joinRequest?.status === "declined") && (
+                <div className="pointer-events-none absolute right-3 top-3 z-20 sm:right-4 sm:top-4">
                   <button
-                    onClick={requestToJoinStream}
+                    onClick={() => {
+                      if (joinRequest?.status === "accepted") {
+                        router.push(`/live/${streamId}`);
+                        return;
+                      }
+
+                      requestToJoinStream();
+                    }}
                     disabled={
                       joinRequestLoading ||
                       joinRequest?.status === "pending" ||
-                      joinRequest?.status === "accepted"
+                      streamStatus !== "live" ||
+                      !connected
                     }
-                    className="pointer-events-auto rounded-full bg-green-600 px-6 py-3 text-sm font-black text-white shadow-2xl shadow-green-950/50 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/50 sm:px-8 sm:py-4 sm:text-base"
+                    className="pointer-events-auto rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-black text-white shadow-2xl backdrop-blur-md hover:bg-black/75 disabled:cursor-not-allowed disabled:text-white/45 sm:px-4 sm:py-2 sm:text-sm"
                   >
-                    {joinRequestButtonLabel} 🎙️
-                  </button>
-                </div>
-              )}
-
-              {joinRequest?.status === "accepted" && streamStatus === "live" && (
-                <div className="absolute inset-x-4 bottom-4 z-20 rounded-3xl border border-green-400/40 bg-black/80 p-4 text-center shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:w-[420px] sm:-translate-x-1/2">
-                  <p className="mb-3 text-sm font-black text-green-300">
-                    Host accepted your request
-                  </p>
-                  <button
-                    onClick={() => router.push(`/live/${streamId}`)}
-                    className="w-full rounded-2xl bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-500"
-                  >
-                    Join Stream Now
+                    {joinRequest?.status === "accepted" ? "Join" : joinRequestButtonLabel}
                   </button>
                 </div>
               )}

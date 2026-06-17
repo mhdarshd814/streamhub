@@ -2544,72 +2544,61 @@ export default function LiveRoomPage() {
 
   const hostJoinRequestVideoOverlay =
     role === "host" && !isPrivate && pendingJoinRequests.length > 0 ? (
-      <div className="pointer-events-auto absolute right-3 top-3 z-[80] w-[min(92vw,380px)] rounded-3xl border border-purple-400/40 bg-black/85 p-3 text-white shadow-2xl backdrop-blur-xl sm:right-4 sm:top-4 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.25em] text-purple-200">
-              Join Requests
-            </p>
-            <p className="truncate text-sm font-bold text-white/80">
-              {pendingJoinRequests.length} viewer
-              {pendingJoinRequests.length > 1 ? "s" : ""} waiting
-            </p>
-          </div>
-
-          <span className="shrink-0 rounded-full bg-purple-600 px-3 py-1 text-xs font-black">
-            LIVE
-          </span>
+      <div className="pointer-events-auto absolute right-2 top-1/2 z-[80] flex w-[92px] -translate-y-1/2 flex-col gap-2 sm:right-3 sm:w-[108px]">
+        <div className="rounded-full border border-white/10 bg-black/55 px-2 py-1 text-center text-[10px] font-black uppercase tracking-wide text-white/80 shadow-xl backdrop-blur-md">
+          Request
         </div>
 
-        <div className="space-y-2">
-          {pendingJoinRequests.slice(0, 3).map((request) => {
-            const requesterName =
-              request.profiles?.display_name ||
-              request.profiles?.username ||
-              "Viewer";
+        {pendingJoinRequests.slice(0, 4).map((request) => {
+          const requesterName =
+            request.profiles?.display_name ||
+            request.profiles?.username ||
+            "Viewer";
 
-            return (
-              <div
-                key={request.id}
-                className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 p-2"
-              >
+          const isUpdating = joinRequestUpdatingId === request.id;
+          const isFull = getAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS;
+
+          return (
+            <div
+              key={request.id}
+              className="overflow-hidden rounded-2xl border border-white/15 bg-black/65 text-white shadow-2xl backdrop-blur-md"
+            >
+              <div className="flex h-[78px] items-center justify-center bg-white/[0.04] px-2 pt-2 sm:h-[92px]">
                 <img
                   src={request.profiles?.avatar_url || "/default-avatar.png"}
                   alt={requesterName}
-                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  className="h-12 w-12 rounded-full border border-white/20 object-cover sm:h-14 sm:w-14"
                 />
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black">{requesterName}</p>
-                  <p className="text-[11px] text-white/55">Wants to join</p>
-                </div>
-
-                <button
-                  onClick={() => acceptJoinRequest(request)}
-                  disabled={
-                    joinRequestUpdatingId === request.id ||
-                    getAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS
-                  }
-                  className="rounded-xl bg-green-600 px-3 py-2 text-xs font-black hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-400"
-                >
-                  {joinRequestUpdatingId === request.id
-                    ? "Adding"
-                    : getAcceptedGuestCount() >= MAX_ACCEPTED_GUESTS
-                      ? "Full"
-                      : "Add"}
-                </button>
-
-                <button
-                  onClick={() => declineJoinRequest(request)}
-                  disabled={joinRequestUpdatingId === request.id}
-                  className="rounded-xl bg-red-600 px-3 py-2 text-xs font-black hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-400"
-                >
-                  No
-                </button>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="px-2 pb-2 pt-1">
+                <p className="truncate text-center text-[11px] font-black leading-4 text-white sm:text-xs">
+                  {requesterName}
+                </p>
+
+                <div className="mt-2 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => acceptJoinRequest(request)}
+                    disabled={isUpdating || isFull}
+                    title={isFull ? "Guest limit full" : "Add to stream"}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/15 text-lg font-black leading-none text-white hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    +
+                  </button>
+
+                  <button
+                    onClick={() => declineJoinRequest(request)}
+                    disabled={isUpdating}
+                    title="Decline request"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-black/45 text-lg font-black leading-none text-white/80 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     ) : null;
 
