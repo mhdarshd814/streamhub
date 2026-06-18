@@ -264,9 +264,7 @@ export default function Navbar() {
   }
 
   async function logout() {
-    const confirmed = confirm("Logout from StreamHub?");
-    if (!confirmed) return;
-
+  try {
     await supabase.auth.signOut();
 
     setMenuOpen(false);
@@ -277,8 +275,15 @@ export default function Navbar() {
     setNotifications([]);
     setUserId(null);
 
-    window.location.href = "/";
+    toast.success("Logged out successfully");
+
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 500);
+  } catch {
+    toast.error("Failed to logout");
   }
+}
 
   return (
     <>
