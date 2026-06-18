@@ -46,6 +46,7 @@ export default function LiveFeedPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("Loading live feed...");
   const [connected, setConnected] = useState(false);
+  const [readyToShowLive, setReadyToShowLive] = useState(false);
   const [likes, setLikes] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
@@ -97,6 +98,7 @@ export default function LiveFeedPage() {
     cleanupChatChannel();
 
     videoAttachedRef.current = false;
+    setReadyToShowLive(false);
     setStreamEnded(false);
     setConnected(false);
     setLikes(Number(activeStream.likes || 0));
@@ -145,9 +147,10 @@ export default function LiveFeedPage() {
     if (showLoader) setLoading(true);
 
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
 
+    const user = session?.user || null;
     setCurrentUserId(user?.id || null);
 
     if (user) {
@@ -252,6 +255,7 @@ export default function LiveFeedPage() {
 
     roomRef.current = null;
     setConnected(false);
+    setReadyToShowLive(false);
 
     if (videoRef.current) {
       videoRef.current.innerHTML = "";
@@ -274,7 +278,7 @@ export default function LiveFeedPage() {
       if (remaining.length === 0) {
         setStatus("No live streams right now.");
       } else {
-        setStatus("Opening next live stream...");
+        setStatus("Opening next real live stream...");
       }
 
       return remaining;
@@ -286,6 +290,7 @@ export default function LiveFeedPage() {
 
     setStreamEnded(true);
     setConnected(false);
+    setReadyToShowLive(false);
     setStatus("Stream ended. Moving to next live...");
 
     await loadLiveStreams(false);
@@ -299,23 +304,22 @@ export default function LiveFeedPage() {
 
   async function connectToStream(stream: Stream) {
     cleanupRoom();
-    setStatus("Connecting...");
+    setStatus("Checking live video...");
     videoAttachedRef.current = false;
+    setReadyToShowLive(false);
 
     noVideoTimerRef.current = setTimeout(() => {
       if (!videoAttachedRef.current) {
-        setStatus("This live has no video. Looking for another stream...");
+        setStatus("This stream has no active camera. Looking for another live...");
         removeUnavailableStream(stream.id);
       }
     }, 8000);
 
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const {
       data: { session },
     } = await supabase.auth.getSession();
+
+    const user = session?.user || null;
 
     if (!user || !session?.access_token) {
       setStatus("Login required to watch live feed.");
@@ -397,8 +401,7 @@ export default function LiveFeedPage() {
         });
       });
 
-      setConnected(true);
-      setStatus("Live");
+      setStatus("Waiting for creator camera...");
 
       await KeepAwake.keepAwake().catch(() => {});
     } catch {
@@ -422,7 +425,19 @@ export default function LiveFeedPage() {
 
       videoRef.current.innerHTML = "";
       videoRef.current.appendChild(video);
-      video.play().catch(() => {});
+
+      video
+        .play()
+        .then(() => {
+          setConnected(true);
+          setReadyToShowLive(true);
+          setStatus("Live");
+        })
+        .catch(() => {
+          setConnected(true);
+          setReadyToShowLive(true);
+          setStatus("Live");
+        });
     }
 
     if (track.kind === Track.Kind.Audio) {
@@ -442,6 +457,7 @@ export default function LiveFeedPage() {
     clearNoVideoTimer();
     setShowHeart(false);
     setStreamEnded(false);
+    setReadyToShowLive(false);
 
     if (streams.length <= 1) return;
 
@@ -456,6 +472,7 @@ export default function LiveFeedPage() {
     clearNoVideoTimer();
     setShowHeart(false);
     setStreamEnded(false);
+    setReadyToShowLive(false);
 
     if (streams.length <= 1) return;
 
@@ -503,7 +520,7 @@ export default function LiveFeedPage() {
   }
 
   async function toggleLike(fromDoubleTap = false) {
-    if (!activeStream || streamEnded) return;
+    if (!activeStream || streamEnded || !readyToShowLive) return;
 
     const { error, data } = await supabase.rpc("toggle_stream_like", {
       stream_id_input: activeStream.id,
@@ -574,7 +591,7 @@ export default function LiveFeedPage() {
   }
 
   function openFullRoom() {
-    if (!activeStream || streamEnded) return;
+    if (!activeStream || streamEnded || !readyToShowLive) return;
     window.location.href = `/watch/${activeStream.id}`;
   }
 
@@ -636,6 +653,31 @@ export default function LiveFeedPage() {
     );
   }
 
+  if (!readyToShowLive) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
+        <div className="w-full max-w-sm text-center">
+          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-red-600/10 text-6xl">
+            📡
+          </div>
+
+          <h1 className="text-2xl font-black">Finding Real Live Streams</h1>
+
+          <p className="mt-3 text-sm leading-6 text-gray-400">
+            {status || "Checking whether the creator camera is actually live..."}
+          </p>
+
+          <button
+            onClick={() => loadLiveStreams(true)}
+            className="mt-7 rounded-full border border-gray-700 bg-gray-900 px-6 py-4 font-bold text-gray-200 active:scale-95"
+          >
+            Refresh
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   const hostName =
     activeStream.profile?.display_name ||
     activeStream.profile?.username ||
@@ -653,15 +695,7 @@ export default function LiveFeedPage() {
       onClick={handleVideoTap}
       className="relative h-screen w-full overflow-hidden bg-black text-white"
     >
-      <div ref={videoRef} className="absolute inset-0 bg-black">
-        {activeStream.thumbnail_url && !connected && (
-          <img
-            src={activeStream.thumbnail_url}
-            alt={activeStream.title}
-            className="h-full w-full object-cover opacity-50"
-          />
-        )}
-      </div>
+      <div ref={videoRef} className="absolute inset-0 bg-black" />
 
       {showHeart && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
@@ -744,7 +778,10 @@ export default function LiveFeedPage() {
           )}
         </div>
 
-        <h1 className="line-clamp-2 text-xl font-black">{activeStream.title}</h1>
+        <h1 className="line-clamp-2 text-xl font-black">
+          {activeStream.title}
+        </h1>
+
         <p className="mt-1 text-sm text-white/70">
           {activeStream.category} • 👀 {activeStream.viewers || 0}
         </p>
@@ -759,7 +796,9 @@ export default function LiveFeedPage() {
           >
             {chatPreview.map((msg) => (
               <p key={msg.id} className="line-clamp-1 text-xs text-white/85">
-                <span className="font-black text-red-300">{msg.username}: </span>
+                <span className="font-black text-red-300">
+                  {msg.username}:{" "}
+                </span>
                 {msg.message}
               </p>
             ))}
