@@ -46,6 +46,7 @@ export default function Navbar() {
 
     async function init() {
       const id = await checkUser();
+
       if (id) {
         inviteChannel = subscribeToInvites(id);
         notificationChannel = subscribeToNotifications(id);
@@ -122,6 +123,27 @@ export default function Navbar() {
     return "/profile";
   }
 
+  function openMobileMenu() {
+    if (!loggedIn) {
+      goTo("/login");
+      return;
+    }
+
+    window.history.pushState(
+      { streamhubMobileMenu: true },
+      "",
+      window.location.href
+    );
+
+    mobileMenuOpenRef.current = true;
+    setMobileMenuOpen(true);
+  }
+
+  function closeMobileMenu() {
+    mobileMenuOpenRef.current = false;
+    setMobileMenuOpen(false);
+  }
+
   function subscribeToInvites(id: string) {
     return supabase
       .channel(`navbar-invites-${id}-${Date.now()}`)
@@ -135,7 +157,7 @@ export default function Navbar() {
         },
         async () => {
           await loadPendingInvites(id);
-        },
+        }
       )
       .subscribe();
   }
@@ -153,7 +175,7 @@ export default function Navbar() {
         },
         async () => {
           await loadNotifications(id);
-        },
+        }
       )
       .subscribe();
   }
@@ -261,11 +283,15 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <button
             type="button"
-            onClick={() => goTo("/")}
+            onClick={() => goTo(loggedIn ? "/live-feed" : "/")}
             className="flex cursor-pointer items-center gap-3"
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
-              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+              <img
+                src="/icon-512.png"
+                alt="StreamHub"
+                className="h-full w-full object-cover"
+              />
             </div>
 
             <div className="text-left leading-none">
@@ -274,43 +300,26 @@ export default function Navbar() {
                 <span className="text-red-500">Hub</span>
               </h1>
               <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">
-                Live Platform
+                Live First
               </p>
             </div>
           </button>
 
           <div className="flex items-center gap-5">
-            <DesktopLink label="Home" href="/" goTo={goTo} />
             <DesktopLink label="Live Feed" href="/live-feed" goTo={goTo} />
-            <DesktopLink label="Explore" href="/explore" goTo={goTo} />
+            <DesktopLink label="Discover" href="/explore" goTo={goTo} />
 
             {loggedIn ? (
               <>
-                <DesktopLink label="Dashboard" href="/dashboard" goTo={goTo} />
-                <DesktopLink label="Calls" href="/calls" goTo={goTo} />
-
                 <button
                   type="button"
-                  onClick={() => goTo("/invites")}
-                  className="relative font-bold text-gray-100 hover:text-red-400"
+                  onClick={() => goTo("/go-live")}
+                  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700"
                 >
-                  Invites
-                  {pendingInvites > 0 && (
-                    <span className="absolute -right-4 -top-3 min-w-[22px] rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
-                      {pendingInvites}
-                    </span>
-                  )}
+                  + Go Live
                 </button>
 
-                {profile?.is_admin && (
-                  <button
-                    type="button"
-                    onClick={() => goTo("/admin")}
-                    className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 font-black text-yellow-300 hover:bg-yellow-500 hover:text-black"
-                  >
-                    Admin
-                  </button>
-                )}
+                <DesktopLink label="Calls" href="/calls" goTo={goTo} />
 
                 <div ref={notificationRef} className="relative">
                   <button
@@ -333,8 +342,12 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
                       <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
                         <div>
-                          <h3 className="font-black text-white">Notifications</h3>
-                          <p className="text-xs text-gray-400">{unreadNotifications} unread</p>
+                          <h3 className="font-black text-white">
+                            Notifications
+                          </h3>
+                          <p className="text-xs text-gray-400">
+                            {unreadNotifications} unread
+                          </p>
                         </div>
 
                         {unreadNotifications > 0 && (
@@ -350,7 +363,9 @@ export default function Navbar() {
 
                       <div className="max-h-96 overflow-auto">
                         {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-gray-400">No notifications yet.</div>
+                          <div className="p-6 text-center text-gray-400">
+                            No notifications yet.
+                          </div>
                         ) : (
                           notifications.map((notification) => (
                             <button
@@ -363,7 +378,9 @@ export default function Navbar() {
                                   : "w-full border-b border-gray-800 bg-red-600/10 px-5 py-4 text-left hover:bg-gray-800"
                               }
                             >
-                              <p className="font-bold text-white">{notification.title}</p>
+                              <p className="font-bold text-white">
+                                {notification.title}
+                              </p>
                               <p className="mt-1 text-sm text-gray-400">
                                 {notification.message || "New notification"}
                               </p>
@@ -405,7 +422,7 @@ export default function Navbar() {
                     </div>
 
                     <span className="max-w-[130px] truncate text-base font-semibold text-white">
-                      {profile?.display_name || profile?.username || "Profile"}
+                      {profile?.display_name || profile?.username || "Me"}
                     </span>
                   </button>
 
@@ -413,9 +430,9 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
                       <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />
                       <MenuItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
-                      <MenuItem label="Create Stream" href="/go-live" goTo={goTo} />
                       <MenuItem label="Dashboard" href="/dashboard" goTo={goTo} />
                       <MenuItem label="Wallet" href="/wallet" goTo={goTo} />
+                      <MenuItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
                       <MenuItem label="Schedule Stream" href="/schedule" goTo={goTo} />
                       <MenuItem label="Upcoming Streams" href="/streams/upcoming" goTo={goTo} />
                       <MenuItem label="Notifications" href="/notifications" goTo={goTo} />
@@ -471,7 +488,11 @@ export default function Navbar() {
             className="flex items-center gap-3"
           >
             <div className="h-12 w-12 overflow-hidden rounded-xl">
-              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+              <img
+                src="/icon-512.png"
+                alt="StreamHub"
+                className="h-full w-full object-cover"
+              />
             </div>
 
             <div className="text-left leading-none">
@@ -531,25 +552,16 @@ export default function Navbar() {
 
           <div className="pointer-events-none" />
 
-          <MobileItem icon="📞" label="Calls" href={loggedIn ? "/calls" : "/login"} goTo={goTo} />
+          <MobileItem
+            icon="📞"
+            label="Calls"
+            href={loggedIn ? "/calls" : "/login"}
+            goTo={goTo}
+          />
 
           <button
             type="button"
-            onClick={() => {
-              if (!loggedIn) {
-                goTo("/login");
-                return;
-              }
-
-              window.history.pushState(
-                { streamhubMobileMenu: true },
-                "",
-                window.location.href
-              );
-
-              mobileMenuOpenRef.current = true;
-              setMobileMenuOpen(true);
-            }}
+            onClick={openMobileMenu}
             className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
           >
             <span className="flex h-7 items-center justify-center text-2xl">
@@ -564,6 +576,10 @@ export default function Navbar() {
               )}
             </span>
             <span className="text-[11px]">Me</span>
+
+            {(pendingInvites > 0 || unreadNotifications > 0) && (
+              <span className="absolute right-4 top-2 h-2.5 w-2.5 rounded-full bg-red-600" />
+            )}
           </button>
         </div>
       </nav>
@@ -571,10 +587,7 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 z-[9998] bg-black/70 xl:hidden"
-          onClick={() => {
-            mobileMenuOpenRef.current = false;
-            setMobileMenuOpen(false);
-          }}
+          onClick={closeMobileMenu}
         >
           <div
             className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
@@ -598,24 +611,30 @@ export default function Navbar() {
                 )}
               </div>
 
-              <div>
-                <p className="text-lg font-black">
+              <div className="min-w-0">
+                <p className="truncate text-lg font-black">
                   {profile?.display_name || profile?.username || "My Account"}
                 </p>
-                <p className="text-sm text-gray-400">@{profile?.username || "streamhub"}</p>
+                <p className="truncate text-sm text-gray-400">
+                  @{profile?.username || "streamhub"}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <MobileSheetItem label="🎥 Go Live" href="/go-live" goTo={goTo} strong />
+              <MobileSheetItem label="📞 Calls" href="/calls" goTo={goTo} strong />
               <MobileSheetItem label="👤 Profile" href={profilePath()} goTo={goTo} />
-              <MobileSheetItem label="✏️ Edit" href="/profile/edit" goTo={goTo} />
+              <MobileSheetItem label="✏️ Edit Profile" href="/profile/edit" goTo={goTo} />
               <MobileSheetItem label="💰 Wallet" href="/wallet" goTo={goTo} />
-              <MobileSheetItem label="🔔 Alerts" href="/notifications" goTo={goTo} />
+              <MobileSheetItem label="🔔 Alerts" href="/notifications" goTo={goTo} badge={unreadNotifications} />
+              <MobileSheetItem label="🎙️ Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
               <MobileSheetItem label="📊 Dashboard" href="/dashboard" goTo={goTo} />
               <MobileSheetItem label="📅 Schedule" href="/schedule" goTo={goTo} />
+              <MobileSheetItem label="🗓️ Upcoming" href="/streams/upcoming" goTo={goTo} />
 
               {profile?.is_admin && (
-                <MobileSheetItem label="🛡️ Admin" href="/admin" goTo={goTo} />
+                <MobileSheetItem label="🛡️ Admin" href="/admin" goTo={goTo} strong />
               )}
 
               <button
@@ -657,18 +676,25 @@ function MenuItem({
   label,
   href,
   goTo,
+  badge,
 }: {
   label: string;
   href: string;
   goTo: (path: string) => void;
+  badge?: number;
 }) {
   return (
     <button
       type="button"
       onClick={() => goTo(href)}
-      className="w-full bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600"
+      className="flex w-full items-center justify-between bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600"
     >
-      {label}
+      <span>{label}</span>
+      {!!badge && badge > 0 && (
+        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -708,18 +734,32 @@ function MobileSheetItem({
   label,
   href,
   goTo,
+  badge,
+  strong = false,
 }: {
   label: string;
   href: string;
   goTo: (path: string) => void;
+  badge?: number;
+  strong?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={() => goTo(href)}
-      className="rounded-2xl bg-gray-800 px-4 py-4 text-left text-sm font-bold text-white active:scale-95"
+      className={
+        strong
+          ? "flex items-center justify-between rounded-2xl bg-red-600 px-4 py-4 text-left text-sm font-black text-white active:scale-95"
+          : "flex items-center justify-between rounded-2xl bg-gray-800 px-4 py-4 text-left text-sm font-bold text-white active:scale-95"
+      }
     >
-      {label}
+      <span>{label}</span>
+
+      {!!badge && badge > 0 && (
+        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-black">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

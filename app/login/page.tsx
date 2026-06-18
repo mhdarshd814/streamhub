@@ -28,14 +28,14 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.href = "/dashboard";
+    window.location.href = "/live-feed";
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+    <div className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-red-600 mb-5 shadow-lg shadow-red-600/30">
+        <div className="mb-8 text-center">
+          <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-red-600 shadow-lg shadow-red-600/30">
             <span className="text-4xl font-black">▶</span>
           </div>
 
@@ -44,15 +44,13 @@ export default function LoginPage() {
             <span className="text-red-500">Hub</span>
           </h1>
 
-          <p className="text-gray-400 mt-3">
-            Welcome back to your creator dashboard.
+          <p className="mt-3 text-gray-400">
+            Sign in and jump straight into Live Feed.
           </p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8">
-          <h2 className="text-3xl font-bold mb-6">
-            Login
-          </h2>
+        <div className="rounded-3xl border border-gray-800 bg-gray-900 p-8">
+          <h2 className="mb-6 text-3xl font-bold">Login</h2>
 
           <div className="space-y-4">
             <input
@@ -60,7 +58,7 @@ export default function LoginPage() {
               placeholder="Email Address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
             />
 
             <input
@@ -68,28 +66,26 @@ export default function LoginPage() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
             />
 
             <button
               onClick={handleLogin}
               disabled={loading}
-              className="w-full bg-red-600 py-4 rounded-xl font-bold text-lg hover:bg-red-700 disabled:bg-gray-700"
+              className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700 disabled:bg-gray-700"
             >
               {loading ? "Signing In..." : "Login"}
             </button>
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
-              Don't have an account?
-            </p>
+            <p className="text-gray-400">Don't have an account?</p>
 
             <button
               onClick={() => {
                 window.location.href = "/signup";
               }}
-              className="mt-2 text-red-500 font-bold hover:text-red-400"
+              className="mt-2 font-bold text-red-500 hover:text-red-400"
             >
               Create Account
             </button>
