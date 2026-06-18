@@ -75,21 +75,35 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target as Node;
 
-      if (notificationRef.current && !notificationRef.current.contains(target)) {
-        setNotificationOpen(false);
-      }
-
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setMenuOpen(false);
-      }
+    if (notificationRef.current && !notificationRef.current.contains(target)) {
+      setNotificationOpen(false);
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    if (menuRef.current && !menuRef.current.contains(target)) {
+      setMenuOpen(false);
+    }
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
+
+useEffect(() => {
+  function handlePopState() {
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  }
+
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, [mobileMenuOpen]);
 
   function goTo(path: string) {
     setMenuOpen(false);
@@ -505,11 +519,18 @@ export default function Navbar() {
             type="button"
             onClick={() => {
               if (!loggedIn) {
-                goTo("/login");
-                return;
-              }
-              setMobileMenuOpen(true);
-            }}
+              goTo("/login");
+             return;
+             }
+
+            window.history.pushState(
+            { streamhubMobileMenu: true },
+             "",
+         window.location.href
+        );
+
+        setMobileMenuOpen(true);
+        }}
             className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
           >
             <span className="flex h-7 items-center justify-center text-2xl">
@@ -575,14 +596,7 @@ export default function Navbar() {
                 🚪 Logout
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              className="mt-4 w-full rounded-2xl bg-gray-800 px-4 py-4 text-sm font-bold text-white"
-            >
-              Close
-            </button>
+        
           </div>
         </div>
       )}
