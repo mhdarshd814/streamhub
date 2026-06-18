@@ -5,13 +5,13 @@ import { supabase } from "../../lib/supabase";
 
 type StreamVisibility = "public" | "private";
 
-const DEFAULT_PUBLIC_TITLE = "Live Stream";
+const DEFAULT_PUBLIC_TITLE = "Live Now";
 const DEFAULT_PRIVATE_TITLE = "Private Call";
 
 export default function GoLivePage() {
   const [title, setTitle] = useState(DEFAULT_PUBLIC_TITLE);
   const [userEditedTitle, setUserEditedTitle] = useState(false);
-  const [category, setCategory] = useState("Entertainment");
+  const [category, setCategory] = useState("Live");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<StreamVisibility>("public");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -60,7 +60,7 @@ export default function GoLivePage() {
     setVisibility(nextVisibility);
 
     if (nextVisibility === "public") {
-      setCategory("Entertainment");
+      setCategory("Live");
 
       if (!userEditedTitle || title === DEFAULT_PRIVATE_TITLE) {
         setTitle(DEFAULT_PUBLIC_TITLE);
@@ -89,13 +89,18 @@ export default function GoLivePage() {
 
   function getPrivateCallPriceAmount() {
     if (visibility !== "private") return 0;
-    if (privateCallPriceOption === "custom") return Number(customPrivateCallPrice);
+    if (privateCallPriceOption === "custom") {
+      return Number(customPrivateCallPrice);
+    }
+
     return Number(privateCallPriceOption);
   }
 
   function getDefaultTitle() {
     const cleanTitle = title.trim();
+
     if (cleanTitle) return cleanTitle;
+
     return visibility === "private" ? DEFAULT_PRIVATE_TITLE : DEFAULT_PUBLIC_TITLE;
   }
 
@@ -197,7 +202,7 @@ export default function GoLivePage() {
         {
           user_id: user.id,
           title: getDefaultTitle(),
-          category: category || "Entertainment",
+          category: category || "Live",
           description: description.trim() || null,
           tags: null,
           visibility,
@@ -228,14 +233,14 @@ export default function GoLivePage() {
 
   return (
     <div className="min-h-screen bg-black px-4 pb-32 pt-5 text-white sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-2xl">
         <div className="mb-6">
           <p className="mb-2 text-sm font-bold text-red-400">StreamHub Live</p>
           <h1 className="text-3xl font-black sm:text-4xl">
-            Go <span className="text-red-500">Live</span>
+            Start <span className="text-red-500">Now</span>
           </h1>
           <p className="mt-2 text-sm text-gray-400">
-            Choose stream type, tap start, and open the studio.
+            Choose Public or Call. Everything else is optional.
           </p>
         </div>
 
@@ -245,8 +250,8 @@ export default function GoLivePage() {
             onClick={() => selectVisibility("public")}
             className={
               visibility === "public"
-                ? "rounded-xl bg-red-600 px-3 py-4 text-sm font-black"
-                : "rounded-xl bg-gray-800 px-3 py-4 text-sm font-bold text-gray-300"
+                ? "rounded-xl bg-red-600 px-3 py-5 text-base font-black"
+                : "rounded-xl bg-gray-800 px-3 py-5 text-base font-bold text-gray-300"
             }
           >
             Public
@@ -257,8 +262,8 @@ export default function GoLivePage() {
             onClick={() => selectVisibility("private")}
             className={
               visibility === "private"
-                ? "rounded-xl bg-purple-600 px-3 py-4 text-sm font-black"
-                : "rounded-xl bg-gray-800 px-3 py-4 text-sm font-bold text-gray-300"
+                ? "rounded-xl bg-purple-600 px-3 py-5 text-base font-black"
+                : "rounded-xl bg-gray-800 px-3 py-5 text-base font-bold text-gray-300"
             }
           >
             Call
@@ -266,25 +271,26 @@ export default function GoLivePage() {
         </div>
 
         <div className="rounded-3xl border border-gray-800 bg-gray-950 p-4 shadow-2xl sm:p-6">
-          <label className="mb-2 block text-sm font-bold text-gray-300">
-            Title
-          </label>
+          <div className="mb-4 rounded-2xl border border-gray-800 bg-black p-4">
+            <p className="text-sm font-bold text-gray-400">
+              {visibility === "private" ? "Private Call Room" : "Public Live Stream"}
+            </p>
 
-          <input
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder={
-              visibility === "private"
-                ? "Private call title"
-                : "What are you live about?"
-            }
-            className="mb-4 w-full rounded-2xl border border-gray-800 bg-black px-4 py-4 text-base outline-none focus:border-red-500"
-          />
+            <h2 className="mt-2 text-2xl font-black">
+              {visibility === "private" ? "Start a private call" : "Go live instantly"}
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              {visibility === "private"
+                ? "Create a one-to-one room. Price is optional."
+                : "Create your public live room immediately."}
+            </p>
+          </div>
 
           {visibility === "private" && (
             <div className="mb-4 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
               <label className="mb-2 block text-sm font-black text-purple-300">
-                Private call price
+                Call price
               </label>
 
               <select
@@ -324,31 +330,51 @@ export default function GoLivePage() {
             onClick={() => setAdvancedOpen(!advancedOpen)}
             className="mb-4 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold text-gray-300"
           >
-            {advancedOpen ? "Hide Advanced Options" : "Advanced Options"}
+            {advancedOpen ? "Hide Optional Settings" : "Optional Settings"}
           </button>
 
           {advancedOpen && (
             <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-bold text-gray-300">
-                  Category
+                  Title optional
                 </label>
 
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-800 bg-black p-4 outline-none focus:border-red-500"
-                >
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Gaming">Gaming</option>
-                  <option value="Education">Education</option>
-                  <option value="Lifestyle">Lifestyle</option>
-                </select>
+                <input
+                  value={title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder={
+                    visibility === "private"
+                      ? "Private call title"
+                      : "What are you live about?"
+                  }
+                  className="w-full rounded-2xl border border-gray-800 bg-black px-4 py-4 text-base outline-none focus:border-red-500"
+                />
               </div>
+
+              {visibility === "public" && (
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-300">
+                    Category optional
+                  </label>
+
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full rounded-2xl border border-gray-800 bg-black p-4 outline-none focus:border-red-500"
+                  >
+                    <option value="Live">Live</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Gaming">Gaming</option>
+                    <option value="Education">Education</option>
+                    <option value="Lifestyle">Lifestyle</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-gray-300">
-                  Description
+                  Description optional
                 </label>
 
                 <textarea
@@ -396,13 +422,17 @@ export default function GoLivePage() {
           <button
             onClick={handleStartStream}
             disabled={saving || uploading}
-            className="mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-700"
+            className={
+              visibility === "private"
+                ? "mt-5 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-purple-600/20 hover:bg-purple-700 disabled:bg-gray-700"
+                : "mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-700"
+            }
           >
             {saving
-              ? "Opening Studio..."
+              ? "Opening..."
               : visibility === "private"
-                ? "Create Call Room"
-                : "Go Live Now"}
+                ? "Start Call"
+                : "Start Live"}
           </button>
         </div>
       </div>
