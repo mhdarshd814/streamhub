@@ -83,25 +83,19 @@ export default function GoLivePage() {
     setUserEditedTitle(
       value.trim() !== "" &&
         value !== DEFAULT_PUBLIC_TITLE &&
-        value !== DEFAULT_PRIVATE_TITLE,
+        value !== DEFAULT_PRIVATE_TITLE
     );
   }
 
   function getPrivateCallPriceAmount() {
     if (visibility !== "private") return 0;
-
-    if (privateCallPriceOption === "custom") {
-      return Number(customPrivateCallPrice);
-    }
-
+    if (privateCallPriceOption === "custom") return Number(customPrivateCallPrice);
     return Number(privateCallPriceOption);
   }
 
   function getDefaultTitle() {
     const cleanTitle = title.trim();
-
     if (cleanTitle) return cleanTitle;
-
     return visibility === "private" ? DEFAULT_PRIVATE_TITLE : DEFAULT_PUBLIC_TITLE;
   }
 
@@ -135,7 +129,6 @@ export default function GoLivePage() {
       }
 
       const { data } = supabase.storage.from("thumbnails").getPublicUrl(fileName);
-
       setThumbnailUrl(data.publicUrl);
     } catch (error: any) {
       alert(error.message || "Thumbnail upload failed");
@@ -158,10 +151,7 @@ export default function GoLivePage() {
       return;
     }
 
-    if (
-      visibility === "private" &&
-      (Number.isNaN(priceAmount) || priceAmount < 0)
-    ) {
+    if (visibility === "private" && (Number.isNaN(priceAmount) || priceAmount < 0)) {
       alert("Please enter a valid private call price.");
       return;
     }
@@ -237,7 +227,7 @@ export default function GoLivePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black px-4 pb-52 pt-5 text-white sm:px-6 lg:px-8 lg:py-10">
+    <div className="min-h-screen bg-black px-4 pb-32 pt-5 text-white sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
           <p className="mb-2 text-sm font-bold text-red-400">StreamHub Live</p>
@@ -301,9 +291,7 @@ export default function GoLivePage() {
                 value={privateCallPriceOption}
                 onChange={(e) => {
                   setPrivateCallPriceOption(e.target.value);
-                  if (e.target.value !== "custom") {
-                    setCustomPrivateCallPrice("");
-                  }
+                  if (e.target.value !== "custom") setCustomPrivateCallPrice("");
                 }}
                 className="w-full rounded-xl border border-purple-500/20 bg-black p-3 text-white outline-none"
               >
@@ -355,7 +343,6 @@ export default function GoLivePage() {
                   <option value="Gaming">Gaming</option>
                   <option value="Education">Education</option>
                   <option value="Lifestyle">Lifestyle</option>
-                  <option value="Private Call">Private Call</option>
                 </select>
               </div>
 
@@ -405,22 +392,18 @@ export default function GoLivePage() {
               )}
             </div>
           )}
-        </div>
 
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-800 bg-black/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 backdrop-blur">
-          <div className="mx-auto max-w-3xl">
-            <button
-              onClick={handleStartStream}
-              disabled={saving || uploading}
-              className="w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-700"
-            >
-              {saving
-                ? "Opening Studio..."
-                : visibility === "private"
-                  ? "Create Call Room"
-                  : "Go Live Now"}
-            </button>
-          </div>
+          <button
+            onClick={handleStartStream}
+            disabled={saving || uploading}
+            className="mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-700"
+          >
+            {saving
+              ? "Opening Studio..."
+              : visibility === "private"
+                ? "Create Call Room"
+                : "Go Live Now"}
+          </button>
         </div>
       </div>
     </div>
