@@ -1,5 +1,6 @@
 "use client";
 
+import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
