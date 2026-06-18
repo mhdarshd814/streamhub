@@ -8,6 +8,7 @@ import IncomingCallPopup from "./components/IncomingCallPopup";
 import CapacitorStatusBar from "./components/CapacitorStatusBar";
 import AndroidBackButton from "./components/AndroidBackButton";
 import ToastProvider from "./components/ToastProvider";
+import NativeDialogBlocker from "./components/NativeDialogBlocker";
 
 export const metadata: Metadata = {
   title: "StreamHub",
@@ -48,6 +49,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-black text-white antialiased">
         <ToastProvider />
+        <NativeDialogBlocker />
         <CapacitorStatusBar />
         <AndroidBackButton />
         <PushNotificationManager />
