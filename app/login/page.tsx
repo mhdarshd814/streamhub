@@ -35,11 +35,17 @@ export default function LoginPage() {
       return;
     }
 
-    await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    setTimeout(() => {
-      window.location.assign("/live-feed");
-    }, 300);
+    if (!session) {
+      setLoading(false);
+      alert("Session was not saved. Please try again.");
+      return;
+    }
+
+    window.location.replace("/live-feed");
   }
 
   return (
@@ -63,6 +69,9 @@ export default function LoginPage() {
               placeholder="Email Address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleLogin();
+              }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
             />
 
@@ -71,10 +80,14 @@ export default function LoginPage() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleLogin();
+              }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
             />
 
             <button
+              type="button"
               onClick={handleLogin}
               disabled={loading}
               className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700 disabled:bg-gray-700"
@@ -84,6 +97,7 @@ export default function LoginPage() {
           </div>
 
           <button
+            type="button"
             onClick={() => {
               window.location.href = "/signup";
             }}

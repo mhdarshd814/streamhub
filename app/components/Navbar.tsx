@@ -181,36 +181,38 @@ export default function Navbar() {
   }
 
   async function checkUser(): Promise<string | null> {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-    if (!user) {
-      setLoggedIn(false);
-      setProfile(null);
-      setPendingInvites(0);
-      setUnreadNotifications(0);
-      setNotifications([]);
-      setUserId(null);
-      return null;
-    }
+  const user = session?.user || null;
 
-    setLoggedIn(true);
-    setUserId(user.id);
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("username, display_name, avatar_url, is_admin")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    setProfile((data as Profile) || null);
-
-    await loadPendingInvites(user.id);
-    await loadNotifications(user.id);
-
-    return user.id;
+  if (!user) {
+    setLoggedIn(false);
+    setProfile(null);
+    setPendingInvites(0);
+    setUnreadNotifications(0);
+    setNotifications([]);
+    setUserId(null);
+    return null;
   }
+
+  setLoggedIn(true);
+  setUserId(user.id);
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("username, display_name, avatar_url, is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  setProfile((data as Profile) || null);
+
+  await loadPendingInvites(user.id);
+  await loadNotifications(user.id);
+
+  return user.id;
+}
 
   async function loadPendingInvites(id: string) {
     const { count, error } = await supabase
