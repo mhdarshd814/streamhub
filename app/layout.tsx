@@ -7,6 +7,7 @@ import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import IncomingCallPopup from "./components/IncomingCallPopup";
 import CapacitorStatusBar from "./components/CapacitorStatusBar";
 import AndroidBackButton from "./components/AndroidBackButton";
+import ToastProvider from "./components/ToastProvider";
 
 export const metadata: Metadata = {
   title: "StreamHub",
@@ -46,6 +47,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-black text-white antialiased">
+        <ToastProvider />
         <CapacitorStatusBar />
         <AndroidBackButton />
         <PushNotificationManager />
