@@ -59,9 +59,11 @@ export default function LiveFeedPage() {
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const touchStartYRef = useRef<number | null>(null);
   const streamEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTapRef = useRef<number>(0);
   const heartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noVideoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapRef = useRef<number>(0);
   const chatChannelRef = useRef<any>(null);
+  const videoAttachedRef = useRef(false);
 
   const activeStream = useMemo(
     () => streams[activeIndex] || null,
@@ -79,6 +81,7 @@ export default function LiveFeedPage() {
       clearInterval(interval);
       clearStreamEndTimer();
       clearHeartTimer();
+      clearNoVideoTimer();
       cleanupChatChannel();
       cleanupRoom();
       KeepAwake.allowSleep().catch(() => {});
@@ -90,9 +93,12 @@ export default function LiveFeedPage() {
 
     clearStreamEndTimer();
     clearHeartTimer();
+    clearNoVideoTimer();
     cleanupChatChannel();
 
+    videoAttachedRef.current = false;
     setStreamEnded(false);
+    setConnected(false);
     setLikes(Number(activeStream.likes || 0));
     setChatPreview([]);
 
@@ -103,6 +109,7 @@ export default function LiveFeedPage() {
     return () => {
       cleanupRoom();
       cleanupChatChannel();
+      clearNoVideoTimer();
     };
   }, [activeStream?.id]);
 
@@ -117,6 +124,13 @@ export default function LiveFeedPage() {
     if (heartTimerRef.current) {
       clearTimeout(heartTimerRef.current);
       heartTimerRef.current = null;
+    }
+  }
+
+  function clearNoVideoTimer() {
+    if (noVideoTimerRef.current) {
+      clearTimeout(noVideoTimerRef.current);
+      noVideoTimerRef.current = null;
     }
   }
 
@@ -150,7 +164,7 @@ export default function LiveFeedPage() {
       .select("*")
       .eq("status", "live")
       .neq("visibility", "private")
-      .order("viewers", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) {
       setStatus(error.message);
@@ -171,7 +185,6 @@ export default function LiveFeedPage() {
     );
 
     setStreams(withProfiles as Stream[]);
-
     setActiveIndex((current) => {
       if (withProfiles.length === 0) return 0;
       if (current >= withProfiles.length) return 0;
@@ -221,6 +234,8 @@ export default function LiveFeedPage() {
   }
 
   function cleanupRoom() {
+    clearNoVideoTimer();
+
     audioElementsRef.current.forEach((audio) => {
       try {
         audio.pause();
@@ -243,6 +258,29 @@ export default function LiveFeedPage() {
     }
   }
 
+  function removeUnavailableStream(streamId: string) {
+    cleanupRoom();
+    cleanupChatChannel();
+
+    setStreams((currentStreams) => {
+      const remaining = currentStreams.filter((item) => item.id !== streamId);
+
+      setActiveIndex((current) => {
+        if (remaining.length === 0) return 0;
+        if (current >= remaining.length) return 0;
+        return current;
+      });
+
+      if (remaining.length === 0) {
+        setStatus("No live streams right now.");
+      } else {
+        setStatus("Opening next live stream...");
+      }
+
+      return remaining;
+    });
+  }
+
   async function handleStreamEnded() {
     if (streamEnded) return;
 
@@ -253,24 +291,23 @@ export default function LiveFeedPage() {
     await loadLiveStreams(false);
 
     streamEndTimerRef.current = setTimeout(() => {
-      setStreams((currentStreams) => {
-        const remaining = currentStreams.filter(
-          (item) => item.id !== activeStream?.id
-        );
-
-        if (remaining.length === 0) {
-          return [];
-        }
-
-        setActiveIndex(0);
-        return remaining;
-      });
-    }, 1800);
+      if (activeStream?.id) {
+        removeUnavailableStream(activeStream.id);
+      }
+    }, 1500);
   }
 
   async function connectToStream(stream: Stream) {
     cleanupRoom();
     setStatus("Connecting...");
+    videoAttachedRef.current = false;
+
+    noVideoTimerRef.current = setTimeout(() => {
+      if (!videoAttachedRef.current) {
+        setStatus("This live has no video. Looking for another stream...");
+        removeUnavailableStream(stream.id);
+      }
+    }, 8000);
 
     const {
       data: { user },
@@ -309,6 +346,7 @@ export default function LiveFeedPage() {
 
     if (!tokenResponse.ok) {
       setStatus(tokenData.error || "Unable to join stream.");
+      removeUnavailableStream(stream.id);
       return;
     }
 
@@ -341,31 +379,39 @@ export default function LiveFeedPage() {
       handleStreamEnded();
     });
 
-    await room.connect(livekitUrl, tokenData.token, {
-      autoSubscribe: true,
-    } as any);
+    try {
+      await room.connect(livekitUrl, tokenData.token, {
+        autoSubscribe: true,
+      } as any);
 
-    room.remoteParticipants.forEach((participant) => {
-      participant.trackPublications.forEach((publication: any) => {
-        try {
-          publication.setSubscribed?.(true);
-          publication.setVideoQuality?.(2);
-        } catch {}
+      room.remoteParticipants.forEach((participant) => {
+        participant.trackPublications.forEach((publication: any) => {
+          try {
+            publication.setSubscribed?.(true);
+            publication.setVideoQuality?.(2);
+          } catch {}
 
-        if (publication.track) {
-          attachTrack(publication.track);
-        }
+          if (publication.track) {
+            attachTrack(publication.track);
+          }
+        });
       });
-    });
 
-    setConnected(true);
-    setStatus("Live");
+      setConnected(true);
+      setStatus("Live");
 
-    await KeepAwake.keepAwake().catch(() => {});
+      await KeepAwake.keepAwake().catch(() => {});
+    } catch {
+      setStatus("Unable to connect. Looking for another stream...");
+      removeUnavailableStream(stream.id);
+    }
   }
 
   function attachTrack(track: RemoteTrack) {
     if (track.kind === Track.Kind.Video && videoRef.current) {
+      videoAttachedRef.current = true;
+      clearNoVideoTimer();
+
       const video = track.attach() as HTMLVideoElement;
       video.autoplay = true;
       video.playsInline = true;
@@ -393,6 +439,7 @@ export default function LiveFeedPage() {
   function goNext() {
     clearStreamEndTimer();
     clearHeartTimer();
+    clearNoVideoTimer();
     setShowHeart(false);
     setStreamEnded(false);
 
@@ -406,6 +453,7 @@ export default function LiveFeedPage() {
   function goPrevious() {
     clearStreamEndTimer();
     clearHeartTimer();
+    clearNoVideoTimer();
     setShowHeart(false);
     setStreamEnded(false);
 
@@ -537,8 +585,11 @@ export default function LiveFeedPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black text-white">
-        <p className="text-gray-400">Loading live feed...</p>
+      <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
+        <div className="text-center">
+          <div className="mb-4 text-5xl">📺</div>
+          <p className="text-gray-400">Loading live feed...</p>
+        </div>
       </main>
     );
   }
@@ -546,26 +597,38 @@ export default function LiveFeedPage() {
   if (!activeStream) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-        <div className="max-w-sm text-center">
-          <div className="mb-4 text-6xl">📺</div>
-          <h1 className="text-3xl font-black">Nobody Is Live</h1>
-          <p className="mt-3 text-gray-400">
-            Start your own stream or check Discover for creators.
+        <div className="w-full max-w-sm text-center">
+          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-red-600/10 text-6xl">
+            🎥
+          </div>
+
+          <h1 className="text-3xl font-black">No One Is Live</h1>
+
+          <p className="mt-3 text-sm leading-6 text-gray-400">
+            There are no active live streams right now. Start your own live or
+            discover creators to follow.
           </p>
 
-          <div className="mt-6 flex flex-col gap-3">
+          <div className="mt-7 flex flex-col gap-3">
             <button
               onClick={() => (window.location.href = "/go-live")}
-              className="rounded-full bg-red-600 px-6 py-3 font-black"
+              className="rounded-full bg-red-600 px-6 py-4 text-lg font-black shadow-lg shadow-red-600/20 active:scale-95"
             >
-              Go Live Now
+              Go Live
             </button>
 
             <button
               onClick={() => (window.location.href = "/explore")}
-              className="rounded-full border border-gray-700 bg-gray-900 px-6 py-3 font-bold text-gray-200"
+              className="rounded-full border border-gray-700 bg-gray-900 px-6 py-4 font-bold text-gray-200 active:scale-95"
             >
               Discover Creators
+            </button>
+
+            <button
+              onClick={() => loadLiveStreams(true)}
+              className="rounded-full px-6 py-3 text-sm font-bold text-gray-500"
+            >
+              Refresh
             </button>
           </div>
         </div>
@@ -595,7 +658,7 @@ export default function LiveFeedPage() {
           <img
             src={activeStream.thumbnail_url}
             alt={activeStream.title}
-            className="h-full w-full object-cover opacity-60"
+            className="h-full w-full object-cover opacity-50"
           />
         )}
       </div>
