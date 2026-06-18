@@ -1,49 +1,45 @@
 "use client";
 
 import { useEffect } from "react";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 export default function AndroidBackButton() {
   useEffect(() => {
-    let removeListener: (() => void) | null = null;
+    if (!Capacitor.isNativePlatform()) return;
 
-    async function setupBackButton() {
-      try {
-        const { Capacitor } = await import("@capacitor/core");
+    let lastBackPress = 0;
 
-        if (!Capacitor.isNativePlatform()) return;
+    const listener = App.addListener("backButton", ({ canGoBack }) => {
+      const path = window.location.pathname;
 
-        const { App } = await import("@capacitor/app");
+      const shouldExit =
+        path === "/" ||
+        path === "/live-feed" ||
+        path === "/login" ||
+        path === "/signup";
 
-        const listener = await App.addListener("backButton", () => {
-          const path = window.location.pathname;
-
-          if (path === "/" || path === "") {
-            App.exitApp();
-            return;
-          }
-
-          if (window.history.length > 1) {
-            window.history.back();
-            return;
-          }
-
-          App.exitApp();
-        });
-
-        removeListener = () => {
-          listener.remove();
-        };
-      } catch (error) {
-        console.warn("Android back button setup skipped:", error);
+      if (canGoBack && !shouldExit) {
+        window.history.back();
+        return;
       }
-    }
 
-    setupBackButton();
+      const now = Date.now();
+
+      if (now - lastBackPress < 1500) {
+        App.exitApp();
+        return;
+      }
+
+      lastBackPress = now;
+
+      if (typeof window !== "undefined") {
+        alert("Press back again to exit StreamHub");
+      }
+    });
 
     return () => {
-      if (removeListener) {
-        removeListener();
-      }
+      listener.then((handle) => handle.remove()).catch(() => {});
     };
   }, []);
 
