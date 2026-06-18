@@ -34,18 +34,29 @@ export default function LiveFeedPage() {
   const [status, setStatus] = useState("Loading live feed...");
   const [connected, setConnected] = useState(false);
   const [likes, setLikes] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
   const videoRef = useRef<HTMLDivElement | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const touchStartYRef = useRef<number | null>(null);
 
-  const activeStream = useMemo(() => streams[activeIndex] || null, [streams, activeIndex]);
+  const activeStream = useMemo(
+    () => streams[activeIndex] || null,
+    [streams, activeIndex]
+  );
 
   useEffect(() => {
     loadLiveStreams();
 
+    const interval = setInterval(() => {
+      loadLiveStreams(false);
+    }, 30000);
+
     return () => {
+      clearInterval(interval);
       cleanupRoom();
       KeepAwake.allowSleep().catch(() => {});
     };
@@ -62,8 +73,23 @@ export default function LiveFeedPage() {
     };
   }, [activeStream?.id]);
 
-  async function loadLiveStreams() {
-    setLoading(true);
+  async function loadLiveStreams(showLoader = true) {
+    if (showLoader) setLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setCurrentUserId(user?.id || null);
+
+    if (user) {
+      const { data: follows } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id);
+
+      setFollowingIds((follows || []).map((item: any) => item.following_id));
+    }
 
     const { data, error } = await supabase
       .from("streams")
@@ -91,6 +117,13 @@ export default function LiveFeedPage() {
     );
 
     setStreams(withProfiles as Stream[]);
+
+    setActiveIndex((current) => {
+      if (withProfiles.length === 0) return 0;
+      if (current >= withProfiles.length) return 0;
+      return current;
+    });
+
     setLoading(false);
 
     if (withProfiles.length === 0) {
@@ -292,6 +325,56 @@ export default function LiveFeedPage() {
     setLikes(Number(data || likes + 1));
   }
 
+  async function toggleFollow() {
+    if (!activeStream || !currentUserId) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (activeStream.user_id === currentUserId) return;
+
+    setFollowLoading(true);
+
+    const isFollowing = followingIds.includes(activeStream.user_id);
+
+    if (isFollowing) {
+      const { error } = await supabase
+        .from("follows")
+        .delete()
+        .eq("follower_id", currentUserId)
+        .eq("following_id", activeStream.user_id);
+
+      setFollowLoading(false);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      setFollowingIds((current) =>
+        current.filter((id) => id !== activeStream.user_id)
+      );
+
+      return;
+    }
+
+    const { error } = await supabase.from("follows").insert([
+      {
+        follower_id: currentUserId,
+        following_id: activeStream.user_id,
+      },
+    ]);
+
+    setFollowLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setFollowingIds((current) => [...current, activeStream.user_id]);
+  }
+
   function openFullRoom() {
     if (!activeStream) return;
     window.location.href = `/watch/${activeStream.id}`;
@@ -315,14 +398,26 @@ export default function LiveFeedPage() {
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
         <div className="max-w-sm text-center">
           <div className="mb-4 text-6xl">📺</div>
-          <h1 className="text-3xl font-black">No Live Streams</h1>
-          <p className="mt-3 text-gray-400">Nobody is live right now.</p>
-          <button
-            onClick={() => (window.location.href = "/explore")}
-            className="mt-6 rounded-full bg-red-600 px-6 py-3 font-black"
-          >
-            Back to Explore
-          </button>
+          <h1 className="text-3xl font-black">Nobody Is Live</h1>
+          <p className="mt-3 text-gray-400">
+            Start your own stream or check Discover for creators.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={() => (window.location.href = "/go-live")}
+              className="rounded-full bg-red-600 px-6 py-3 font-black"
+            >
+              Go Live Now
+            </button>
+
+            <button
+              onClick={() => (window.location.href = "/explore")}
+              className="rounded-full border border-gray-700 bg-gray-900 px-6 py-3 font-bold text-gray-200"
+            >
+              Discover Creators
+            </button>
+          </div>
         </div>
       </main>
     );
@@ -332,6 +427,10 @@ export default function LiveFeedPage() {
     activeStream.profile?.display_name ||
     activeStream.profile?.username ||
     "Creator";
+
+  const isFollowingActiveHost = followingIds.includes(activeStream.user_id);
+  const showFollowButton =
+    !!currentUserId && currentUserId !== activeStream.user_id;
 
   return (
     <main
@@ -361,28 +460,48 @@ export default function LiveFeedPage() {
       </div>
 
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-4 right-20 z-20">
-        <button onClick={openProfile} className="mb-3 flex items-center gap-3 text-left">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-700">
-            {activeStream.profile?.avatar_url ? (
-              <img
-                src={activeStream.profile.avatar_url}
-                alt={hostName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              "👤"
-            )}
-          </div>
+        <div className="mb-3 flex items-center gap-3">
+          <button onClick={openProfile} className="flex min-w-0 items-center gap-3 text-left">
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+              {activeStream.profile?.avatar_url ? (
+                <img
+                  src={activeStream.profile.avatar_url}
+                  alt={hostName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                "👤"
+              )}
+            </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-lg font-black">
-              {hostName} {activeStream.profile?.is_verified ? "✓" : ""}
-            </p>
-            <p className="truncate text-xs text-white/70">
-              @{activeStream.profile?.username || "creator"}
-            </p>
-          </div>
-        </button>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black">
+                {hostName} {activeStream.profile?.is_verified ? "✓" : ""}
+              </p>
+              <p className="truncate text-xs text-white/70">
+                @{activeStream.profile?.username || "creator"}
+              </p>
+            </div>
+          </button>
+
+          {showFollowButton && (
+            <button
+              onClick={toggleFollow}
+              disabled={followLoading}
+              className={
+                isFollowingActiveHost
+                  ? "rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-black text-white"
+                  : "rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white"
+              }
+            >
+              {followLoading
+                ? "..."
+                : isFollowingActiveHost
+                ? "Following"
+                : "+ Follow"}
+            </button>
+          )}
+        </div>
 
         <h1 className="line-clamp-2 text-xl font-black">{activeStream.title}</h1>
         <p className="mt-1 text-sm text-white/70">
