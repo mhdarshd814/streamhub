@@ -65,19 +65,17 @@ export default function ProfilePage() {
 
       <div className="bg-gray-900 p-8 rounded-xl max-w-2xl">
         <div className="flex items-center gap-6 mb-6">
-          <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center text-4xl">
+          <div className="w-24 h-24 overflow-hidden rounded-full bg-gray-700 flex items-center justify-center shrink-0">
             {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.username}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              "👤"
-            )}
-          </div>
-
-          <div>
+            <img
+             src={profile.avatar_url}
+             alt={profile.username}
+             className="w-full h-full object-cover"
+             />
+             ) : (
+             <span className="text-4xl">👤</span>
+             )}
+            </div>
             <h1 className="text-4xl font-bold">
               {profile.display_name || profile.username}
             </h1>
