@@ -38,6 +38,7 @@ export default function Navbar() {
 
   const notificationRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuOpenRef = useRef(false);
 
   useEffect(() => {
     let inviteChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -75,35 +76,40 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-  function handleClickOutside(event: MouseEvent) {
-    const target = event.target as Node;
+    mobileMenuOpenRef.current = mobileMenuOpen;
+  }, [mobileMenuOpen]);
 
-    if (notificationRef.current && !notificationRef.current.contains(target)) {
-      setNotificationOpen(false);
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
+        setNotificationOpen(false);
+      }
+
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
     }
 
-    if (menuRef.current && !menuRef.current.contains(target)) {
-      setMenuOpen(false);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handlePopState() {
+      if (mobileMenuOpenRef.current) {
+        mobileMenuOpenRef.current = false;
+        setMobileMenuOpen(false);
+      }
     }
-  }
 
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => document.removeEventListener("mousedown", handleClickOutside);
-}, []);
+    window.addEventListener("popstate", handlePopState);
 
-useEffect(() => {
-  function handlePopState() {
-    if (mobileMenuOpen) {
-      setMobileMenuOpen(false);
-    }
-  }
-
-  window.addEventListener("popstate", handlePopState);
-
-  return () => {
-    window.removeEventListener("popstate", handlePopState);
-  };
-}, [mobileMenuOpen]);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   function goTo(path: string) {
     setMenuOpen(false);
@@ -332,7 +338,11 @@ useEffect(() => {
                         </div>
 
                         {unreadNotifications > 0 && (
-                          <button type="button" onClick={markAllNotificationsRead} className="text-xs font-bold text-red-400">
+                          <button
+                            type="button"
+                            onClick={markAllNotificationsRead}
+                            className="text-xs font-bold text-red-400"
+                          >
                             Mark all read
                           </button>
                         )}
@@ -384,7 +394,11 @@ useEffect(() => {
                   >
                     <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-700">
                       {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt={profile.username || "Profile"} className="h-full w-full object-cover" />
+                        <img
+                          src={profile.avatar_url}
+                          alt={profile.username || "Profile"}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
                         "👤"
                       )}
@@ -451,7 +465,11 @@ useEffect(() => {
         }}
       >
         <div className="flex w-full items-center justify-between">
-          <button type="button" onClick={() => goTo("/live-feed")} className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => goTo("/live-feed")}
+            className="flex items-center gap-3"
+          >
             <div className="h-12 w-12 overflow-hidden rounded-xl">
               <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
             </div>
@@ -519,23 +537,28 @@ useEffect(() => {
             type="button"
             onClick={() => {
               if (!loggedIn) {
-              goTo("/login");
-             return;
-             }
+                goTo("/login");
+                return;
+              }
 
-            window.history.pushState(
-            { streamhubMobileMenu: true },
-             "",
-         window.location.href
-        );
+              window.history.pushState(
+                { streamhubMobileMenu: true },
+                "",
+                window.location.href
+              );
 
-        setMobileMenuOpen(true);
-        }}
+              mobileMenuOpenRef.current = true;
+              setMobileMenuOpen(true);
+            }}
             className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
           >
             <span className="flex h-7 items-center justify-center text-2xl">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt={profile.username || "Profile"} className="h-6 w-6 rounded-full object-cover" />
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.username || "Profile"}
+                  className="h-6 w-6 rounded-full object-cover"
+                />
               ) : (
                 "👤"
               )}
@@ -548,7 +571,10 @@ useEffect(() => {
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 z-[9998] bg-black/70 xl:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => {
+            mobileMenuOpenRef.current = false;
+            setMobileMenuOpen(false);
+          }}
         >
           <div
             className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
@@ -562,7 +588,11 @@ useEffect(() => {
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gray-800">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.username || "Profile"} className="h-full w-full object-cover" />
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.username || "Profile"}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <span className="text-2xl">👤</span>
                 )}
@@ -596,7 +626,6 @@ useEffect(() => {
                 🚪 Logout
               </button>
             </div>
-        
           </div>
         </div>
       )}
