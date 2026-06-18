@@ -33,6 +33,13 @@ type Stream = {
   profile?: Profile | null;
 };
 
+type ChatMessage = {
+  id: string;
+  username: string;
+  message: string;
+  created_at: string;
+};
+
 export default function LiveFeedPage() {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -44,12 +51,17 @@ export default function LiveFeedPage() {
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followLoading, setFollowLoading] = useState(false);
   const [streamEnded, setStreamEnded] = useState(false);
+  const [chatPreview, setChatPreview] = useState<ChatMessage[]>([]);
+  const [showHeart, setShowHeart] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
   const videoRef = useRef<HTMLDivElement | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const touchStartYRef = useRef<number | null>(null);
   const streamEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const heartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatChannelRef = useRef<any>(null);
 
   const activeStream = useMemo(
     () => streams[activeIndex] || null,
@@ -66,6 +78,8 @@ export default function LiveFeedPage() {
     return () => {
       clearInterval(interval);
       clearStreamEndTimer();
+      clearHeartTimer();
+      cleanupChatChannel();
       cleanupRoom();
       KeepAwake.allowSleep().catch(() => {});
     };
@@ -75,12 +89,20 @@ export default function LiveFeedPage() {
     if (!activeStream) return;
 
     clearStreamEndTimer();
+    clearHeartTimer();
+    cleanupChatChannel();
+
     setStreamEnded(false);
     setLikes(Number(activeStream.likes || 0));
+    setChatPreview([]);
+
     connectToStream(activeStream);
+    loadChatPreview(activeStream.id);
+    subscribeToChatPreview(activeStream.id);
 
     return () => {
       cleanupRoom();
+      cleanupChatChannel();
     };
   }, [activeStream?.id]);
 
@@ -88,6 +110,20 @@ export default function LiveFeedPage() {
     if (streamEndTimerRef.current) {
       clearTimeout(streamEndTimerRef.current);
       streamEndTimerRef.current = null;
+    }
+  }
+
+  function clearHeartTimer() {
+    if (heartTimerRef.current) {
+      clearTimeout(heartTimerRef.current);
+      heartTimerRef.current = null;
+    }
+  }
+
+  function cleanupChatChannel() {
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current);
+      chatChannelRef.current = null;
     }
   }
 
@@ -147,6 +183,41 @@ export default function LiveFeedPage() {
     if (withProfiles.length === 0) {
       setStatus("No live streams right now.");
     }
+  }
+
+  async function loadChatPreview(streamId: string) {
+    const { data } = await supabase
+      .from("stream_chat")
+      .select("id, username, message, created_at")
+      .eq("stream_id", streamId)
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    setChatPreview(((data || []) as ChatMessage[]).reverse());
+  }
+
+  function subscribeToChatPreview(streamId: string) {
+    chatChannelRef.current = supabase
+      .channel(`live-feed-chat-${streamId}-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "stream_chat",
+          filter: `stream_id=eq.${streamId}`,
+        },
+        (payload) => {
+          const message = payload.new as ChatMessage;
+
+          setChatPreview((current) => {
+            const exists = current.some((item) => item.id === message.id);
+            if (exists) return current;
+            return [...current, message].slice(-4);
+          });
+        }
+      )
+      .subscribe();
   }
 
   function cleanupRoom() {
@@ -321,6 +392,8 @@ export default function LiveFeedPage() {
 
   function goNext() {
     clearStreamEndTimer();
+    clearHeartTimer();
+    setShowHeart(false);
     setStreamEnded(false);
 
     if (streams.length <= 1) return;
@@ -332,6 +405,8 @@ export default function LiveFeedPage() {
 
   function goPrevious() {
     clearStreamEndTimer();
+    clearHeartTimer();
+    setShowHeart(false);
     setStreamEnded(false);
 
     if (streams.length <= 1) return;
@@ -367,7 +442,19 @@ export default function LiveFeedPage() {
     touchStartYRef.current = null;
   }
 
-  async function toggleLike() {
+  function handleVideoTap() {
+    const now = Date.now();
+
+    if (now - lastTapRef.current < 280) {
+      toggleLike(true);
+      lastTapRef.current = 0;
+      return;
+    }
+
+    lastTapRef.current = now;
+  }
+
+  async function toggleLike(fromDoubleTap = false) {
     if (!activeStream || streamEnded) return;
 
     const { error, data } = await supabase.rpc("toggle_stream_like", {
@@ -375,11 +462,17 @@ export default function LiveFeedPage() {
     });
 
     if (error) {
-      alert(error.message);
+      if (!fromDoubleTap) alert(error.message);
       return;
     }
 
     setLikes(Number(data || likes + 1));
+
+    if (fromDoubleTap) {
+      setShowHeart(true);
+      clearHeartTimer();
+      heartTimerRef.current = setTimeout(() => setShowHeart(false), 650);
+    }
   }
 
   async function toggleFollow() {
@@ -494,6 +587,7 @@ export default function LiveFeedPage() {
       onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onClick={handleVideoTap}
       className="relative h-screen w-full overflow-hidden bg-black text-white"
     >
       <div ref={videoRef} className="absolute inset-0 bg-black">
@@ -505,6 +599,12 @@ export default function LiveFeedPage() {
           />
         )}
       </div>
+
+      {showHeart && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+          <div className="animate-ping text-8xl">❤️</div>
+        </div>
+      )}
 
       {streamEnded && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-6 text-center">
@@ -518,7 +618,7 @@ export default function LiveFeedPage() {
         </div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/85" />
 
       <div className="absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 rounded-full bg-red-600 px-3 py-1 text-xs font-black">
         LIVE
@@ -531,7 +631,10 @@ export default function LiveFeedPage() {
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-4 right-20 z-20">
         <div className="mb-3 flex items-center gap-3">
           <button
-            onClick={openProfile}
+            onClick={(event) => {
+              event.stopPropagation();
+              openProfile();
+            }}
             className="flex min-w-0 items-center gap-3 text-left"
           >
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-700">
@@ -558,7 +661,10 @@ export default function LiveFeedPage() {
 
           {showFollowButton && (
             <button
-              onClick={toggleFollow}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleFollow();
+              }}
               disabled={followLoading}
               className={
                 isFollowingActiveHost
@@ -580,39 +686,53 @@ export default function LiveFeedPage() {
           {activeStream.category} • 👀 {activeStream.viewers || 0}
         </p>
 
-        <p className="mt-2 text-xs text-white/60">{status}</p>
+        {chatPreview.length > 0 && (
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              openFullRoom();
+            }}
+            className="mt-4 w-full max-w-sm space-y-1 rounded-2xl bg-black/35 p-3 text-left backdrop-blur"
+          >
+            {chatPreview.map((msg) => (
+              <p key={msg.id} className="line-clamp-1 text-xs text-white/85">
+                <span className="font-black text-red-300">{msg.username}: </span>
+                {msg.message}
+              </p>
+            ))}
+
+            <p className="pt-1 text-[11px] font-bold text-white/45">
+              Tap chat to join conversation
+            </p>
+          </button>
+        )}
+
+        <p className="mt-3 text-xs text-white/55">{status}</p>
       </div>
 
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2.2rem)] right-4 z-20 flex flex-col items-center gap-4">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2.5rem)] right-4 z-20 flex flex-col items-center gap-4">
         <button
-          onClick={toggleLike}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleLike();
+          }}
           disabled={streamEnded}
           className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-2xl disabled:opacity-40"
         >
           ❤️
         </button>
+
         <p className="-mt-3 text-xs font-bold">{likes}</p>
 
         <button
-          onClick={openFullRoom}
+          onClick={(event) => {
+            event.stopPropagation();
+            openFullRoom();
+          }}
           disabled={streamEnded}
           className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-xl disabled:opacity-40"
         >
           💬
-        </button>
-
-        <button
-          onClick={goPrevious}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl"
-        >
-          ↑
-        </button>
-
-        <button
-          onClick={goNext}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl"
-        >
-          ↓
         </button>
       </div>
     </main>
