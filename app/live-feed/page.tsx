@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Room, RoomEvent, RemoteTrack, RemoteTrackPublication, Track } from "livekit-client";
+import {
+  Room,
+  RoomEvent,
+  RemoteTrack,
+  RemoteTrackPublication,
+  Track,
+} from "livekit-client";
 import { supabase } from "../../lib/supabase";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 
@@ -37,11 +43,13 @@ export default function LiveFeedPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followLoading, setFollowLoading] = useState(false);
+  const [streamEnded, setStreamEnded] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
   const videoRef = useRef<HTMLDivElement | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const touchStartYRef = useRef<number | null>(null);
+  const streamEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeStream = useMemo(
     () => streams[activeIndex] || null,
@@ -57,6 +65,7 @@ export default function LiveFeedPage() {
 
     return () => {
       clearInterval(interval);
+      clearStreamEndTimer();
       cleanupRoom();
       KeepAwake.allowSleep().catch(() => {});
     };
@@ -65,6 +74,8 @@ export default function LiveFeedPage() {
   useEffect(() => {
     if (!activeStream) return;
 
+    clearStreamEndTimer();
+    setStreamEnded(false);
     setLikes(Number(activeStream.likes || 0));
     connectToStream(activeStream);
 
@@ -72,6 +83,13 @@ export default function LiveFeedPage() {
       cleanupRoom();
     };
   }, [activeStream?.id]);
+
+  function clearStreamEndTimer() {
+    if (streamEndTimerRef.current) {
+      clearTimeout(streamEndTimerRef.current);
+      streamEndTimerRef.current = null;
+    }
+  }
 
   async function loadLiveStreams(showLoader = true) {
     if (showLoader) setLoading(true);
@@ -154,6 +172,31 @@ export default function LiveFeedPage() {
     }
   }
 
+  async function handleStreamEnded() {
+    if (streamEnded) return;
+
+    setStreamEnded(true);
+    setConnected(false);
+    setStatus("Stream ended. Moving to next live...");
+
+    await loadLiveStreams(false);
+
+    streamEndTimerRef.current = setTimeout(() => {
+      setStreams((currentStreams) => {
+        const remaining = currentStreams.filter(
+          (item) => item.id !== activeStream?.id
+        );
+
+        if (remaining.length === 0) {
+          return [];
+        }
+
+        setActiveIndex(0);
+        return remaining;
+      });
+    }, 1800);
+  }
+
   async function connectToStream(stream: Stream) {
     cleanupRoom();
     setStatus("Connecting...");
@@ -212,17 +255,19 @@ export default function LiveFeedPage() {
 
     roomRef.current = room;
 
-    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: RemoteTrackPublication) => {
-      try {
-        publication.setVideoQuality?.(2);
-      } catch {}
+    room.on(
+      RoomEvent.TrackSubscribed,
+      (track: RemoteTrack, publication: RemoteTrackPublication) => {
+        try {
+          publication.setVideoQuality?.(2);
+        } catch {}
 
-      attachTrack(track);
-    });
+        attachTrack(track);
+      }
+    );
 
     room.on(RoomEvent.Disconnected, () => {
-      setConnected(false);
-      setStatus("Disconnected.");
+      handleStreamEnded();
     });
 
     await room.connect(livekitUrl, tokenData.token, {
@@ -275,13 +320,25 @@ export default function LiveFeedPage() {
   }
 
   function goNext() {
+    clearStreamEndTimer();
+    setStreamEnded(false);
+
     if (streams.length <= 1) return;
-    setActiveIndex((current) => (current + 1 >= streams.length ? 0 : current + 1));
+
+    setActiveIndex((current) =>
+      current + 1 >= streams.length ? 0 : current + 1
+    );
   }
 
   function goPrevious() {
+    clearStreamEndTimer();
+    setStreamEnded(false);
+
     if (streams.length <= 1) return;
-    setActiveIndex((current) => (current - 1 < 0 ? streams.length - 1 : current - 1));
+
+    setActiveIndex((current) =>
+      current - 1 < 0 ? streams.length - 1 : current - 1
+    );
   }
 
   function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
@@ -311,7 +368,7 @@ export default function LiveFeedPage() {
   }
 
   async function toggleLike() {
-    if (!activeStream) return;
+    if (!activeStream || streamEnded) return;
 
     const { error, data } = await supabase.rpc("toggle_stream_like", {
       stream_id_input: activeStream.id,
@@ -376,7 +433,7 @@ export default function LiveFeedPage() {
   }
 
   function openFullRoom() {
-    if (!activeStream) return;
+    if (!activeStream || streamEnded) return;
     window.location.href = `/watch/${activeStream.id}`;
   }
 
@@ -449,6 +506,18 @@ export default function LiveFeedPage() {
         )}
       </div>
 
+      {streamEnded && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-6 text-center">
+          <div>
+            <div className="mb-4 text-6xl">📴</div>
+            <h2 className="text-3xl font-black">Stream Ended</h2>
+            <p className="mt-3 text-sm text-gray-300">
+              Moving you to the next live stream...
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
 
       <div className="absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 rounded-full bg-red-600 px-3 py-1 text-xs font-black">
@@ -461,7 +530,10 @@ export default function LiveFeedPage() {
 
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-4 right-20 z-20">
         <div className="mb-3 flex items-center gap-3">
-          <button onClick={openProfile} className="flex min-w-0 items-center gap-3 text-left">
+          <button
+            onClick={openProfile}
+            className="flex min-w-0 items-center gap-3 text-left"
+          >
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-700">
               {activeStream.profile?.avatar_url ? (
                 <img
@@ -497,8 +569,8 @@ export default function LiveFeedPage() {
               {followLoading
                 ? "..."
                 : isFollowingActiveHost
-                ? "Following"
-                : "+ Follow"}
+                  ? "Following"
+                  : "+ Follow"}
             </button>
           )}
         </div>
@@ -514,7 +586,8 @@ export default function LiveFeedPage() {
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2.2rem)] right-4 z-20 flex flex-col items-center gap-4">
         <button
           onClick={toggleLike}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-2xl"
+          disabled={streamEnded}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-2xl disabled:opacity-40"
         >
           ❤️
         </button>
@@ -522,7 +595,8 @@ export default function LiveFeedPage() {
 
         <button
           onClick={openFullRoom}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-xl"
+          disabled={streamEnded}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-xl disabled:opacity-40"
         >
           💬
         </button>
