@@ -37,7 +37,9 @@ export default function LoginPage() {
 
     await supabase.auth.getSession();
 
-    window.location.replace("/live-feed");
+    setTimeout(() => {
+      window.location.assign("/live-feed");
+    }, 300);
   }
 
   return (
@@ -48,6 +50,7 @@ export default function LoginPage() {
             <span className="text-white">Stream</span>
             <span className="text-red-500">Hub</span>
           </h1>
+
           <p className="mt-3 text-gray-400">Login to continue.</p>
         </div>
 
@@ -76,12 +79,14 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full rounded-xl bg-red-600 py-4 text-lg font-bold hover:bg-red-700 disabled:bg-gray-700"
             >
-              {loading ? "Signing In..." : "Login"}
+              {loading ? "Opening StreamHub..." : "Login"}
             </button>
           </div>
 
           <button
-            onClick={() => (window.location.href = "/signup")}
+            onClick={() => {
+              window.location.href = "/signup";
+            }}
             className="mt-6 w-full text-center font-bold text-red-500"
           >
             Create Account
