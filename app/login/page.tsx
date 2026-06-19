@@ -1,15 +1,40 @@
 "use client";
 
 import toast from "react-hot-toast";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  async function waitForStableSession() {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user && session.access_token) {
+        return session;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    return null;
+  }
+
   async function getNextRoute(userId: string) {
+    const next = searchParams.get("next");
+
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      return next;
+    }
+
     const { data } = await supabase
       .from("profiles")
       .select("username, display_name, avatar_url")
@@ -43,19 +68,19 @@ export default function LoginPage() {
       return;
     }
 
-    if (!data.session?.user) {
+    const stableSession = await waitForStableSession();
+
+    if (!data.session?.user || !stableSession?.user) {
       setLoading(false);
-      toast.error("Login failed. No session was created.");
+      toast.error("Login did not complete. Please try again.");
       return;
     }
 
-    const nextRoute = await getNextRoute(data.session.user.id);
+    const nextRoute = await getNextRoute(stableSession.user.id);
 
     toast.success("Welcome back");
 
-    setTimeout(() => {
-      window.location.replace(nextRoute);
-    }, 350);
+    window.location.replace(nextRoute);
   }
 
   return (
@@ -99,7 +124,7 @@ export default function LoginPage() {
               autoComplete="email"
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleLogin();
+                if (e.key === "Enter" && !loading) handleLogin();
               }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
@@ -111,7 +136,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleLogin();
+                if (e.key === "Enter" && !loading) handleLogin();
               }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
