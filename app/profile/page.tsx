@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -47,51 +46,55 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+      <div className="min-h-screen bg-black p-8 text-white">
         Loading profile...
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white">
-      <div className="mx-auto max-w-4xl">
-        <Link href="/dashboard" className="mb-8 inline-flex items-center gap-2 text-red-400 hover:text-red-300">
-          ← Back to Dashboard
-        </Link>
+    <div className="min-h-screen bg-black p-8 text-white">
+      <button
+        onClick={() => {
+          window.location.href = "/dashboard";
+        }}
+        className="mb-8 rounded-lg bg-gray-800 px-5 py-3 hover:bg-gray-700"
+      >
+        Back to Dashboard
+      </button>
 
-        <div className="premium-glass rounded-3xl p-10">
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="flex-shrink-0">
-              <div className="h-40 w-40 rounded-3xl overflow-hidden border-4 border-white/20">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.username} className="object-cover h-full w-full" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gray-800 text-6xl">👤</div>
-                )}
-              </div>
-            </div>
+      <div className="max-w-2xl rounded-xl bg-gray-900 p-8">
+        <div className="mb-6 flex items-center gap-6">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.username}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-4xl">👤</span>
+            )}
+          </div>
 
-            <div className="flex-1">
-              <h1 className="text-4xl font-black">{profile.display_name || profile.username}</h1>
-              <p className="text-red-400 text-xl">@{profile.username}</p>
+          <div className="min-w-0">
+            <h1 className="break-words text-4xl font-bold">
+              {profile.display_name || profile.username}
+            </h1>
 
-              <div className="mt-6 flex gap-8">
-                <div>
-                  <p className="text-3xl font-black">{profile.followers || 0}</p>
-                  <p className="text-sm text-gray-400">Followers</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-black">{profile.following || 0}</p>
-                  <p className="text-sm text-gray-400">Following</p>
-                </div>
-              </div>
-
-              <p className="mt-8 text-lg text-gray-300">{profile.bio || "No bio yet."}</p>
-            </div>
+            <p className="text-gray-400">@{profile.username}</p>
           </div>
         </div>
+
+        <p className="mb-6 text-gray-300">
+          {profile.bio || "No bio added yet."}
+        </p>
+
+        <div className="flex gap-6 text-gray-400">
+          <p>{profile.followers || 0} followers</p>
+          <p>{profile.following || 0} following</p>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

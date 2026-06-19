@@ -10,14 +10,12 @@ export default function NativeDialogBlocker() {
     const originalAlert = window.alert;
 
     window.alert = (message?: any) => {
-      const text = typeof message === "string" 
-        ? message 
-        : message?.message || message?.toString() || "Something happened in StreamHub";
+      const text =
+        typeof message === "string"
+          ? message
+          : message?.message || "Something happened";
 
-      toast(text, {
-        duration: 2800,
-        icon: "⚠️",
-      });
+      toast(text);
     };
 
     return () => {

@@ -1,65 +1,523 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { Room, RoomEvent, Track } from "livekit-client";
+import { supabase } from "../../../../lib/supabase";
 
-export default function AdminBroadcastPage() {
+type Stream = {
+  id: string;
+  user_id: string;
+  title: string;
+  category: string;
+  status: string;
+  visibility?: "public" | "private" | "subscribers" | null;
+  viewers?: number | null;
+  likes?: number | null;
+  description?: string | null;
+  created_at: string;
+};
+
+export default function AdminBroadcastStudioPage() {
   const params = useParams();
-  const broadcastId = params.id as string;
+  const router = useRouter();
+  const streamId = params.id as string;
 
-  const [broadcast, setBroadcast] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [stream, setStream] = useState<Stream | null>(null);
+  const [room, setRoom] = useState<Room | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [screenOn, setScreenOn] = useState(false);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [statusText, setStatusText] = useState("Loading broadcast studio...");
+
+  const screenVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const roomRef = useRef<Room | null>(null);
+
+  useEffect(() => {
+    loadStudio();
+
+    return () => {
+      if (roomRef.current) {
+        roomRef.current.disconnect();
+        roomRef.current = null;
+      }
+    };
+  }, [streamId]);
 
   async function loadStudio() {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from("admin_broadcasts")
-      .select("*")
-      .eq("id", broadcastId)
-      .single();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (error) {
-      alert(error.message);
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_admin, is_banned")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      alert(profileError.message);
+      router.push("/admin");
+      return;
+    }
+
+    if (profile?.is_banned) {
+      router.push("/banned");
+      return;
+    }
+
+    if (!profile?.is_admin) {
+      setIsAdmin(false);
       setLoading(false);
       return;
     }
 
-    setBroadcast(data);
+    setIsAdmin(true);
+
+    const { data: streamData, error: streamError } = await supabase
+      .from("streams")
+      .select("*")
+      .eq("id", streamId)
+      .maybeSingle();
+
+    if (streamError || !streamData) {
+      alert(streamError?.message || "Broadcast stream not found.");
+      router.push("/admin/broadcast");
+      return;
+    }
+
+    if (streamData.user_id !== user.id) {
+      alert("This broadcast belongs to another account.");
+      router.push("/admin/broadcast");
+      return;
+    }
+
+    setStream(streamData as Stream);
+    setStatusText(streamData.status === "live" ? "Broadcast is live." : "Broadcast is ready.");
     setLoading(false);
   }
 
-  useEffect(() => {
-    if (broadcastId) {
-      loadStudio();
+  async function connectRoom() {
+    if (!stream || connecting || roomRef.current) return;
+
+    setConnecting(true);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        router.push("/login");
+        return;
+      }
+
+      const tokenResponse = await fetch("/api/livekit-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          roomName: stream.id,
+          streamId: stream.id,
+          participantName: "admin-broadcast-host",
+          mode: "studio",
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok) {
+        alert(tokenData.error || "Failed to get LiveKit token.");
+        return;
+      }
+
+      const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+
+      if (!livekitUrl) {
+        alert("NEXT_PUBLIC_LIVEKIT_URL is missing.");
+        return;
+      }
+
+      const newRoom = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+      });
+
+      newRoom.on(RoomEvent.LocalTrackPublished, () => {
+        setTimeout(() => attachLocalTracks(newRoom), 150);
+      });
+
+      newRoom.on(RoomEvent.LocalTrackUnpublished, () => {
+        setTimeout(() => attachLocalTracks(newRoom), 150);
+      });
+
+      await newRoom.connect(livekitUrl, tokenData.token);
+
+      roomRef.current = newRoom;
+      setRoom(newRoom);
+      setStatusText("Connected. Start screen share to begin broadcasting.");
+
+      await startScreenShare(newRoom);
+      await updateBroadcastStatus("live");
+    } catch (error: any) {
+      console.error("Admin broadcast connect error:", error);
+      alert(error?.message || "Failed to connect broadcast studio.");
+    } finally {
+      setConnecting(false);
     }
-  }, [broadcastId]);
+  }
+
+  async function startScreenShare(targetRoom?: Room) {
+    const activeRoom = targetRoom || roomRef.current;
+    if (!activeRoom) return;
+
+    try {
+      await activeRoom.localParticipant.setScreenShareEnabled(true, {
+        audio: true,
+      } as any);
+      setScreenOn(true);
+      setStatusText("Screen sharing is live. Viewers can watch from the public watch page.");
+      setTimeout(() => attachLocalTracks(activeRoom), 300);
+    } catch (error: any) {
+      console.error("Screen share error:", error);
+      alert("Screen share was cancelled or blocked by the browser.");
+    }
+  }
+
+  async function stopScreenShare() {
+    const activeRoom = roomRef.current;
+    if (!activeRoom) return;
+
+    await activeRoom.localParticipant.setScreenShareEnabled(false);
+    setScreenOn(false);
+
+    if (screenVideoRef.current) {
+      screenVideoRef.current.srcObject = null;
+    }
+  }
+
+  async function toggleCamera() {
+    const activeRoom = roomRef.current;
+    if (!activeRoom) return;
+
+    const next = !cameraOn;
+    await activeRoom.localParticipant.setCameraEnabled(next);
+    setCameraOn(next);
+    setTimeout(() => attachLocalTracks(activeRoom), 250);
+  }
+
+  async function toggleMic() {
+    const activeRoom = roomRef.current;
+    if (!activeRoom) return;
+
+    const next = !micOn;
+    await activeRoom.localParticipant.setMicrophoneEnabled(next);
+    setMicOn(next);
+  }
+
+  function attachLocalTracks(targetRoom: Room) {
+    const publications = Array.from(
+      ((targetRoom.localParticipant as any).trackPublications?.values?.() || []) as any[]
+    );
+
+    publications.forEach((publication: any) => {
+      const track = publication.track;
+      if (!track || track.kind !== Track.Kind.Video) return;
+
+      const source = publication.source || track.source;
+
+      try {
+        if (source === Track.Source.ScreenShare && screenVideoRef.current) {
+          track.attach(screenVideoRef.current);
+        }
+
+        if (source === Track.Source.Camera && cameraVideoRef.current) {
+          track.attach(cameraVideoRef.current);
+        }
+      } catch (error) {
+        console.error("Attach local broadcast track error:", error);
+      }
+    });
+  }
+
+  async function updateBroadcastStatus(status: "live" | "offline") {
+    if (!stream) return;
+
+    const { error } = await supabase
+      .from("streams")
+      .update(status === "offline" ? { status, viewers: 0 } : { status })
+      .eq("id", stream.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    if (status === "offline") {
+      await supabase.from("stream_viewers").delete().eq("stream_id", stream.id);
+      await supabase.from("stream_chat").delete().eq("stream_id", stream.id);
+    }
+
+    setStream({ ...stream, status, viewers: status === "offline" ? 0 : stream.viewers });
+  }
+
+  async function endBroadcast() {
+    await stopScreenShare().catch(() => {});
+
+    if (roomRef.current) {
+      roomRef.current.disconnect();
+      roomRef.current = null;
+    }
+
+    setRoom(null);
+    setScreenOn(false);
+    setCameraOn(false);
+    setMicOn(false);
+
+    if (screenVideoRef.current) screenVideoRef.current.srcObject = null;
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+
+    await updateBroadcastStatus("offline");
+    setStatusText("Broadcast ended.");
+  }
+
+  async function copyWatchLink() {
+    if (!stream) return;
+
+    await navigator.clipboard.writeText(`${window.location.origin}/watch/${stream.id}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-black px-4 py-6 text-white">
+        <p className="text-gray-400">Loading broadcast studio...</p>
+      </main>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <main className="min-h-screen bg-black px-4 py-6 text-white">
+        <div className="mx-auto max-w-xl rounded-2xl border border-red-800 bg-red-950/30 p-6 text-center">
+          <h1 className="mb-3 text-3xl font-black">Access Denied</h1>
+          <p className="text-red-200">Your account does not have admin permission.</p>
+          <Link href="/admin" className="mt-6 inline-block rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700">
+            Back to Admin
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (!stream) {
+    return (
+      <main className="min-h-screen bg-black px-4 py-6 text-white">
+        <p className="text-gray-400">Broadcast not found.</p>
+      </main>
+    );
+  }
+
+  const isLive = stream.status === "live";
 
   return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
-          <p className="uppercase tracking-widest text-red-400 text-sm font-bold">ADMIN</p>
-          <h1 className="text-5xl font-black tracking-tighter">Broadcast Studio</h1>
-        </div>
+    <main className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10">
+      <div className="mx-auto max-w-7xl">
+        <section className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="mb-2 text-sm font-semibold text-red-400">Admin Broadcast Studio</p>
+            <h1 className="break-words text-4xl font-black sm:text-5xl">
+              {stream.title}
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
+              {stream.category} • {isLive ? "Live" : "Offline"} • Public admin broadcast
+            </p>
+            <p className="mt-2 text-sm text-gray-500">{statusText}</p>
+          </div>
 
-        {loading ? (
-          <div className="premium-glass rounded-3xl p-12 text-center">Loading broadcast...</div>
-        ) : !broadcast ? (
-          <div className="premium-glass rounded-3xl p-12 text-center">Broadcast not found.</div>
-        ) : (
-          <div className="premium-glass rounded-3xl p-8">
-            <h2 className="text-2xl font-black mb-4">{broadcast.title}</h2>
-            <p className="text-gray-400">{broadcast.description}</p>
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+            <button
+              onClick={copyWatchLink}
+              className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700"
+            >
+              {copied ? "Copied" : "Copy Watch Link"}
+            </button>
+            <Link
+              href="/admin/broadcast"
+              className="rounded-xl bg-gray-800 px-5 py-3 text-center font-bold hover:bg-gray-700"
+            >
+              Broadcasts
+            </Link>
+            <Link
+              href={`/watch/${stream.id}`}
+              className="rounded-xl bg-gray-800 px-5 py-3 text-center font-bold hover:bg-gray-700"
+            >
+              Watch Page
+            </Link>
+          </div>
+        </section>
 
-            {/* Add your broadcast UI here */}
-            <div className="mt-8 p-6 bg-black/50 rounded-2xl">
-              <p className="text-center text-gray-400">Broadcast controls coming soon...</p>
+        <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatusCard label="Status" value={isLive ? "LIVE" : "OFFLINE"} color={isLive ? "text-red-400" : "text-gray-400"} />
+          <StatusCard label="Screen Share" value={screenOn ? "On" : "Off"} color={screenOn ? "text-green-400" : "text-gray-400"} />
+          <StatusCard label="Camera" value={cameraOn ? "On" : "Off"} color={cameraOn ? "text-green-400" : "text-gray-400"} />
+          <StatusCard label="Microphone" value={micOn ? "On" : "Muted"} color={micOn ? "text-green-400" : "text-gray-400"} />
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <div className="overflow-hidden rounded-2xl border border-red-900/40 bg-gray-950 shadow-2xl shadow-red-950/30">
+              <div className="border-b border-gray-800 p-5">
+                <h2 className="text-2xl font-black">Screen Broadcast Preview</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Share your full screen, browser tab, presentation, dashboard, or any other app window.
+                </p>
+              </div>
+
+              <div className="relative flex h-[360px] items-center justify-center bg-black sm:h-[520px] lg:h-[620px]">
+                <video
+                  ref={screenVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full object-contain"
+                />
+
+                {!screenOn && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-5 text-center">
+                    <div>
+                      <div className="mb-4 text-6xl">📡</div>
+                      <h2 className="mb-3 text-3xl font-black">Ready to Share Screen?</h2>
+                      <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-gray-400">
+                        Click Start Broadcast, then choose the screen, app, or browser tab you want to stream.
+                      </p>
+                      <button
+                        onClick={connectRoom}
+                        disabled={connecting}
+                        className="rounded-xl bg-red-600 px-7 py-4 font-black hover:bg-red-700 disabled:bg-gray-700"
+                      >
+                        {connecting ? "Starting..." : "Start Broadcast"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {cameraOn && (
+                  <div className="absolute bottom-4 right-4 h-32 w-44 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:h-40 sm:w-56">
+                    <video
+                      ref={cameraVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-xs font-bold">
+                      Admin Camera
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
+
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
+              <h2 className="mb-5 text-2xl font-black">Broadcast Controls</h2>
+
+              <div className="grid gap-3">
+                {!room ? (
+                  <button
+                    onClick={connectRoom}
+                    disabled={connecting}
+                    className="rounded-xl bg-red-600 px-5 py-4 font-black hover:bg-red-700 disabled:bg-gray-700"
+                  >
+                    {connecting ? "Starting..." : "Start Broadcast"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={endBroadcast}
+                    className="rounded-xl bg-red-600 px-5 py-4 font-black hover:bg-red-700"
+                  >
+                    End Broadcast
+                  </button>
+                )}
+
+                <button
+                  onClick={() => startScreenShare()}
+                  disabled={!room || screenOn}
+                  className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  Start Screen Share
+                </button>
+
+                <button
+                  onClick={stopScreenShare}
+                  disabled={!room || !screenOn}
+                  className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  Stop Screen Share
+                </button>
+
+                <button
+                  onClick={toggleCamera}
+                  disabled={!room}
+                  className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  {cameraOn ? "Turn Camera Off" : "Turn Camera On"}
+                </button>
+
+                <button
+                  onClick={toggleMic}
+                  disabled={!room}
+                  className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  {micOn ? "Mute Mic" : "Unmute Mic"}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5 sm:p-6">
+              <h2 className="mb-3 text-xl font-black text-yellow-300">Important</h2>
+              <p className="text-sm leading-6 text-gray-300">
+                Do not rebroadcast copyrighted video from YouTube, Netflix, sports channels, or paid apps unless you own the rights. Screen sharing is powerful, but it can create copyright risk.
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
+  );
+}
+
+function StatusCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+      <p className="mb-2 text-sm text-gray-400">{label}</p>
+      <h2 className={`text-2xl font-black sm:text-3xl ${color}`}>{value}</h2>
+    </div>
   );
 }

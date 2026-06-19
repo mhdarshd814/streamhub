@@ -1,65 +1,142 @@
 "use client";
 
-import { useState } from "react";
-import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
 
-interface BlockUserButtonProps {
+type BlockUserButtonProps = {
   targetUserId: string;
   onBlocked?: () => void;
-}
+};
 
-export default function BlockUserButton({ targetUserId, onBlocked }: BlockUserButtonProps) {
+export default function BlockUserButton({
+  targetUserId,
+  onBlocked,
+}: BlockUserButtonProps) {
+  const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
 
-  const blockUser = async () => {
-    if (loading) return;
+  useEffect(() => {
+    checkBlockStatus();
+  }, [targetUserId]);
 
-    const confirmed = confirm("Block this user? They will no longer be able to interact with you.");
-    if (!confirmed) return;
-
-    setLoading(true);
-
+  async function checkBlockStatus() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      setLoading(true);
 
-      const { error } = await supabase
-        .from("blocks")
-        .insert([
-          {
-            blocker_id: user?.id,
-            blocked_id: targetUserId,
-          },
-        ]);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (error) throw error;
+      if (!user) {
+        setCurrentUserId(null);
+        setLoading(false);
+        return;
+      }
 
-      setIsBlocked(true);
-      onBlocked?.();
-      toast.success("User blocked successfully");
+      setCurrentUserId(user.id);
+
+      if (user.id === targetUserId) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("user_blocks")
+        .select("id")
+        .eq("blocker_id", user.id)
+        .eq("blocked_id", targetUserId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Block status error:", error);
+      }
+
+      setIsBlocked(!!data);
     } catch (error) {
-      alert("Failed to block user.");
+      console.error("Block status check failed:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  async function handleBlock() {
+    const confirmed = window.confirm(
+      "Block this user? They will not be able to interact with you or your streams."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setProcessing(true);
+
+      const { error } = await supabase.rpc("block_user", {
+        target_user_id: targetUserId,
+      });
+
+      if (error) {
+        console.error(error);
+        alert(error.message || "Failed to block user.");
+        return;
+      }
+
+      setIsBlocked(true);
+      onBlocked?.();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to block user.");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleUnblock() {
+    try {
+      setProcessing(true);
+
+      const { error } = await supabase.rpc("unblock_user", {
+        target_user_id: targetUserId,
+      });
+
+      if (error) {
+        console.error(error);
+        alert(error.message || "Failed to unblock user.");
+        return;
+      }
+
+      setIsBlocked(false);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to unblock user.");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  if (loading || !currentUserId || currentUserId === targetUserId) {
+    return null;
+  }
 
   if (isBlocked) {
     return (
-      <button disabled className="rounded-2xl bg-gray-700 px-5 py-3 text-sm font-bold">
-        Blocked
+      <button
+        onClick={handleUnblock}
+        disabled={processing}
+        className="rounded-xl bg-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-600 disabled:opacity-50"
+      >
+        {processing ? "Processing..." : "Unblock"}
       </button>
     );
   }
 
   return (
     <button
-      onClick={blockUser}
-      disabled={loading}
-      className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold hover:bg-red-700 disabled:bg-gray-700"
+      onClick={handleBlock}
+      disabled={processing}
+      className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
     >
-      {loading ? "Blocking..." : "Block User"}
+      {processing ? "Processing..." : "Block"}
     </button>
   );
 }

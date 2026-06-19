@@ -13,7 +13,7 @@ import AuthRouteGuard from "./components/AuthRouteGuard";
 
 export const metadata: Metadata = {
   title: "StreamHub",
-  description: "The Ultimate Creator Live Platform",
+  description: "Live Streaming Platform",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -47,8 +47,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-black text-white antialiased overflow-x-hidden">
+    <html lang="en">
+      <body className="min-h-screen bg-black text-white antialiased">
         <ToastProvider />
         <NativeDialogBlocker />
         <CapacitorStatusBar />
@@ -57,7 +57,6 @@ export default function RootLayout({
         <PWAInstallPrompt />
         <IncomingCallPopup />
 
-        {/* Global Theater Mode Styles */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -73,6 +72,22 @@ export default function RootLayout({
               body.streamhub-theater-mode .mobile-top-nav,
               body.streamhub-theater-mode .mobile-bottom-nav {
                 display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+              }
+
+              body.streamhub-theater-mode .app-shell {
+                padding: 0 !important;
+                margin: 0 !important;
+                min-height: 100dvh !important;
+                height: 100dvh !important;
+                overflow: hidden !important;
+              }
+
+              body.streamhub-theater-mode .page-enter {
+                animation: none !important;
+                transform: none !important;
+                transition: none !important;
               }
             `,
           }}
@@ -80,7 +95,7 @@ export default function RootLayout({
 
         <Navbar />
 
-        <main className="app-shell min-h-screen pb-[calc(env(safe-area-inset-bottom)+4.5rem)] pt-[calc(env(safe-area-inset-top)+3.5rem)] md:pb-0 transition-all duration-300">
+        <main className="app-shell min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">
           <AuthRouteGuard>
             <div className="page-enter">{children}</div>
           </AuthRouteGuard>

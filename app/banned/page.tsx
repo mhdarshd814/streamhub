@@ -25,28 +25,25 @@ export default function BannedPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
-      <div className="premium-glass w-full max-w-xl rounded-3xl p-8 text-center shadow-2xl">
-        <div className="mb-8 text-7xl">⛔</div>
+      <div className="w-full max-w-xl rounded-3xl border border-red-800 bg-red-950/30 p-6 text-center sm:p-8">
+        <div className="mb-5 text-6xl">⛔</div>
 
-        <h1 className="mb-4 text-4xl font-black">Account Banned</h1>
+        <h1 className="mb-3 text-3xl font-black sm:text-4xl">
+          Account Banned
+        </h1>
 
-        <p className="mb-8 text-red-200 leading-relaxed">
-          Your StreamHub account has been restricted by the moderation team. 
-          You cannot watch streams, join private rooms, chat, like, or create content.
+        <p className="mb-8 text-sm leading-6 text-red-200 sm:text-base">
+          Your StreamHub account has been restricted by the moderation team. You
+          cannot watch streams, join private rooms, chat, like, or create
+          streams.
         </p>
 
-        <div className="space-y-3">
-          <button
-            onClick={logout}
-            className="w-full rounded-2xl bg-red-600 py-4 text-lg font-black hover:bg-red-500"
-          >
-            Logout
-          </button>
-
-          <p className="text-xs text-gray-500">
-            Contact support if you believe this was a mistake.
-          </p>
-        </div>
+        <button
+          onClick={logout}
+          className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700"
+        >
+          Logout
+        </button>
       </div>
     </main>
   );
