@@ -161,8 +161,8 @@ export default function GoLivePage() {
       return;
     }
 
-    if (visibility === "private" && priceAmount > 5000) {
-      alert("Private call price cannot be more than AED 5,000.");
+    if (visibility === "private" && priceAmount > 100) {
+      alert("Private call price cannot be more than $100.");
       return;
     }
 
@@ -302,12 +302,10 @@ export default function GoLivePage() {
                 className="w-full rounded-xl border border-purple-500/20 bg-black p-3 text-white outline-none"
               >
                 <option value="0">Free</option>
-                <option value="25">AED 25</option>
-                <option value="50">AED 50</option>
-                <option value="100">AED 100</option>
-                <option value="250">AED 250</option>
-                <option value="500">AED 500</option>
-                <option value="1000">AED 1000</option>
+                <option value="1">$1 Fan</option>
+                <option value="3">$3 Premium</option>
+                <option value="5">$5 VIP</option>
+                <option value="10">$10 Creator Pro</option>                
                 <option value="custom">Custom</option>
               </select>
 
@@ -315,7 +313,7 @@ export default function GoLivePage() {
                 <input
                   type="number"
                   min="0"
-                  max="5000"
+                  max="100"
                   value={customPrivateCallPrice}
                   onChange={(e) => setCustomPrivateCallPrice(e.target.value)}
                   placeholder="Enter amount"

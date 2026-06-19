@@ -335,7 +335,7 @@ export default function IncomingCallPopup() {
         title: price > 0 ? "Private Call Payment Received" : "Private Call Accepted",
         message:
           price > 0
-            ? `Your private call was accepted and AED ${price.toFixed(2)} was added to your wallet.`
+            ? `Your private call was accepted and $${price.toFixed(2)} was added to your wallet.`
             : "Your private call request was accepted.",
         link: `/live/${call.stream_id}`,
         is_read: false,
@@ -419,7 +419,7 @@ export default function IncomingCallPopup() {
             </p>
 
             <p className="mt-2 text-xs font-bold text-white/80">
-              {price > 0 ? `AED ${price.toFixed(2)} private call` : "Free private call"}
+              {price > 0 ? `$${price.toFixed(2)} private call` : "Free private call"}
             </p>
           </div>
 
@@ -438,7 +438,7 @@ export default function IncomingCallPopup() {
               disabled={loadingAction}
               className="w-full rounded-2xl bg-green-600 px-5 py-4 text-base font-black hover:bg-green-700 disabled:bg-zinc-700"
             >
-              {loadingAction ? "Opening..." : price > 0 ? `Accept & Pay AED ${price.toFixed(2)}` : "Accept"}
+              {loadingAction ? "Opening..." : price > 0 ? `Accept & Pay $${price.toFixed(2)}` : "Accept"}
             </button>
 
             <button
