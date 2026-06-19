@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -42,39 +43,35 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuOpenRef = useRef(false);
 
+  const inviteChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const notificationChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const activeUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    let inviteChannel: ReturnType<typeof supabase.channel> | null = null;
-    let notificationChannel: ReturnType<typeof supabase.channel> | null = null;
+    let mounted = true;
 
-    async function init() {
-      const id = await checkUser();
+    async function initAuth() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (id) {
-        inviteChannel = subscribeToInvites(id);
-        notificationChannel = subscribeToNotifications(id);
-      }
+      if (!mounted) return;
+
+      applyAuthUser(session?.user || null);
     }
 
-    init();
+    initAuth();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async () => {
-      const id = await checkUser();
-
-      if (inviteChannel) supabase.removeChannel(inviteChannel);
-      if (notificationChannel) supabase.removeChannel(notificationChannel);
-
-      if (id) {
-        inviteChannel = subscribeToInvites(id);
-        notificationChannel = subscribeToNotifications(id);
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      applyAuthUser(session?.user || null);
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
-      if (inviteChannel) supabase.removeChannel(inviteChannel);
-      if (notificationChannel) supabase.removeChannel(notificationChannel);
+      cleanupRealtimeChannels();
     };
   }, []);
 
@@ -108,11 +105,135 @@ export default function Navbar() {
     }
 
     window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  function applyAuthUser(user: User | null) {
+    setAuthReady(true);
+
+    if (!user) {
+      activeUserIdRef.current = null;
+      cleanupRealtimeChannels();
+      resetUserState();
+      return;
+    }
+
+    setLoggedIn(true);
+    setUserId(user.id);
+
+    if (activeUserIdRef.current !== user.id) {
+      activeUserIdRef.current = user.id;
+      cleanupRealtimeChannels();
+      setupRealtimeChannels(user.id);
+    }
+
+    void loadUserChromeData(user.id);
+  }
+
+  function resetUserState() {
+    setLoggedIn(false);
+    setProfile(null);
+    setPendingInvites(0);
+    setUnreadNotifications(0);
+    setNotifications([]);
+    setUserId(null);
+    setMenuOpen(false);
+    setMobileMenuOpen(false);
+    setNotificationOpen(false);
+  }
+
+  function cleanupRealtimeChannels() {
+    if (inviteChannelRef.current) {
+      supabase.removeChannel(inviteChannelRef.current);
+      inviteChannelRef.current = null;
+    }
+
+    if (notificationChannelRef.current) {
+      supabase.removeChannel(notificationChannelRef.current);
+      notificationChannelRef.current = null;
+    }
+  }
+
+  function setupRealtimeChannels(id: string) {
+    inviteChannelRef.current = supabase
+      .channel(`navbar-invites-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stream_guests",
+          filter: `guest_id=eq.${id}`,
+        },
+        () => {
+          void loadPendingInvites(id);
+        }
+      )
+      .subscribe();
+
+    notificationChannelRef.current = supabase
+      .channel(`navbar-notifications-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${id}`,
+        },
+        () => {
+          void loadNotifications(id);
+        }
+      )
+      .subscribe();
+  }
+
+  async function loadUserChromeData(id: string) {
+    await Promise.allSettled([
+      loadProfile(id),
+      loadPendingInvites(id),
+      loadNotifications(id),
+    ]);
+  }
+
+  async function loadProfile(id: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("username, display_name, avatar_url, is_admin")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (activeUserIdRef.current === id) {
+      setProfile((data as Profile) || null);
+    }
+  }
+
+  async function loadPendingInvites(id: string) {
+    const { count, error } = await supabase
+      .from("stream_guests")
+      .select("id", { count: "exact", head: true })
+      .eq("guest_id", id)
+      .eq("status", "pending");
+
+    if (!error && activeUserIdRef.current === id) {
+      setPendingInvites(count || 0);
+    }
+  }
+
+  async function loadNotifications(id: string) {
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    if (error || activeUserIdRef.current !== id) return;
+
+    const list = (data || []) as Notification[];
+    setNotifications(list);
+    setUnreadNotifications(list.filter((item) => !item.is_read).length);
+  }
 
   function goTo(path: string) {
     setMenuOpen(false);
@@ -146,103 +267,6 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   }
 
-  function subscribeToInvites(id: string) {
-    return supabase
-      .channel(`navbar-invites-${id}-${Date.now()}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stream_guests",
-          filter: `guest_id=eq.${id}`,
-        },
-        async () => {
-          await loadPendingInvites(id);
-        }
-      )
-      .subscribe();
-  }
-
-  function subscribeToNotifications(id: string) {
-    return supabase
-      .channel(`navbar-notifications-${id}-${Date.now()}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${id}`,
-        },
-        async () => {
-          await loadNotifications(id);
-        }
-      )
-      .subscribe();
-  }
-
-  async function checkUser(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const user = session?.user || null;
-
-  setAuthReady(true);
-
-  if (!user || !session?.access_token) {
-    setLoggedIn(false);
-    setProfile(null);
-    setPendingInvites(0);
-    setUnreadNotifications(0);
-    setNotifications([]);
-    setUserId(null);
-    return null;
-  }
-
-  setLoggedIn(true);
-  setUserId(user.id);
-
-  const { data } = await supabase
-    .from("profiles")
-    .select("username, display_name, avatar_url, is_admin")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  setProfile((data as Profile) || null);
-
-  await loadPendingInvites(user.id);
-  await loadNotifications(user.id);
-
-  return user.id;
-}
-
-  async function loadPendingInvites(id: string) {
-    const { count, error } = await supabase
-      .from("stream_guests")
-      .select("id", { count: "exact", head: true })
-      .eq("guest_id", id)
-      .eq("status", "pending");
-
-    if (!error) setPendingInvites(count || 0);
-  }
-
-  async function loadNotifications(id: string) {
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(8);
-
-    if (error) return;
-
-    const list = (data || []) as Notification[];
-    setNotifications(list);
-    setUnreadNotifications(list.filter((item) => !item.is_read).length);
-  }
-
   async function openNotification(notification: Notification) {
     await supabase
       .from("notifications")
@@ -250,7 +274,6 @@ export default function Navbar() {
       .eq("id", notification.id);
 
     if (userId) await loadNotifications(userId);
-
     if (notification.link) goTo(notification.link);
   }
 
@@ -267,26 +290,18 @@ export default function Navbar() {
   }
 
   async function logout() {
-  try {
-    await supabase.auth.signOut({ scope: "local" });
+    try {
+      cleanupRealtimeChannels();
+      resetUserState();
 
-    setMenuOpen(false);
-    setMobileMenuOpen(false);
-    setNotificationOpen(false);
-    setPendingInvites(0);
-    setUnreadNotifications(0);
-    setNotifications([]);
-    setUserId(null);
+      await supabase.auth.signOut({ scope: "local" });
 
-    toast.success("Logged out successfully");
-
-    setTimeout(() => {
+      toast.success("Logged out successfully");
       window.location.replace("/login");
-    }, 500);
-  } catch {
-    toast.error("Failed to logout");
+    } catch {
+      toast.error("Failed to logout");
+    }
   }
-}
 
   return (
     <>
@@ -298,11 +313,7 @@ export default function Navbar() {
             className="flex cursor-pointer items-center gap-3"
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
-              <img
-                src="/icon-512.png"
-                alt="StreamHub"
-                className="h-full w-full object-cover"
-              />
+              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
             </div>
 
             <div className="text-left leading-none">
@@ -353,9 +364,7 @@ export default function Navbar() {
                     <div className="scale-in absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
                       <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
                         <div>
-                          <h3 className="font-black text-white">
-                            Notifications
-                          </h3>
+                          <h3 className="font-black text-white">Notifications</h3>
                           <p className="text-xs text-gray-400">
                             {unreadNotifications} unread
                           </p>
@@ -499,11 +508,7 @@ export default function Navbar() {
             className="flex items-center gap-3"
           >
             <div className="h-12 w-12 overflow-hidden rounded-xl">
-              <img
-                src="/icon-512.png"
-                alt="StreamHub"
-                className="h-full w-full object-cover"
-              />
+              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
             </div>
 
             <div className="text-left leading-none">
@@ -538,66 +543,60 @@ export default function Navbar() {
           )}
         </div>
       </nav>
-        {authReady && loggedIn && (
 
-      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
-      
-        <div
-          className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
-          style={{
-            height: "calc(76px + env(safe-area-inset-bottom))",
-            paddingBottom: "env(safe-area-inset-bottom)",
-          }}
-           
-        >
-          <MobileItem icon="📺" label="Live" href="/live-feed" goTo={goTo} />
-          <MobileItem icon="🔎" label="Discover" href="/explore" goTo={goTo} />
-
-          <button
-            type="button"
-            onClick={() => goTo(loggedIn ? "/go-live" : "/login")}
-            className="absolute left-1/2 top-0 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
+      {authReady && loggedIn && (
+        <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
+          <div
+            className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
+            style={{
+              height: "calc(76px + env(safe-area-inset-bottom))",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
           >
-            <span className="text-3xl font-black leading-none">＋</span>
-            <span className="mt-[-2px] text-[10px] font-black uppercase tracking-wide">
-              Live
-            </span>
-          </button>
+            <MobileItem icon="📺" label="Live" href="/live-feed" goTo={goTo} />
+            <MobileItem icon="🔎" label="Discover" href="/explore" goTo={goTo} />
 
-          <div className="pointer-events-none" />
+            <button
+              type="button"
+              onClick={() => goTo("/go-live")}
+              className="absolute left-1/2 top-0 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
+            >
+              <span className="text-3xl font-black leading-none">＋</span>
+              <span className="mt-[-2px] text-[10px] font-black uppercase tracking-wide">
+                Live
+              </span>
+            </button>
 
-          <MobileItem
-            icon="📞"
-            label="Calls"
-            href={loggedIn ? "/calls" : "/login"}
-            goTo={goTo}
-          />
+            <div className="pointer-events-none" />
 
-          <button
-            type="button"
-            onClick={openMobileMenu}
-            className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
-          >
-            <span className="flex h-7 items-center justify-center text-2xl">
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.username || "Profile"}
-                  className="h-6 w-6 rounded-full object-cover"
-                />
-              ) : (
-                "👤"
+            <MobileItem icon="📞" label="Calls" href="/calls" goTo={goTo} />
+
+            <button
+              type="button"
+              onClick={openMobileMenu}
+              className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
+            >
+              <span className="flex h-7 items-center justify-center text-2xl">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.username || "Profile"}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  "👤"
+                )}
+              </span>
+              <span className="text-[11px]">Me</span>
+
+              {(pendingInvites > 0 || unreadNotifications > 0) && (
+                <span className="absolute right-4 top-2 h-2.5 w-2.5 rounded-full bg-red-600" />
               )}
-            </span>
-            <span className="text-[11px]">Me</span>
+            </button>
+          </div>
+        </nav>
+      )}
 
-            {(pendingInvites > 0 || unreadNotifications > 0) && (
-              <span className="absolute right-4 top-2 h-2.5 w-2.5 rounded-full bg-red-600" />
-            )}
-          </button>
-        </div>
-      </nav>
-       )}
       {mobileMenuOpen && (
         <div
           className="fade-in fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm xl:hidden"
@@ -605,9 +604,7 @@ export default function Navbar() {
         >
           <div
             className="slide-up absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
-            style={{
-              paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
-            }}
+            style={{ paddingBottom: "calc(20px + env(safe-area-inset-bottom))" }}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-gray-700" />
