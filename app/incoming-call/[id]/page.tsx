@@ -29,13 +29,15 @@ type CallRequest = {
   created_at: string;
   accepted_at: string | null;
   declined_at: string | null;
+  missed_at?: string | null;
   expires_at?: string | null;
   ring_status?: string | null;
   caller?: Profile | null;
   stream?: CallStream | null;
 };
 
-const CALL_TIMEOUT_SECONDS = 30;
+const CALL_TIMEOUT_SECONDS = 60;
+const AUTO_REDIRECT_SECONDS = 5;
 
 export default function IncomingCallPage() {
   const params = useParams();
@@ -45,13 +47,16 @@ export default function IncomingCallPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [call, setCall] = useState<CallRequest | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(CALL_TIMEOUT_SECONDS);
+  const [redirectSeconds, setRedirectSeconds] = useState(AUTO_REDIRECT_SECONDS);
   const [actionLoading, setActionLoading] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
   const [expired, setExpired] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const redirectRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const vibrateRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const missedHandledRef = useRef(false);
 
   useEffect(() => {
     loadCall();
@@ -59,6 +64,7 @@ export default function IncomingCallPage() {
     return () => {
       stopRing();
       clearCountdown();
+      clearRedirect();
     };
   }, [callId]);
 
@@ -81,29 +87,30 @@ export default function IncomingCallPage() {
         async (payload) => {
           const updated = payload.new as CallRequest;
 
-          if (updated.status !== "pending") {
-            stopRing();
-            clearCountdown();
+          if (updated.status === "pending") return;
 
-            if (updated.status === "declined") {
-              toast("Call declined");
-              window.location.replace("/calls");
-              return;
-            }
+          stopRing();
+          clearCountdown();
 
-            if (updated.status === "missed") {
-              setExpired(true);
-              toast("Missed call");
-              return;
-            }
-
-            if (updated.status === "accepted" && updated.stream_id) {
-              window.location.replace(`/live/${updated.stream_id}`);
-              return;
-            }
-
-            window.location.replace("/calls");
+          if (updated.status === "declined") {
+            toast("Call declined");
+            startAutoRedirect();
+            return;
           }
+
+          if (updated.status === "missed") {
+            setExpired(true);
+            toast("Missed call");
+            startAutoRedirect();
+            return;
+          }
+
+          if (updated.status === "accepted" && updated.stream_id) {
+            window.location.replace(`/live/${updated.stream_id}?autojoin=1`);
+            return;
+          }
+
+          startAutoRedirect();
         }
       )
       .subscribe();
@@ -145,19 +152,6 @@ export default function IncomingCallPage() {
       return;
     }
 
-    if (data.status !== "pending") {
-      setCall(data as CallRequest);
-      setLoading(false);
-      return;
-    }
-
-    if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
-      await markMissed(data.id);
-      setExpired(true);
-      setLoading(false);
-      return;
-    }
-
     const [{ data: caller }, { data: stream }] = await Promise.all([
       supabase
         .from("profiles")
@@ -173,11 +167,27 @@ export default function IncomingCallPage() {
         : Promise.resolve({ data: null }),
     ]);
 
-    setCall({
+    const fullCall = {
       ...(data as CallRequest),
       caller: caller || null,
       stream: stream || null,
-    });
+    };
+
+    setCall(fullCall);
+
+    if (data.status !== "pending") {
+      if (data.status === "missed") setExpired(true);
+      setLoading(false);
+      return;
+    }
+
+    if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) {
+      await markMissed(fullCall);
+      setExpired(true);
+      setLoading(false);
+      startAutoRedirect();
+      return;
+    }
 
     setSecondsLeft(getInitialSecondsLeft(data.created_at, data.expires_at));
     setLoading(false);
@@ -185,7 +195,9 @@ export default function IncomingCallPage() {
 
   function getInitialSecondsLeft(createdAt: string, expiresAt?: string | null) {
     if (expiresAt) {
-      const diff = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000);
+      const diff = Math.ceil(
+        (new Date(expiresAt).getTime() - Date.now()) / 1000
+      );
       return Math.max(0, Math.min(CALL_TIMEOUT_SECONDS, diff));
     }
 
@@ -200,16 +212,42 @@ export default function IncomingCallPage() {
     }
   }
 
+  function clearRedirect() {
+    if (redirectRef.current) {
+      clearInterval(redirectRef.current);
+      redirectRef.current = null;
+    }
+  }
+
   function startCountdown() {
     clearCountdown();
 
-    countdownRef.current = setInterval(async () => {
+    countdownRef.current = setInterval(() => {
       setSecondsLeft((current) => {
         const next = current - 1;
 
         if (next <= 0) {
           clearCountdown();
-          handleTimeout();
+          void handleTimeout();
+          return 0;
+        }
+
+        return next;
+      });
+    }, 1000);
+  }
+
+  function startAutoRedirect() {
+    clearRedirect();
+    setRedirectSeconds(AUTO_REDIRECT_SECONDS);
+
+    redirectRef.current = setInterval(() => {
+      setRedirectSeconds((current) => {
+        const next = current - 1;
+
+        if (next <= 0) {
+          clearRedirect();
+          window.location.replace("/calls");
           return 0;
         }
 
@@ -219,23 +257,59 @@ export default function IncomingCallPage() {
   }
 
   async function handleTimeout() {
-    if (!call?.id || actionLoading) return;
+    if (!call?.id || actionLoading || missedHandledRef.current) return;
 
     stopRing();
-    await markMissed(call.id);
+    await markMissed(call);
     setExpired(true);
     toast("Missed call");
+    startAutoRedirect();
   }
 
-  async function markMissed(id: string) {
-    await supabase
+  async function markMissed(targetCall: CallRequest) {
+    if (missedHandledRef.current) return;
+    missedHandledRef.current = true;
+
+    const missedAt = new Date().toISOString();
+
+    const { error } = await supabase
       .from("private_call_requests")
       .update({
         status: "missed",
         ring_status: "expired",
+        missed_at: missedAt,
       })
-      .eq("id", id)
+      .eq("id", targetCall.id)
       .eq("status", "pending");
+
+    if (error) {
+      console.warn("Mark missed failed:", error.message);
+      return;
+    }
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: targetCall.caller_id,
+        type: "private_call_missed",
+        title: "Missed Private Call",
+        message: `${
+          targetCall.caller?.display_name ||
+          targetCall.caller?.username ||
+          "The receiver"
+        } did not answer your private call.`,
+        link: "/calls",
+        is_read: false,
+      },
+    ]);
+
+    if (targetCall.stream_id) {
+      await supabase
+        .from("stream_guests")
+        .update({ status: "declined" })
+        .eq("stream_id", targetCall.stream_id)
+        .eq("guest_id", targetCall.receiver_id)
+        .eq("status", "pending");
+    }
   }
 
   function startRing() {
@@ -318,6 +392,7 @@ export default function IncomingCallPage() {
 
     setActionLoading(true);
     stopRing();
+    clearCountdown();
 
     const price = Number(call.stream?.private_call_price || 0);
 
@@ -330,6 +405,7 @@ export default function IncomingCallPage() {
         setActionLoading(false);
         toast.error(error.message || "Payment failed. Check wallet balance.");
         startRing();
+        startCountdown();
         return;
       }
     } else {
@@ -341,6 +417,7 @@ export default function IncomingCallPage() {
         setActionLoading(false);
         toast.error(error.message);
         startRing();
+        startCountdown();
         return;
       }
     }
@@ -352,7 +429,9 @@ export default function IncomingCallPage() {
         title: price > 0 ? "Private Call Payment Received" : "Private Call Accepted",
         message:
           price > 0
-            ? `Your private call was accepted and $${price.toFixed(2)} was added to your wallet.`
+            ? `Your private call was accepted and $${price.toFixed(
+                2
+              )} was added to your wallet.`
             : "Your private call request was accepted.",
         link: `/live/${call.stream_id}`,
         is_read: false,
@@ -367,6 +446,7 @@ export default function IncomingCallPage() {
 
     setActionLoading(true);
     stopRing();
+    clearCountdown();
 
     const { error } = await supabase
       .from("private_call_requests")
@@ -382,6 +462,7 @@ export default function IncomingCallPage() {
       setActionLoading(false);
       toast.error(error.message);
       startRing();
+      startCountdown();
       return;
     }
 
@@ -393,8 +474,19 @@ export default function IncomingCallPage() {
         .eq("guest_id", userId);
     }
 
+    await supabase.from("notifications").insert([
+      {
+        user_id: call.caller_id,
+        type: "private_call_declined",
+        title: "Private Call Declined",
+        message: "Your private call request was declined.",
+        link: "/calls",
+        is_read: false,
+      },
+    ]);
+
     toast("Call declined");
-    window.location.replace("/calls");
+    startAutoRedirect();
   }
 
   const callerName =
@@ -441,6 +533,9 @@ export default function IncomingCallPage() {
           <p className="mt-3 text-gray-400">
             This private call was not answered in time.
           </p>
+          <p className="mt-3 text-sm text-gray-500">
+            Redirecting to calls in {redirectSeconds}s...
+          </p>
           <button
             type="button"
             onClick={() => (window.location.href = "/calls")}
@@ -461,6 +556,9 @@ export default function IncomingCallPage() {
           <h1 className="text-3xl font-black">Call {call.status}</h1>
           <p className="mt-3 text-gray-400">
             This private call is no longer pending.
+          </p>
+          <p className="mt-3 text-sm text-gray-500">
+            Redirecting to calls in {redirectSeconds}s...
           </p>
           <button
             type="button"
@@ -485,7 +583,7 @@ export default function IncomingCallPage() {
           Incoming Call
         </p>
 
-        <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-4 border-red-600 bg-gray-800 shadow-2xl shadow-red-600/30">
+        <div className="mx-auto mb-6 flex h-32 w-32 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-red-600 bg-gray-800 shadow-2xl shadow-red-600/30">
           {call.caller?.avatar_url ? (
             <img
               src={call.caller.avatar_url}
