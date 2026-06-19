@@ -225,18 +225,28 @@ export default function LiveRoomPage() {
 
   function getVideoQualityProfile(facingMode: "user" | "environment" = "user") {
     const mobile = isMobileDevice();
+    const privateCall = stream?.visibility === "private";
+
+    if (privateCall && mobile) {
+      return {
+        facingMode,
+        resolution: {
+          width: 640,
+          height: 360,
+          frameRate: 24,
+        },
+        frameRate: 24,
+      };
+    }
 
     return {
       facingMode,
       resolution: {
-        // StreamHub HD profile:
-        // Android/iPhone/iPad = 720p / 30fps
-        // Laptop/Desktop = 1080p / 30fps
-        width: mobile ? 1280 : 1920,
-        height: mobile ? 720 : 1080,
-        frameRate: 30,
+        width: mobile ? 960 : 1920,
+        height: mobile ? 540 : 1080,
+        frameRate: mobile ? 24 : 30,
       },
-      frameRate: 30,
+      frameRate: mobile ? 24 : 30,
     };
   }
 
@@ -244,18 +254,28 @@ export default function LiveRoomPage() {
     facingMode: "user" | "environment" = "user",
   ) {
     const mobile = isMobileDevice();
+    const privateCall = stream?.visibility === "private";
+
+    if (privateCall && mobile) {
+      return [
+        getVideoQualityProfile(facingMode),
+        getMediaVideoConstraints(facingMode),
+        {
+          facingMode,
+          resolution: {
+            width: 480,
+            height: 270,
+            frameRate: 20,
+          },
+          frameRate: 20,
+        },
+        { facingMode },
+        true,
+      ];
+    }
 
     return [
       getVideoQualityProfile(facingMode),
-      {
-        facingMode,
-        resolution: {
-          width: 1280,
-          height: 720,
-          frameRate: 30,
-        },
-        frameRate: 30,
-      },
       {
         facingMode,
         resolution: {
@@ -264,6 +284,15 @@ export default function LiveRoomPage() {
           frameRate: mobile ? 24 : 30,
         },
         frameRate: mobile ? 24 : 30,
+      },
+      {
+        facingMode,
+        resolution: {
+          width: mobile ? 640 : 1280,
+          height: mobile ? 360 : 720,
+          frameRate: mobile ? 20 : 30,
+        },
+        frameRate: mobile ? 20 : 30,
       },
       getMediaVideoConstraints(facingMode),
       { facingMode },
@@ -275,20 +304,30 @@ export default function LiveRoomPage() {
     facingMode: "user" | "environment" = "user",
   ): MediaTrackConstraints {
     const mobile = isMobileDevice();
+    const privateCall = stream?.visibility === "private";
+
+    if (privateCall && mobile) {
+      return {
+        facingMode,
+        width: { ideal: 640, max: 640 },
+        height: { ideal: 360, max: 360 },
+        frameRate: { ideal: 24, max: 24 },
+      };
+    }
 
     return {
       facingMode,
       width: {
-        ideal: mobile ? 1280 : 1920,
-        max: mobile ? 1280 : 1920,
+        ideal: mobile ? 960 : 1920,
+        max: mobile ? 960 : 1920,
       },
       height: {
-        ideal: mobile ? 720 : 1080,
-        max: mobile ? 720 : 1080,
+        ideal: mobile ? 540 : 1080,
+        max: mobile ? 540 : 1080,
       },
       frameRate: {
-        ideal: 30,
-        max: 30,
+        ideal: mobile ? 24 : 30,
+        max: mobile ? 24 : 30,
       },
     };
   }
@@ -308,26 +347,31 @@ export default function LiveRoomPage() {
 
   function getOptimizedRoomOptions() {
     const mobile = isMobileDevice();
+    const privateCall = stream?.visibility === "private";
 
     return {
       adaptiveStream: true,
-      dynacast: true,
+      dynacast: !privateCall,
       audioCaptureDefaults: getMediaAudioConstraints(),
       videoCaptureDefaults: getMediaVideoConstraints(
         usingFrontCamera ? "user" : "environment",
       ),
       publishDefaults: {
-        simulcast: true,
+        simulcast: !privateCall,
         videoCodec: "vp8",
         videoEncoding: {
-          // Higher bitrate for less blurry video.
-          // Do not push this too high on Android or calls will freeze.
-          maxBitrate: mobile ? 3_200_000 : 5_500_000,
-          maxFramerate: 30,
+          maxBitrate: privateCall
+            ? mobile
+              ? 850_000
+              : 1_500_000
+            : mobile
+              ? 1_800_000
+              : 5_000_000,
+          maxFramerate: privateCall ? 24 : mobile ? 24 : 30,
         },
         screenShareEncoding: {
-          maxBitrate: mobile ? 2_500_000 : 6_000_000,
-          maxFramerate: 30,
+          maxBitrate: mobile ? 1_500_000 : 4_000_000,
+          maxFramerate: 24,
         },
       },
     };
@@ -2685,7 +2729,7 @@ export default function LiveRoomPage() {
                 />
 
                 {remoteVideos.length > 0 ? (
-                  <div className="absolute bottom-[220px] right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
+                  <div className="absolute bottom-28 right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
                     <RemoteVideoTile
                       track={remoteVideos[0].track}
                       identity={remoteVideos[0].identity}
@@ -2694,7 +2738,7 @@ export default function LiveRoomPage() {
                     />
                   </div>
                 ) : (
-                  <div className="absolute bottom-[220px] right-4 flex h-32 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
+                  <div className="absolute bottom-28 right-4 flex h-32 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
                     Waiting
                   </div>
                 )}
@@ -2728,7 +2772,7 @@ export default function LiveRoomPage() {
 
                 <div
                   onClick={() => setFocusedVideo("local")}
-                  className="absolute bottom-[220px] right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
+                  className="absolute bottom-28 right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
                 >
                   <video
                     ref={theaterLocalVideoRef}
@@ -2823,7 +2867,7 @@ export default function LiveRoomPage() {
         </div>
       )}
 
-      <div className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10">
+      <div className={isTheaterMode ? "hidden" : "min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10"}>
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
