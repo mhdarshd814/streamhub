@@ -12,6 +12,7 @@ import {
 } from "livekit-client";
 import { supabase } from "../../../lib/supabase";
 import { KeepAwake } from "@capacitor-community/keep-awake";
+import { startAttendanceSession, endAttendanceSession } from "../../../lib/attendance";
 import BlockUserButton from "../../components/BlockUserButton";
 
 type ChatMessage = {
@@ -120,6 +121,7 @@ export default function WatchPage() {
   const remoteVideoTrackRef = useRef<RemoteTrack | null>(null);
   const viewerRoomRef = useRef<Room | null>(null);
   const autoJoinTriggeredRef = useRef(false);
+  const attendanceSessionIdRef = useRef<string | null>(null);
 
   async function getSafeDisplayName(user: any, fallback = "Viewer") {
     if (!user?.id) return fallback;
@@ -311,6 +313,8 @@ export default function WatchPage() {
         await supabase.from("stream_viewers").delete().eq("id", viewerRecordId);
         viewerRecordIdRef.current = null;
       }
+
+      await endViewerAttendance();
     } catch (error) {
       console.warn("Viewer record cleanup before guest join failed:", error);
     }
@@ -365,6 +369,29 @@ export default function WatchPage() {
       console.error("Daily analytics RPC error:", error.message);
     }
   }
+
+  async function startViewerAttendance(userId: string | null | undefined) {
+    if (!streamId || !userId || attendanceSessionIdRef.current) return;
+
+    const attendanceId = await startAttendanceSession({
+      streamId,
+      participantId: userId,
+      participantRole: "viewer",
+    });
+
+    if (attendanceId) {
+      attendanceSessionIdRef.current = attendanceId;
+    }
+  }
+
+  async function endViewerAttendance() {
+    const attendanceId = attendanceSessionIdRef.current;
+    if (!attendanceId) return;
+
+    attendanceSessionIdRef.current = null;
+    await endAttendanceSession(attendanceId);
+  }
+
 
   useEffect(() => {
     let room: Room | null = null;
@@ -462,6 +489,8 @@ export default function WatchPage() {
 
       watchStartRef.current = Date.now();
 
+      await startViewerAttendance(user?.id);
+
       await trackTotalView();
       await getViewerCount();
     }
@@ -474,6 +503,7 @@ export default function WatchPage() {
         viewerRecordIdRef.current = null;
       }
 
+      await endViewerAttendance();
       await trackWatchMinutes();
       await getViewerCount();
     }
