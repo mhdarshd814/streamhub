@@ -166,8 +166,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-5 rounded-2xl border border-gray-800 bg-black/30 p-3.5 text-sm leading-6 text-gray-400">
-            New users should complete their profile after login. Empty profiles
-            look cheap and reduce trust.
+            Complete your profile to unlock the full StreamHub experience.            
           </div>
 
           <button
