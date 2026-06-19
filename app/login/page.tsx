@@ -16,41 +16,34 @@ export default function LoginPage() {
     if (value && value.startsWith("/") && !value.startsWith("//")) {
       return value;
     }
-
-    return null;
-  }
-
-  async function waitForStableSession() {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user && session.access_token) {
-        return session;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-    }
-
     return null;
   }
 
   async function getNextRoute(userId: string) {
     const next = safeNextRoute(searchParams.get("next"));
-
     if (next) return next;
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("username, display_name, avatar_url")
-      .eq("id", userId)
-      .maybeSingle();
+    try {
+      const profileQuery = supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
 
-    const hasBasicProfile =
-      !!data?.username && (!!data?.display_name || !!data?.avatar_url);
+      const timeout = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 2500)
+      );
 
-    return hasBasicProfile ? "/live-feed" : "/profile/edit";
+      const result: any = await Promise.race([profileQuery, timeout]);
+      const data = result?.data || null;
+
+      const hasBasicProfile =
+        !!data?.username && (!!data?.display_name || !!data?.avatar_url);
+
+      return hasBasicProfile ? "/live-feed" : "/profile/edit";
+    } catch {
+      return "/live-feed";
+    }
   }
 
   async function handleLogin() {
@@ -65,7 +58,7 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
@@ -76,23 +69,18 @@ export default function LoginPage() {
       return;
     }
 
-    await supabase.auth.refreshSession().catch(() => {});
+    const userId = data.user?.id;
 
-    const stableSession = await waitForStableSession();
-
-    if (!stableSession?.user || !stableSession.access_token) {
+    if (!userId) {
       setLoading(false);
-      toast.error("Login did not complete. Please try again.");
+      toast.error("Login succeeded but user session was not returned.");
       return;
     }
 
-    const nextRoute = await getNextRoute(stableSession.user.id);
+    const nextRoute = await getNextRoute(userId);
 
     toast.success("Welcome back");
-
-    // Hard navigation is intentional for Android WebView.
-    // It forces Navbar, route guards, and Supabase storage to reload from one session source.
-    window.location.assign(nextRoute);
+    window.location.replace(nextRoute);
   }
 
   return (
@@ -100,11 +88,7 @@ export default function LoginPage() {
       <div className="slide-up w-full max-w-md">
         <div className="mb-5 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
-            <img
-              src="/icon-512.png"
-              alt="StreamHub"
-              className="h-full w-full object-cover"
-            />
+            <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
           </div>
 
           <h1 className="text-4xl font-black">
@@ -123,9 +107,7 @@ export default function LoginPage() {
               Welcome back
             </p>
             <h2 className="mt-2 text-3xl font-black">Login</h2>
-            <p className="mt-1 text-sm text-gray-400">
-              Continue to your live feed.
-            </p>
+            <p className="mt-1 text-sm text-gray-400">Continue to your live feed.</p>
           </div>
 
           <div className="space-y-3.5">
@@ -166,15 +148,13 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-5 rounded-2xl border border-gray-800 bg-black/30 p-3.5 text-sm leading-6 text-gray-400">
-            Complete your profile to unlock the full StreamHub experience.            
+            Complete your profile to unlock the full StreamHub experience.
           </div>
 
           <button
             type="button"
             disabled={loading}
-            onClick={() => {
-              window.location.assign("/signup");
-            }}
+            onClick={() => window.location.assign("/signup")}
             className="mt-5 w-full text-center font-black text-red-500 hover:text-red-400 disabled:opacity-60"
           >
             Create Account
