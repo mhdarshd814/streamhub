@@ -129,6 +129,33 @@ type AnalyticsRow = {
   created_at?: string | null;
 };
 
+
+type PrivateCallRow = {
+  id: string;
+  caller_id: string;
+  receiver_id: string;
+  stream_id: string | null;
+  status: string | null;
+  ring_status?: string | null;
+  missed?: boolean | null;
+  created_at: string;
+  accepted_at?: string | null;
+  declined_at?: string | null;
+  expires_at?: string | null;
+};
+
+type PrivateCallPaymentRow = {
+  id: string;
+  caller_id?: string | null;
+  creator_id?: string | null;
+  receiver_id?: string | null;
+  stream_id?: string | null;
+  amount?: number | null;
+  amount_usd?: number | null;
+  status?: string | null;
+  created_at: string;
+};
+
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [streams, setStreams] = useState<Stream[]>([]);
@@ -138,6 +165,8 @@ export default function DashboardPage() {
   const [tips, setTips] = useState<TipRow[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsRow[]>([]);
+  const [privateCalls, setPrivateCalls] = useState<PrivateCallRow[]>([]);
+  const [privateCallPayments, setPrivateCallPayments] = useState<PrivateCallPaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -274,6 +303,28 @@ export default function DashboardPage() {
     );
 
     setSubscriptions(activeSubscriptions);
+
+    const privateCallRows = await safeSelect<PrivateCallRow>(
+      supabase
+        .from("private_call_requests")
+        .select("*")
+        .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order("created_at", { ascending: false })
+        .limit(loadDesktopOnly ? 100 : 30)
+    );
+
+    setPrivateCalls(privateCallRows);
+
+    const privateCallPaymentRows = await safeSelect<PrivateCallPaymentRow>(
+      supabase
+        .from("private_call_payments")
+        .select("*")
+        .or(`creator_id.eq.${user.id},caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order("created_at", { ascending: false })
+        .limit(loadDesktopOnly ? 100 : 30)
+    );
+
+    setPrivateCallPayments(privateCallPaymentRows);
 
     if (loadDesktopOnly) {
       const analyticsRows = await safeSelect<AnalyticsRow>(
@@ -446,10 +497,58 @@ export default function DashboardPage() {
         0
     );
 
+    const completedPrivateCallPayments = privateCallPayments.filter(
+      (payment) =>
+        !payment.status ||
+        ["completed", "paid", "success", "succeeded", "approved"].includes(
+          payment.status
+        )
+    );
+
+    const privateCallRevenue = completedPrivateCallPayments.reduce(
+      (total, payment) =>
+        total + Number(payment.amount_usd ?? payment.amount ?? 0),
+      0
+    );
+
     const estimatedRevenue = Math.max(
       walletBalance,
-      totalTips + subscriptionRevenue
+      totalTips + subscriptionRevenue + privateCallRevenue
     );
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const acceptedPrivateCalls = privateCalls.filter(
+      (call) => call.status === "accepted"
+    );
+
+    const pendingPrivateCalls = privateCalls.filter(
+      (call) => call.status === "pending"
+    );
+
+    const declinedPrivateCalls = privateCalls.filter(
+      (call) => call.status === "declined"
+    );
+
+    const missedPrivateCalls = privateCalls.filter(
+      (call) =>
+        call.status === "missed" ||
+        call.ring_status === "expired" ||
+        call.missed === true
+    );
+
+    const todayPrivateCalls = privateCalls.filter(
+      (call) => new Date(call.created_at).getTime() >= todayStart.getTime()
+    );
+
+    const paidPrivateCalls = privateCallPayments.length;
+    const freePrivateCalls = Math.max(
+      0,
+      acceptedPrivateCalls.length - paidPrivateCalls
+    );
+
+    const latestPrivateCalls = privateCalls.slice(0, 5);
 
     const topStreams = [...streams]
       .sort((a, b) => {
@@ -481,10 +580,29 @@ export default function DashboardPage() {
       activeSubscriptions,
       subscriptionRevenue,
       walletBalance,
+      privateCallRevenue,
       estimatedRevenue,
+      privateCalls,
+      acceptedPrivateCalls,
+      pendingPrivateCalls,
+      declinedPrivateCalls,
+      missedPrivateCalls,
+      todayPrivateCalls,
+      paidPrivateCalls,
+      freePrivateCalls,
+      latestPrivateCalls,
       topStreams,
     };
-  }, [streams, scheduledStreams, tips, subscriptions, wallet, analyticsData]);
+  }, [
+    streams,
+    scheduledStreams,
+    tips,
+    subscriptions,
+    wallet,
+    analyticsData,
+    privateCalls,
+    privateCallPayments,
+  ]);
 
   const creatorName = profile?.display_name || profile?.username || "Creator";
 
@@ -547,6 +665,109 @@ export default function DashboardPage() {
           <StatCard label="Watch Minutes" value={stats.totalWatchMinutes} valueClass="text-green-400" />
           <StatCard label="Revenue" value={`$${formatMoney(stats.estimatedRevenue)}`} valueClass="text-green-400" />
         </div>
+
+        <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-bold text-purple-300">
+                Private Call Analytics
+              </p>
+              <h2 className="text-2xl font-black sm:text-3xl">
+                One-on-One Call Performance
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-gray-400">
+                Free calls are counted here. Paid calls are counted here and in revenue only when payment rows exist.
+              </p>
+            </div>
+
+            <button
+              onClick={() => (window.location.href = "/calls")}
+              className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-black hover:bg-purple-700"
+            >
+              Open Calls
+            </button>
+          </div>
+
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard
+              label="Total Calls"
+              value={stats.privateCalls.length}
+              note={`${stats.todayPrivateCalls.length} today`}
+              valueClass="text-purple-300"
+            />
+            <StatCard
+              label="Accepted"
+              value={stats.acceptedPrivateCalls.length}
+              note={`${stats.freePrivateCalls} free • ${stats.paidPrivateCalls} paid`}
+              valueClass="text-green-400"
+            />
+            <StatCard
+              label="Pending"
+              value={stats.pendingPrivateCalls.length}
+              valueClass="text-yellow-300"
+            />
+            <StatCard
+              label="Missed / Declined"
+              value={stats.missedPrivateCalls.length + stats.declinedPrivateCalls.length}
+              note={`${stats.missedPrivateCalls.length} missed • ${stats.declinedPrivateCalls.length} declined`}
+              valueClass="text-red-400"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-purple-500/20 bg-black/35 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-black">Recent Private Calls</h3>
+              <p className="text-xs font-bold text-purple-200">
+                Revenue: ${formatMoney(stats.privateCallRevenue)}
+              </p>
+            </div>
+
+            {stats.latestPrivateCalls.length === 0 ? (
+              <div className="rounded-xl border border-gray-800 bg-black/30 p-5 text-center text-sm text-gray-400">
+                No private calls yet. Free calls will appear here after acceptance.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {stats.latestPrivateCalls.map((call) => {
+                  const isAccepted = call.status === "accepted";
+                  const isDeclined = call.status === "declined";
+                  const isMissed =
+                    call.status === "missed" ||
+                    call.ring_status === "expired" ||
+                    call.missed === true;
+
+                  return (
+                    <div
+                      key={call.id}
+                      className="flex flex-col gap-2 rounded-xl border border-gray-800 bg-black/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-black">
+                          {call.stream_id ? `Room ${call.stream_id.slice(0, 8)}` : "Private call"}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {formatDateTime(call.created_at)}
+                        </p>
+                      </div>
+
+                      <span
+                        className={
+                          isAccepted
+                            ? "w-fit rounded-full bg-green-500/10 px-3 py-1 text-xs font-black text-green-400"
+                            : isDeclined || isMissed
+                              ? "w-fit rounded-full bg-red-500/10 px-3 py-1 text-xs font-black text-red-300"
+                              : "w-fit rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-black text-yellow-300"
+                        }
+                      >
+                        {(call.status || "pending").toUpperCase()}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
           <MobileAction icon="🎥" label="Go Live" href="/go-live" />
