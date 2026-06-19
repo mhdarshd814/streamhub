@@ -3,6 +3,10 @@
 :root {
   --background: #000000;
   --foreground: #ededed;
+  --streamhub-red: #dc2626;
+  --streamhub-red-soft: rgba(220, 38, 38, 0.18);
+  --streamhub-panel: rgba(17, 24, 39, 0.92);
+  --streamhub-border: rgba(127, 29, 29, 0.45);
 }
 
 @theme inline {
@@ -30,16 +34,119 @@ html {
 }
 
 body {
-  background: #000000;
+  background:
+    radial-gradient(circle at top, rgba(127, 29, 29, 0.18), transparent 34rem),
+    #000000;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: none;
 }
 
 * {
   box-sizing: border-box;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* =====================================================
+   APP-WIDE ANIMATION
+===================================================== */
+
+.app-shell {
+  isolation: isolate;
+}
+
+.page-enter {
+  animation: page-enter 260ms ease-out both;
+}
+
+.fade-in {
+  animation: fade-in 220ms ease-out both;
+}
+
+.slide-up {
+  animation: slide-up 240ms ease-out both;
+}
+
+.scale-in {
+  animation: scale-in 180ms ease-out both;
+}
+
+.premium-card {
+  border: 1px solid rgba(127, 29, 29, 0.35);
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(3, 7, 18, 0.96));
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+.premium-glow {
+  box-shadow:
+    0 0 0 1px rgba(220, 38, 38, 0.22),
+    0 16px 45px rgba(220, 38, 38, 0.16);
+}
+
+/* =====================================================
+   SKELETON LOADERS
+===================================================== */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: rgba(31, 41, 55, 0.85);
+}
+
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: skeleton-shimmer 1.35s infinite;
+}
+
+.skeleton-avatar {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 9999px;
+}
+
+.skeleton-line {
+  height: 0.875rem;
+  border-radius: 9999px;
+}
+
+.skeleton-card {
+  min-height: 12rem;
+  border-radius: 1.5rem;
 }
 
 /* =====================================================
@@ -71,11 +178,9 @@ body {
   top: 0;
   left: 0;
   right: 0;
-
   z-index: 9997;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -86,12 +191,9 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-
   z-index: 9997;
-
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -108,11 +210,91 @@ body {
 }
 
 /* =====================================================
-   PERFORMANCE IMPROVEMENTS
+   ANIMATION KEYFRAMES
 ===================================================== */
 
-img,
-video {
-  max-width: 100%;
-  height: auto;
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes opening-bar {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(220%);
+  }
+}
+
+.opening-bar {
+  animation: opening-bar 1.15s ease-in-out infinite;
+}
+
+/* =====================================================
+   REDUCED MOTION SAFETY
+===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

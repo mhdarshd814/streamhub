@@ -58,9 +58,9 @@ export default function RootLayout({
 
         <Navbar />
 
-        <div className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">
-          {children}
-        </div>
+        <main className="app-shell min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">
+          <div className="page-enter">{children}</div>
+        </main>
       </body>
     </html>
   );

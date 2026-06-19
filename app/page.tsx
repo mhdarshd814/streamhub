@@ -31,8 +31,8 @@ export default function HomePage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-      <div className="text-center">
-        <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30">
+      <section className="slide-up w-full max-w-sm text-center">
+        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
           <img
             src="/icon-512.png"
             alt="StreamHub"
@@ -49,10 +49,22 @@ export default function HomePage() {
           Opening
         </p>
 
-        <div className="mx-auto mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-gray-800">
-          <div className="h-full w-1/2 animate-pulse rounded-full bg-red-600" />
+        <div className="mx-auto mt-7 h-1.5 w-44 overflow-hidden rounded-full bg-gray-800">
+          <div className="opening-bar h-full w-1/2 rounded-full bg-red-600" />
         </div>
-      </div>
+
+        <div className="mx-auto mt-8 space-y-3 rounded-3xl border border-red-900/30 bg-gray-950/70 p-4 text-left shadow-2xl shadow-black/40">
+          <div className="flex items-center gap-3">
+            <div className="skeleton skeleton-avatar" />
+            <div className="flex-1 space-y-2">
+              <div className="skeleton skeleton-line w-3/4" />
+              <div className="skeleton skeleton-line w-1/2" />
+            </div>
+          </div>
+
+          <div className="skeleton skeleton-card" />
+        </div>
+      </section>
     </main>
   );
 }

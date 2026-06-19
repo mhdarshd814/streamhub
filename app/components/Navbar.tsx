@@ -287,7 +287,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950 shadow-lg shadow-red-950/20 xl:block">
+      <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950/95 shadow-lg shadow-red-950/20 backdrop-blur-xl xl:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <button
             type="button"
@@ -347,7 +347,7 @@ export default function Navbar() {
                   </button>
 
                   {notificationOpen && (
-                    <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
+                    <div className="scale-in absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
                       <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
                         <div>
                           <h3 className="font-black text-white">
@@ -435,7 +435,7 @@ export default function Navbar() {
                   </button>
 
                   {menuOpen && (
-                    <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-xl">
+                    <div className="scale-in absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
                       <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />
                       <MenuItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
                       <MenuItem label="Dashboard" href="/dashboard" goTo={goTo} />
@@ -594,11 +594,11 @@ export default function Navbar() {
 
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-[9998] bg-black/70 xl:hidden"
+          className="fade-in fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm xl:hidden"
           onClick={closeMobileMenu}
         >
           <div
-            className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
+            className="slide-up absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
             style={{
               paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
             }}
