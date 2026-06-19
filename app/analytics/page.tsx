@@ -501,7 +501,7 @@ export default function CreatorAnalyticsPage() {
         target: 60,
       },
       {
-        title: "AED 100 revenue",
+        title: "$100 revenue",
         current: estimatedRevenue,
         target: 100,
       },
@@ -661,7 +661,7 @@ export default function CreatorAnalyticsPage() {
           <InsightCard title="Creator Ranking" value={analytics.ranking.label} note={analytics.ranking.note} icon="🏆" />
           <InsightCard title="Avg Public Views" value={analytics.averageViews} note="Per public/subscriber stream" icon="👀" />
           <InsightCard title="Avg Watch Time" value={`${analytics.averageWatchMinutes} min`} note="Public/subscriber streams only" icon="⏱️" />
-          <InsightCard title="Private Call Revenue" value={`AED ${formatMoney(analytics.privateCallRevenue)}`} note="Based on paid private calls" icon="📞" />
+          <InsightCard title="Private Call Revenue" value={`$${formatMoney(analytics.privateCallRevenue)}`} note="Based on paid private calls" icon="📞" />
         </section>
 
         <SectionTitle
