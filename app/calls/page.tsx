@@ -163,7 +163,7 @@ export default function CallsPage() {
 
     const confirmed = confirm(
       price > 0
-        ? `Pay AED ${price.toFixed(2)} and join this private call?`
+        ? `Pay $${price.toFixed(2)} and join this private call?`
         : "Accept and join this private call?"
     );
 
@@ -201,7 +201,7 @@ export default function CallsPage() {
         title: price > 0 ? "Private Call Payment Received" : "Private Call Accepted",
         message:
           price > 0
-            ? `Your private call was accepted and AED ${price.toFixed(2)} was added to your wallet.`
+            ? `Your private call was accepted and $${price.toFixed(2)} was added to your wallet.`
             : "Your private call request was accepted.",
         link: call.stream_id ? `/live/${call.stream_id}` : "/calls",
         is_read: false,
@@ -396,7 +396,7 @@ function CallCard({
 
             {call.stream && (
               <p className="mt-2 text-sm font-bold text-purple-300">
-                {call.stream.title} • {price > 0 ? `AED ${price.toFixed(2)}` : "Free"}
+                {call.stream.title} • {price > 0 ? `$${price.toFixed(2)}` : "Free"}
               </p>
             )}
           </div>
@@ -436,7 +436,7 @@ function CallCard({
                       ? "Paying..."
                       : "Opening..."
                     : price > 0
-                    ? `Pay AED ${price.toFixed(2)} & Join`
+                    ? `Pay $${price.toFixed(2)} & Join`
                     : "Accept & Join"}
                 </button>
 

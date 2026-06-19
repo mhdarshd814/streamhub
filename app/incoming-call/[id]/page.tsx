@@ -352,7 +352,7 @@ export default function IncomingCallPage() {
         title: price > 0 ? "Private Call Payment Received" : "Private Call Accepted",
         message:
           price > 0
-            ? `Your private call was accepted and AED ${price.toFixed(2)} was added to your wallet.`
+            ? `Your private call was accepted and $${price.toFixed(2)} was added to your wallet.`
             : "Your private call request was accepted.",
         link: `/live/${call.stream_id}`,
         is_read: false,
@@ -502,7 +502,7 @@ export default function IncomingCallPage() {
         <p className="mt-2 text-sm text-gray-400">@{callerUsername}</p>
 
         <div className="mx-auto mt-6 w-fit rounded-full border border-red-900/50 bg-red-600/10 px-5 py-2 text-sm font-black text-red-300">
-          {price > 0 ? `Paid Private Call • AED ${price.toFixed(2)}` : "Free Private Call"}
+          {price > 0 ? `Paid Private Call • $${price.toFixed(2)}` : "Free Private Call"}
         </div>
 
         <p className="mt-5 text-sm text-gray-400">
