@@ -27,6 +27,7 @@ type Notification = {
 export default function Navbar() {
   const router = useRouter();
 
+  const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -188,7 +189,9 @@ export default function Navbar() {
 
   const user = session?.user || null;
 
-  if (!user) {
+  setAuthReady(true);
+
+  if (!user || !session?.access_token) {
     setLoggedIn(false);
     setProfile(null);
     setPendingInvites(0);
@@ -265,7 +268,7 @@ export default function Navbar() {
 
   async function logout() {
   try {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
 
     setMenuOpen(false);
     setMobileMenuOpen(false);
@@ -278,7 +281,7 @@ export default function Navbar() {
     toast.success("Logged out successfully");
 
     setTimeout(() => {
-      window.location.href = "/";
+      window.location.replace("/login");
     }, 500);
   } catch {
     toast.error("Failed to logout");
@@ -291,7 +294,7 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <button
             type="button"
-            onClick={() => goTo(loggedIn ? "/live-feed" : "/")}
+            onClick={() => goTo(loggedIn ? "/live-feed" : "/login")}
             className="flex cursor-pointer items-center gap-3"
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
@@ -492,7 +495,7 @@ export default function Navbar() {
         <div className="flex w-full items-center justify-between">
           <button
             type="button"
-            onClick={() => goTo("/live-feed")}
+            onClick={() => goTo(loggedIn ? "/live-feed" : "/login")}
             className="flex items-center gap-3"
           >
             <div className="h-12 w-12 overflow-hidden rounded-xl">
@@ -535,7 +538,7 @@ export default function Navbar() {
           )}
         </div>
       </nav>
-        {loggedIn && (
+        {authReady && loggedIn && (
 
       <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
       

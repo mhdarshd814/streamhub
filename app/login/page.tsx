@@ -12,8 +12,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function safeNextRoute(value: string | null) {
+    if (value && value.startsWith("/") && !value.startsWith("//")) {
+      return value;
+    }
+
+    return null;
+  }
+
   async function waitForStableSession() {
-    for (let attempt = 0; attempt < 12; attempt += 1) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -29,11 +37,9 @@ export default function LoginPage() {
   }
 
   async function getNextRoute(userId: string) {
-    const next = searchParams.get("next");
+    const next = safeNextRoute(searchParams.get("next"));
 
-    if (next && next.startsWith("/") && !next.startsWith("//")) {
-      return next;
-    }
+    if (next) return next;
 
     const { data } = await supabase
       .from("profiles")
@@ -55,9 +61,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (loading) return;
+
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
@@ -68,9 +76,11 @@ export default function LoginPage() {
       return;
     }
 
+    await supabase.auth.refreshSession().catch(() => {});
+
     const stableSession = await waitForStableSession();
 
-    if (!data.session?.user || !stableSession?.user) {
+    if (!stableSession?.user || !stableSession.access_token) {
       setLoading(false);
       toast.error("Login did not complete. Please try again.");
       return;
@@ -80,7 +90,9 @@ export default function LoginPage() {
 
     toast.success("Welcome back");
 
-    window.location.replace(nextRoute);
+    // Hard navigation is intentional for Android WebView.
+    // It forces Navbar, route guards, and Supabase storage to reload from one session source.
+    window.location.assign(nextRoute);
   }
 
   return (
@@ -122,11 +134,12 @@ export default function LoginPage() {
               placeholder="Email Address"
               value={email}
               autoComplete="email"
+              disabled={loading}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !loading) handleLogin();
               }}
-              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20 disabled:opacity-70"
             />
 
             <input
@@ -134,11 +147,12 @@ export default function LoginPage() {
               placeholder="Password"
               value={password}
               autoComplete="current-password"
+              disabled={loading}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !loading) handleLogin();
               }}
-              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20 disabled:opacity-70"
             />
 
             <button
@@ -158,10 +172,11 @@ export default function LoginPage() {
 
           <button
             type="button"
+            disabled={loading}
             onClick={() => {
-              window.location.href = "/signup";
+              window.location.assign("/signup");
             }}
-            className="mt-5 w-full text-center font-black text-red-500 hover:text-red-400"
+            className="mt-5 w-full text-center font-black text-red-500 hover:text-red-400 disabled:opacity-60"
           >
             Create Account
           </button>

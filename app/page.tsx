@@ -7,14 +7,25 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
 
+    async function getSessionWithTimeout() {
+      const timeout = new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), 1800);
+      });
+
+      const sessionLookup = supabase.auth
+        .getSession()
+        .then(({ data }) => data.session || null)
+        .catch(() => null);
+
+      return Promise.race([sessionLookup, timeout]);
+    }
+
     async function routeUser() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const session = await getSessionWithTimeout();
 
       if (cancelled) return;
 
-      if (session?.user) {
+      if (session?.user && session.access_token) {
         window.location.replace("/live-feed");
         return;
       }
