@@ -7,16 +7,16 @@ import { supabase } from "../../lib/supabase";
 type Wallet = {
   id: string;
   creator_id: string;
-  available_balance_aed: number;
-  pending_balance_aed: number;
-  lifetime_earnings_aed: number;
+  available_balance_usd: number;
+  pending_balance_usd: number;
+  lifetime_earnings_usd: number;
 };
 
 type Tip = {
   id: string;
-  amount_aed: number;
-  platform_fee_aed: number;
-  creator_amount_aed: number;
+  amount_usd: number;
+  platform_fee_usd: number;
+  creator_amount_usd: number;
   message: string | null;
   status: string;
   provider: string;
@@ -26,7 +26,7 @@ type Tip = {
 
 type PayoutRequest = {
   id: string;
-  amount_aed: number;
+  amount_usd: number;
   status: string;
   payout_note: string | null;
   admin_note: string | null;
@@ -35,7 +35,7 @@ type PayoutRequest = {
 
 type PrivateCallPayment = {
   id: string;
-  amount_aed: number;
+  amount_usd: number;
   created_at: string;
   streams?: { title?: string | null } | null;
   profiles?: {
@@ -111,9 +111,9 @@ export default function WalletPage() {
       .select(
         `
         id,
-        amount_aed,
-        platform_fee_aed,
-        creator_amount_aed,
+        amount_usd,
+        platform_fee_usd,
+        creator_amount_usd,
         message,
         status,
         provider,
@@ -143,7 +143,7 @@ export default function WalletPage() {
       .select(
         `
         id,
-        amount_aed,
+        amount_usd,
         created_at,
         streams:stream_id (
           title
@@ -173,18 +173,18 @@ export default function WalletPage() {
       return;
     }
 
-    if (amount > wallet.available_balance_aed) {
+    if (amount > wallet.available_balance_usd) {
       alert("You cannot request more than your available balance.");
       return;
     }
 
-    const confirmed = confirm(`Request payout of AED ${amount}?`);
+    const confirmed = confirm(`Request payout of USD ${amount}?`);
     if (!confirmed) return;
 
     setSubmitting(true);
 
     const { error } = await supabase.rpc("request_creator_payout", {
-      payout_amount_aed: amount,
+      payout_amount_usd: amount,
       payout_note_text: payoutNote.trim() || null,
     });
 
@@ -204,17 +204,17 @@ export default function WalletPage() {
     const completedTips = tips.filter((tip) => isCompletedStatus(tip.status));
 
     const tipsRevenue = completedTips.reduce(
-      (total, tip) => total + Number(tip.creator_amount_aed || 0),
+      (total, tip) => total + Number(tip.creator_amount_usd || 0),
       0
     );
 
     const tipFees = completedTips.reduce(
-      (total, tip) => total + Number(tip.platform_fee_aed || 0),
+      (total, tip) => total + Number(tip.platform_fee_usd || 0),
       0
     );
 
     const privateCallRevenue = privateCallPayments.reduce(
-      (total, payment) => total + Number(payment.amount_aed || 0),
+      (total, payment) => total + Number(payment.amount_usd || 0),
       0
     );
 
@@ -231,12 +231,12 @@ export default function WalletPage() {
     );
 
     const totalWithdrawn = approvedPayouts.reduce(
-      (total, payout) => total + Number(payout.amount_aed || 0),
+      (total, payout) => total + Number(payout.amount_usd || 0),
       0
     );
 
     const pendingWithdrawal = pendingPayouts.reduce(
-      (total, payout) => total + Number(payout.amount_aed || 0),
+      (total, payout) => total + Number(payout.amount_usd || 0),
       0
     );
 
@@ -296,34 +296,34 @@ export default function WalletPage() {
         <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Stat
             label="Available"
-            value={`AED ${formatMoney(wallet?.available_balance_aed || 0)}`}
+            value={`$${formatMoney(wallet?.available_balance_usd || 0)}`}
             color="text-green-400"
           />
 
           <Stat
             label="Pending"
-            value={`AED ${formatMoney(wallet?.pending_balance_aed || 0)}`}
+            value={`$${formatMoney(wallet?.pending_balance_usd || 0)}`}
             color="text-yellow-400"
           />
 
           <Stat
             label="Lifetime"
-            value={`AED ${formatMoney(wallet?.lifetime_earnings_aed || 0)}`}
+            value={`$${formatMoney(wallet?.lifetime_earnings_usd || 0)}`}
             color="text-red-400"
           />
 
           <Stat
             label="Withdrawn"
-            value={`AED ${formatMoney(stats.totalWithdrawn)}`}
+            value={`$${formatMoney(stats.totalWithdrawn)}`}
             color="text-purple-300"
           />
         </div>
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4">
-          <MiniStat label="Tips" value={`AED ${formatMoney(stats.tipsRevenue)}`} />
-          <MiniStat label="Private Calls" value={`AED ${formatMoney(stats.privateCallRevenue)}`} />
-          <MiniStat label="Platform Fees" value={`AED ${formatMoney(stats.tipFees)}`} />
-          <MiniStat label="Pending Payouts" value={`AED ${formatMoney(stats.pendingWithdrawal)}`} />
+          <MiniStat label="Tips" value={`$${formatMoney(stats.tipsRevenue)}`} />
+          <MiniStat label="Private Calls" value={`$${formatMoney(stats.privateCallRevenue)}`} />
+          <MiniStat label="Platform Fees" value={`$${formatMoney(stats.tipFees)}`} />
+          <MiniStat label="Pending Payouts" value={`$${formatMoney(stats.pendingWithdrawal)}`} />
         </div>
 
         <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
@@ -334,7 +334,7 @@ export default function WalletPage() {
           </p>
 
           <label className="mb-2 block text-sm font-bold text-gray-300">
-            Amount AED
+            Amount USD
           </label>
 
           <input
@@ -400,7 +400,7 @@ export default function WalletPage() {
                       </div>
 
                       <p className="text-xl font-black text-purple-300">
-                        AED {formatMoney(payment.amount_aed || 0)}
+                        USD {formatMoney(payment.amount_usd || 0)}
                       </p>
                     </div>
                   </div>
@@ -440,11 +440,11 @@ export default function WalletPage() {
 
                     <div className="shrink-0 text-left sm:text-right">
                       <p className="text-xl font-black text-green-400">
-                        AED {formatMoney(tip.creator_amount_aed || 0)}
+                        USD {formatMoney(tip.creator_amount_usd || 0)}
                       </p>
 
                       <p className="text-xs text-gray-500">
-                        Fee AED {formatMoney(tip.platform_fee_aed || 0)}
+                        Fee USD {formatMoney(tip.platform_fee_usd || 0)}
                       </p>
 
                       <span className="mt-2 inline-block rounded-full bg-gray-800 px-3 py-1 text-xs font-bold text-gray-300">
@@ -473,7 +473,7 @@ export default function WalletPage() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-black">
-                        AED {formatMoney(payout.amount_aed || 0)}
+                        USD {formatMoney(payout.amount_usd || 0)}
                       </p>
 
                       <p className="mt-1 text-sm text-gray-400">

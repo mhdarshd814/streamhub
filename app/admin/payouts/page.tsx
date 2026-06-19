@@ -7,7 +7,7 @@ import { supabase } from "../../../lib/supabase";
 type Payout = {
   id: string;
   creator_id: string;
-  amount_aed: number;
+  amount_usd: number;
   status: "pending" | "approved" | "rejected" | "paid";
   payout_note: string | null;
   admin_note: string | null;
@@ -98,7 +98,7 @@ export default function AdminPayoutsPage() {
     if (adminNote === null) return;
 
     const confirmed = confirm(
-      `Confirm ${status.toUpperCase()} payout of AED ${payout.amount_aed}?`
+      `Confirm ${status.toUpperCase()} payout of USD ${payout.amount_usd}?`
     );
 
     if (!confirmed) return;
@@ -136,7 +136,7 @@ export default function AdminPayoutsPage() {
         user_id: payout.creator_id,
         type: "payout_update",
         title: "Payout Request Updated",
-        message: `Your AED ${payout.amount_aed} payout request was marked as ${status}.`,
+        message: `Your USD ${payout.amount_usd} payout request was marked as ${status}.`,
         link: "/wallet",
         is_read: false,
       },
@@ -254,7 +254,7 @@ export default function AdminPayoutsPage() {
                         </div>
 
                         <h3 className="break-words text-2xl font-black">
-                          AED {payout.amount_aed}
+                          USD {payout.amount_usd}
                         </h3>
 
                         <p className="mt-2 text-sm text-gray-400">

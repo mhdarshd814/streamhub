@@ -20,7 +20,7 @@ type SubscriptionPlan = {
   id: string;
   creator_id: string;
   plan_name: string;
-  price_aed: number;
+  price_usd: number;
   description: string | null;
   is_active: boolean;
 };
@@ -48,7 +48,7 @@ export default function PublicProfilePage() {
   const isOwnProfile = viewerId === profile?.id;
   const hasPremiumPlan = !!plan?.is_active;
   const planName = plan?.plan_name || "Premium";
-  const planPrice = plan?.price_aed ?? 9.99;
+  const planPrice = plan?.price_usd ?? 9.99;
 
   const completionItems = useMemo(() => {
     if (!profile) return [];
@@ -658,7 +658,7 @@ export default function PublicProfilePage() {
                         ? "Please wait..."
                         : isSubscribed
                         ? "Subscribed ✓"
-                        : `Subscribe AED ${planPrice}`}
+                        : `Subscribe USD ${planPrice}`}
                     </button>
                   </>
                 )}
@@ -774,7 +774,7 @@ export default function PublicProfilePage() {
 
                 <div className="rounded-2xl border border-yellow-500/30 bg-black/40 px-5 py-4 text-left sm:text-right">
                   <p className="text-2xl font-black text-yellow-300">
-                    AED {planPrice}
+                    USD {planPrice}
                   </p>
                   <p className="text-xs text-gray-400">Monthly</p>
                 </div>

@@ -61,8 +61,8 @@ type TipRow = {
   creator_id?: string;
   receiver_id?: string;
   amount?: number | null;
-  amount_aed?: number | null;
-  creator_amount_aed?: number | null;
+  amount_usd?: number | null;
+  creator_amount_usd?: number | null;
   status: string | null;
   created_at: string;
 };
@@ -86,9 +86,9 @@ type WalletRow = {
   pending_balance?: number | null;
   total_earned?: number | null;
   total_withdrawn?: number | null;
-  available_balance_aed?: number | null;
-  pending_balance_aed?: number | null;
-  lifetime_earnings_aed?: number | null;
+  available_balance_usd?: number | null;
+  pending_balance_usd?: number | null;
+  lifetime_earnings_usd?: number | null;
 };
 
 type FollowRow = {
@@ -103,7 +103,7 @@ type PrivateCallPayment = {
   stream_id: string;
   caller_id: string;
   creator_id: string;
-  amount_aed: number | null;
+  amount_usd: number | null;
   created_at: string;
   streams?: {
     title?: string | null;
@@ -332,7 +332,7 @@ export default function CreatorAnalyticsPage() {
           stream_id,
           caller_id,
           creator_id,
-          amount_aed,
+          amount_usd,
           created_at,
           streams:stream_id (
             title
@@ -433,15 +433,15 @@ export default function CreatorAnalyticsPage() {
     );
 
     const privateCallRevenue = privateCallPayments.reduce(
-      (sum, payment) => sum + Number(payment.amount_aed || 0),
+      (sum, payment) => sum + Number(payment.amount_usd || 0),
       0
     );
 
     const walletBalance = Number(
-      wallet?.available_balance_aed ??
+      wallet?.available_balance_usd ??
         wallet?.available_balance ??
         wallet?.balance ??
-        wallet?.lifetime_earnings_aed ??
+        wallet?.lifetime_earnings_usd ??
         wallet?.total_earned ??
         0
     );
@@ -653,7 +653,7 @@ export default function CreatorAnalyticsPage() {
           <Stat label="Likes" value={analytics.totalLikes} color="text-red-400" />
           <Stat label="Peak" value={analytics.peakViewers} color="text-yellow-400" />
           <Stat label="Watch Min" value={analytics.watchMinutes} color="text-green-400" />
-          <Stat label="Revenue" value={`AED ${formatMoney(analytics.estimatedRevenue)}`} color="text-green-400" />
+          <Stat label="Revenue" value={`$${formatMoney(analytics.estimatedRevenue)}`} color="text-green-400" />
           <Stat label="Score" value={`${analytics.creatorScore}/100`} color="text-pink-400" />
         </section>
 
@@ -862,7 +862,7 @@ export default function CreatorAnalyticsPage() {
                     </td>
                     <td className="px-5 py-4 text-gray-300">{call.callerName}</td>
                     <td className="px-5 py-4 font-black text-purple-300">
-                      AED {formatMoney(call.amount)}
+                      USD {formatMoney(call.amount)}
                     </td>
                     <td className="px-5 py-4">
                       <span className="rounded-full bg-purple-500/20 px-3 py-1 text-xs font-bold text-purple-200">
@@ -1084,7 +1084,7 @@ function RevenueCard({
     >
       <p className="mb-2 text-sm text-gray-400">{title}</p>
       <h2 className={highlight ? "text-3xl font-black text-green-400" : "text-3xl font-black"}>
-        AED {formatMoney(value)}
+        USD {formatMoney(value)}
       </h2>
     </div>
   );
@@ -1249,7 +1249,7 @@ function buildMonthlyData({
     );
 
     const privateCallRevenue = privatePaymentsForMonth.reduce(
-      (sum, payment) => sum + Number(payment.amount_aed || 0),
+      (sum, payment) => sum + Number(payment.amount_usd || 0),
       0
     );
 
@@ -1327,7 +1327,7 @@ function buildPrivateCallPerformance(
           payment.profiles?.display_name ||
           payment.profiles?.username ||
           "Caller",
-        amount: Number(payment.amount_aed || 0),
+        amount: Number(payment.amount_usd || 0),
         createdAt: payment.created_at,
         streamStatus: stream?.status || "paid",
       };
@@ -1372,7 +1372,7 @@ function isSameMonth(value: string, monthDate: Date) {
 }
 
 function getTipValue(tip: TipRow) {
-  return Number(tip.creator_amount_aed ?? tip.amount_aed ?? tip.amount ?? 0);
+  return Number(tip.creator_amount_usd ?? tip.amount_usd ?? tip.amount ?? 0);
 }
 
 function isCompletedStatus(status: string | null) {

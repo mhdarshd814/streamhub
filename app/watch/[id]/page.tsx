@@ -574,7 +574,7 @@ export default function WatchPage() {
         setPrivatePaymentCompleted(false);
         setStatus(
           price > 0
-            ? `This is a paid private video call. Login and open Calls to pay AED ${price}.`
+            ? `This is a paid private video call. Login and open Calls to pay USD ${price}.`
             : "This is a private video call. Login and open Calls to join if invited."
         );
         return false;
@@ -628,14 +628,14 @@ export default function WatchPage() {
         setPrivateAllowed(true);
         setPrivateBlocked(true);
         setPrivatePaymentCompleted(true);
-        setStatus(`Payment confirmed. Open Calls to join this AED ${price} private call.`);
+        setStatus(`Payment confirmed. Open Calls to join this USD ${price} private call.`);
         return false;
       }
 
       setPrivateAllowed(false);
       setPrivateBlocked(true);
       setPrivatePaymentCompleted(false);
-      setStatus(`Payment required. Open Calls and pay AED ${price} to join this private call.`);
+      setStatus(`Payment required. Open Calls and pay USD ${price} to join this private call.`);
       return false;
     }
 
@@ -1410,12 +1410,12 @@ export default function WatchPage() {
         : Number(selectedTipAmount);
 
     if (!amount || amount < 5) {
-      alert("Minimum tip amount is AED 5.");
+      alert("Minimum tip amount is USD 5.");
       return;
     }
 
     if (amount > 5000) {
-      alert("Maximum tip amount is AED 5,000.");
+      alert("Maximum tip amount is USD 5,000.");
       return;
     }
 
@@ -1434,7 +1434,7 @@ export default function WatchPage() {
       return;
     }
 
-    const confirmed = confirm(`Send AED ${amount} tip?`);
+    const confirmed = confirm(`Send USD ${amount} tip?`);
 
     if (!confirmed) return;
 
@@ -1443,7 +1443,7 @@ export default function WatchPage() {
     const { error } = await supabase.rpc("create_manual_tip", {
       target_stream_id: stream.id,
       target_creator_id: stream.user_id,
-      tip_amount_aed: amount,
+      tip_amount_usd: amount,
       tip_message: tipMessage.trim() || null,
     });
 
@@ -1458,7 +1458,7 @@ export default function WatchPage() {
         user_id: stream.user_id,
         type: "tip_received",
         title: "New Tip Received",
-        message: `You received AED ${amount} on "${
+        message: `You received USD ${amount} on "${
           stream.title || "your stream"
         }". Creator wallet updated.`,
         link: "/wallet",
@@ -1473,7 +1473,7 @@ export default function WatchPage() {
       {
         id: `tip-${Date.now()}`,
         username: "StreamHub",
-        message: `💰 ${tipperName} sent AED ${amount} tip!`,
+        message: `💰 ${tipperName} sent USD ${amount} tip!`,
         created_at: new Date().toISOString(),
       },
     ]);
@@ -1756,7 +1756,7 @@ export default function WatchPage() {
             <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
               <p className="text-sm text-white/45">Call Price</p>
               <p className="mt-1 text-3xl font-black text-purple-300">
-                {privateCallPrice > 0 ? `AED ${privateCallPrice}` : "Free"}
+                {privateCallPrice > 0 ? `$${privateCallPrice}` : "Free"}
               </p>
 
               <p
@@ -1999,7 +1999,7 @@ export default function WatchPage() {
                         : "bg-black/40 text-white hover:bg-white/10"
                     }`}
                   >
-                    AED {amount}
+                    USD {amount}
                   </button>
                 ))}
               </div>
@@ -2022,7 +2022,7 @@ export default function WatchPage() {
                   max="5000"
                   value={customTipAmount}
                   onChange={(e) => setCustomTipAmount(e.target.value)}
-                  placeholder="Enter amount in AED"
+                  placeholder="Enter amount in USD"
                   className="mb-4 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none focus:border-yellow-500"
                 />
               )}

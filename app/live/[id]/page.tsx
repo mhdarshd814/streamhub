@@ -194,7 +194,7 @@ export default function LiveRoomPage() {
     }
 
     const match = chat.message.match(
-      /^\[PAID_MESSAGE:AED\s*(\d+(?:\.\d+)?)\]\s*/i,
+      /^\[PAID_MESSAGE:USD\s*(\d+(?:\.\d+)?)\]\s*/i,
     );
 
     if (!match) return 0;
@@ -212,7 +212,7 @@ export default function LiveRoomPage() {
 
   function getDisplayMessage(chat: ChatMessage) {
     return chat.message.replace(
-      /^\[PAID_MESSAGE:AED\s*\d+(?:\.\d+)?\]\s*/i,
+      /^\[PAID_MESSAGE:USD\s*\d+(?:\.\d+)?\]\s*/i,
       "",
     );
   }
@@ -3654,7 +3654,7 @@ export default function LiveRoomPage() {
                             </span>
                             {paidAmount > 0 && (
                               <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-bold text-yellow-200">
-                                AED {paidAmount}
+                                USD {paidAmount}
                               </span>
                             )}
                           </div>
