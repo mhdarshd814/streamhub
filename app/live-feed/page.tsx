@@ -43,6 +43,7 @@ type ChatMessage = {
 
 export default function LiveFeedPage() {
   const [authChecked, setAuthChecked] = useState(false);
+  const [authAllowed, setAuthAllowed] = useState(false);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -91,7 +92,7 @@ export default function LiveFeedPage() {
   }, []);
 
   useEffect(() => {
-    if (!authChecked || !activeStream) return;
+    if (!authChecked || !authAllowed || !activeStream) return;
 
     clearStreamEndTimer();
     clearHeartTimer();
@@ -114,7 +115,7 @@ export default function LiveFeedPage() {
       cleanupChatChannel();
       clearNoVideoTimer();
     };
-  }, [authChecked, activeStream?.id]);
+  }, [authChecked, authAllowed, activeStream?.id]);
 
   async function checkAuthAndStartFeed() {
     const {
@@ -122,11 +123,14 @@ export default function LiveFeedPage() {
     } = await supabase.auth.getSession();
 
     if (!session?.user || !session.access_token) {
+      setAuthAllowed(false);
+      setAuthChecked(true);
       window.location.replace("/login");
       return;
     }
 
     setCurrentUserId(session.user.id);
+    setAuthAllowed(true);
     setAuthChecked(true);
 
     await loadLiveStreams(true);
@@ -182,6 +186,7 @@ export default function LiveFeedPage() {
     const user = session?.user || null;
 
     if (!user || !session?.access_token) {
+      setAuthAllowed(false);
       window.location.replace("/login");
       return;
     }
@@ -356,6 +361,7 @@ export default function LiveFeedPage() {
     const user = session?.user || null;
 
     if (!user || !session?.access_token) {
+      setAuthAllowed(false);
       window.location.replace("/login");
       return;
     }
@@ -635,7 +641,7 @@ export default function LiveFeedPage() {
     window.location.href = `/profile/${activeStream.user_id}`;
   }
 
-  if (!authChecked) {
+  if (!authChecked || !authAllowed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
         <div className="slide-up w-full max-w-sm text-center">
