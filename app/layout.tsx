@@ -9,6 +9,7 @@ import CapacitorStatusBar from "./components/CapacitorStatusBar";
 import AndroidBackButton from "./components/AndroidBackButton";
 import ToastProvider from "./components/ToastProvider";
 import NativeDialogBlocker from "./components/NativeDialogBlocker";
+import AuthRouteGuard from "./components/AuthRouteGuard";
 
 export const metadata: Metadata = {
   title: "StreamHub",
@@ -59,7 +60,9 @@ export default function RootLayout({
         <Navbar />
 
         <main className="app-shell min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">
-          <div className="page-enter">{children}</div>
+          <AuthRouteGuard>
+            <div className="page-enter">{children}</div>
+          </AuthRouteGuard>
         </main>
       </body>
     </html>
