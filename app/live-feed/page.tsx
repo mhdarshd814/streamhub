@@ -41,6 +41,7 @@ type ChatMessage = {
 };
 
 export default function LiveFeedPage() {
+  const [authChecked, setAuthChecked] = useState(false);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,9 @@ export default function LiveFeedPage() {
   const streamEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noVideoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
   const lastTapRef = useRef<number>(0);
   const chatChannelRef = useRef<any>(null);
   const videoAttachedRef = useRef(false);
@@ -72,14 +76,10 @@ export default function LiveFeedPage() {
   );
 
   useEffect(() => {
-    loadLiveStreams();
-
-    const interval = setInterval(() => {
-      loadLiveStreams(false);
-    }, 30000);
+    checkAuthAndStartFeed();
 
     return () => {
-      clearInterval(interval);
+      clearLiveRefreshInterval();
       clearStreamEndTimer();
       clearHeartTimer();
       clearNoVideoTimer();
@@ -90,7 +90,7 @@ export default function LiveFeedPage() {
   }, []);
 
   useEffect(() => {
-    if (!activeStream) return;
+    if (!authChecked || !activeStream) return;
 
     clearStreamEndTimer();
     clearHeartTimer();
@@ -113,7 +113,35 @@ export default function LiveFeedPage() {
       cleanupChatChannel();
       clearNoVideoTimer();
     };
-  }, [activeStream?.id]);
+  }, [authChecked, activeStream?.id]);
+
+  async function checkAuthAndStartFeed() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user || !session.access_token) {
+      window.location.replace("/login");
+      return;
+    }
+
+    setCurrentUserId(session.user.id);
+    setAuthChecked(true);
+
+    await loadLiveStreams(true);
+
+    clearLiveRefreshInterval();
+    liveRefreshIntervalRef.current = setInterval(() => {
+      loadLiveStreams(false);
+    }, 30000);
+  }
+
+  function clearLiveRefreshInterval() {
+    if (liveRefreshIntervalRef.current) {
+      clearInterval(liveRefreshIntervalRef.current);
+      liveRefreshIntervalRef.current = null;
+    }
+  }
 
   function clearStreamEndTimer() {
     if (streamEndTimerRef.current) {
@@ -151,16 +179,20 @@ export default function LiveFeedPage() {
     } = await supabase.auth.getSession();
 
     const user = session?.user || null;
-    setCurrentUserId(user?.id || null);
 
-    if (user) {
-      const { data: follows } = await supabase
-        .from("follows")
-        .select("following_id")
-        .eq("follower_id", user.id);
-
-      setFollowingIds((follows || []).map((item: any) => item.following_id));
+    if (!user || !session?.access_token) {
+      window.location.replace("/login");
+      return;
     }
+
+    setCurrentUserId(user.id);
+
+    const { data: follows } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", user.id);
+
+    setFollowingIds((follows || []).map((item: any) => item.following_id));
 
     const { data, error } = await supabase
       .from("streams")
@@ -322,8 +354,7 @@ export default function LiveFeedPage() {
     const user = session?.user || null;
 
     if (!user || !session?.access_token) {
-      setStatus("Login required to watch live feed.");
-      window.location.href = "/login";
+      window.location.replace("/login");
       return;
     }
 
@@ -402,7 +433,6 @@ export default function LiveFeedPage() {
       });
 
       setStatus("Waiting for creator camera...");
-
       await KeepAwake.keepAwake().catch(() => {});
     } catch {
       setStatus("Unable to connect. Looking for another stream...");
@@ -542,7 +572,7 @@ export default function LiveFeedPage() {
 
   async function toggleFollow() {
     if (!activeStream || !currentUserId) {
-      window.location.href = "/login";
+      window.location.replace("/login");
       return;
     }
 
@@ -598,6 +628,35 @@ export default function LiveFeedPage() {
   function openProfile() {
     if (!activeStream?.user_id) return;
     window.location.href = `/profile/${activeStream.user_id}`;
+  }
+
+  if (!authChecked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30">
+            <img
+              src="/icon-512.png"
+              alt="StreamHub"
+              className="h-full w-full object-cover"
+            />
+          </div>
+
+          <h1 className="text-4xl font-black tracking-tight">
+            <span className="text-white">Stream</span>
+            <span className="text-red-500">Hub</span>
+          </h1>
+
+          <p className="mt-4 text-sm font-semibold uppercase tracking-[0.25em] text-gray-500">
+            Checking Session
+          </p>
+
+          <div className="mx-auto mt-6 h-1.5 w-36 overflow-hidden rounded-full bg-gray-800">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-red-600" />
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (loading) {
