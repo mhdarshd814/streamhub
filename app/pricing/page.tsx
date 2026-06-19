@@ -49,137 +49,61 @@ const creatorPlan = {
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-black px-5 py-8 text-white sm:px-8 lg:px-12">
-      <section className="mx-auto max-w-7xl">
-        <div className="mb-10 text-center">
-          <p className="mb-3 text-xs font-black uppercase tracking-[0.35em] text-red-500">
-            Launch Pricing
-          </p>
-
-          <h1 className="text-4xl font-black sm:text-5xl lg:text-6xl">
-            StreamHub Pricing
-          </h1>
-
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-gray-400 sm:text-base">
-            Choose how you support creators or grow as a creator. Payments are
-            not live yet. Pricing is shown for launch planning and test mode.
-          </p>
+    <main className="min-h-screen bg-black px-4 py-8 text-white">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-12 text-center">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.35em] text-red-500">LAUNCH PRICING</p>
+          <h1 className="text-5xl font-black tracking-tighter">StreamHub Pricing</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-gray-400">Choose how you support creators or grow as a creator. Payments are not live yet. Pricing is shown for launch planning.</p>
         </div>
 
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-3">
-          <span className="rounded-full border border-red-900/40 bg-red-600/10 px-4 py-2 text-xs font-black text-red-300">
-            USD Pricing
-          </span>
-          <span className="rounded-full border border-gray-800 bg-gray-900 px-4 py-2 text-xs font-black text-gray-300">
-            No Duration Limit
-          </span>
-          <span className="rounded-full border border-gray-800 bg-gray-900 px-4 py-2 text-xs font-black text-gray-300">
-            Coming Soon
-          </span>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          {viewerPlans.map((plan) => (
+            <div
+              key={plan.name}
+              className={`premium-glass rounded-3xl p-8 ${plan.highlighted ? 'ring-2 ring-red-500 scale-105' : ''}`}
+            >
+              {plan.highlighted && <div className="text-red-400 text-xs font-black mb-4">MOST POPULAR</div>}
+              <h3 className="font-black text-2xl">{plan.name}</h3>
+              <div className="mt-4 text-5xl font-black">{plan.price}<span className="text-sm font-normal text-gray-400">/month</span></div>
+              <p className="mt-6 text-sm text-gray-400">{plan.subtitle}</p>
+
+              <ul className="mt-8 space-y-4">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex gap-3 text-sm">
+                    <span className="text-red-500">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <button disabled className="mt-8 w-full py-4 rounded-2xl bg-gray-800 text-sm font-bold">Coming Soon</button>
+            </div>
+          ))}
         </div>
 
-        <section className="mb-12">
-          <div className="mb-5">
-            <h2 className="text-2xl font-black sm:text-3xl">Viewer Plans</h2>
-            <p className="mt-2 text-sm text-gray-400">
-              Simple monthly plans for viewers who want to support creators and
-              unlock future subscriber benefits.
-            </p>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            {viewerPlans.map((plan) => (
-              <div
-                key={plan.name}
-                className={
-                  plan.highlighted
-                    ? "relative rounded-3xl border border-red-600 bg-red-600/10 p-6 shadow-2xl shadow-red-950/30"
-                    : "rounded-3xl border border-gray-800 bg-gray-950 p-6 shadow-2xl shadow-black/30"
-                }
-              >
-                {plan.highlighted && (
-                  <div className="absolute right-5 top-5 rounded-full bg-red-600 px-3 py-1 text-xs font-black">
-                    Popular
-                  </div>
-                )}
-
-                <h3 className="text-2xl font-black">{plan.name}</h3>
-
-                <div className="mt-4 flex items-end gap-1">
-                  <span className="text-5xl font-black">{plan.price}</span>
-                  <span className="pb-2 text-sm font-bold text-gray-400">
-                    /month
-                  </span>
-                </div>
-
-                <p className="mt-4 min-h-[44px] text-sm leading-6 text-gray-400">
-                  {plan.subtitle}
-                </p>
-
-                <div className="mt-6 space-y-3">
-                  {plan.features.map((feature) => (
-                    <div key={feature} className="flex gap-3 text-sm">
-                      <span className="text-red-500">✓</span>
-                      <span className="text-gray-200">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  disabled
-                  className="mt-7 w-full rounded-xl bg-gray-800 px-5 py-3 font-black text-gray-500"
-                >
-                  Coming Soon
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-red-900/40 bg-gradient-to-br from-red-600/15 via-gray-950 to-black p-6 shadow-2xl shadow-red-950/20 sm:p-8">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+        <div className="premium-glass rounded-3xl p-12">
+          <div className="grid md:grid-cols-2 gap-12">
             <div>
-              <p className="mb-3 text-xs font-black uppercase tracking-[0.3em] text-red-400">
-                Creator Plan
-              </p>
-
-              <h2 className="text-3xl font-black sm:text-4xl">
-                {creatorPlan.name}
-              </h2>
-
-              <div className="mt-5 flex items-end gap-1">
-                <span className="text-6xl font-black">{creatorPlan.price}</span>
-                <span className="pb-2 text-sm font-bold text-gray-400">
-                  /month
-                </span>
-              </div>
-
-              <p className="mt-5 text-sm leading-6 text-gray-400">
-                {creatorPlan.subtitle}
-              </p>
+              <p className="text-xs font-black text-red-400">FOR CREATORS</p>
+              <h2 className="text-4xl font-black mt-2">{creatorPlan.name}</h2>
+              <div className="mt-6 text-6xl font-black">{creatorPlan.price}<span className="text-xl font-normal text-gray-400">/month</span></div>
+              <p className="mt-6 text-gray-400">{creatorPlan.subtitle}</p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {creatorPlan.features.map((feature) => (
-                <div
-                  key={feature}
-                  className="rounded-2xl border border-gray-800 bg-black/40 p-4 text-sm font-bold text-gray-200"
-                >
-                  <span className="mr-2 text-red-500">✓</span>
-                  {feature}
-                </div>
-              ))}
+            <div>
+              <ul className="space-y-4">
+                {creatorPlan.features.map((feature) => (
+                  <li key={feature} className="flex gap-3 text-sm">
+                    <span className="text-red-500">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-
-          <div className="mt-8 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm leading-6 text-yellow-100">
-            Creator Pro features are planned for monetization rollout. Public
-            streaming, profiles, followers and basic chat should remain free
-            during launch to help StreamHub grow faster.
-          </div>
-        </section>
-      </section>
+        </div>
+      </div>
     </main>
   );
 }

@@ -10,24 +10,18 @@ export default function CapacitorStatusBar() {
 
         if (!Capacitor.isNativePlatform()) {
           document.documentElement.style.setProperty("--app-status-top", "0px");
-          document.documentElement.style.setProperty("--app-bottom-extra", "0px");
           return;
         }
 
         document.documentElement.style.setProperty("--app-status-top", "24px");
-        document.documentElement.style.setProperty("--app-bottom-extra", "36px");
 
         const { StatusBar, Style } = await import("@capacitor/status-bar");
 
         await StatusBar.setOverlaysWebView({ overlay: false });
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: "#0a0a0a" });
 
-        await StatusBar.setStyle({
-          style: Style.Dark,
-        });
-
-        await StatusBar.setBackgroundColor({
-          color: "#020617",
-        });
+        console.log("StatusBar configured for premium dark look");
       } catch (error) {
         console.warn("Capacitor StatusBar setup skipped:", error);
       }

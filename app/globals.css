@@ -3,11 +3,11 @@
 :root {
   --background: #000000;
   --foreground: #ededed;
-  --streamhub-red: #ef4444;
-  --streamhub-red-soft: rgba(239, 68, 68, 0.15);
-  --accent-glow: #f87171;
-  --panel: rgba(15, 23, 42, 0.95);
-  --border: rgba(185, 28, 28, 0.4);
+  --primary-red: #ef4444;
+  --red-glow: #f87171;
+  --panel: rgba(15, 23, 42, 0.92);
+  --glass-border: rgba(185, 28, 28, 0.35);
+  --accent-soft: rgba(239, 68, 68, 0.12);
 }
 
 @theme inline {
@@ -18,7 +18,7 @@
 }
 
 /* =====================================================
-   NEXT-GEN GLOBAL STYLES
+   NEXT-GEN BASE STYLES
 ===================================================== */
 
 html, body {
@@ -26,36 +26,44 @@ html, body {
   min-height: 100dvh;
   overflow-x: hidden;
   background: #000;
-}
-
-body {
-  background: 
-    radial-gradient(circle at 50% 20%, rgba(153, 27, 27, 0.25), transparent 60%),
-    #000000;
   color: var(--foreground);
   font-family: var(--font-geist-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Premium Glass + Neon Effects */
+body {
+  background: 
+    radial-gradient(circle at 50% 15%, rgba(153, 27, 27, 0.22), transparent 65%),
+    #000000;
+}
+
+/* Premium Glass & Glow System */
 .premium-glass {
   background: var(--panel);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .premium-glow {
   box-shadow: 
-    0 0 0 1px rgba(239, 68, 68, 0.3),
-    0 0 40px rgba(239, 68, 68, 0.25),
-    0 25px 60px rgba(0, 0, 0, 0.5);
+    0 0 0 1px rgba(239, 68, 68, 0.25),
+    0 0 35px rgba(239, 68, 68, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
-/* Enhanced Animations */
-@keyframes hero-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+/* Enhanced Buttons & Interactions */
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+/* Loading Bar Animation */
+.loading-bar {
+  animation: loading-bar 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes loading-bar {
@@ -63,29 +71,43 @@ body {
   100% { transform: translateX(400%); }
 }
 
-.loading-bar {
-  animation: loading-bar 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Card & Content Styling */
+.premium-card {
+  background: var(--panel);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
 
-/* Modern Card System */
-.creator-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Safe Area & Mobile Optimizations */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
-.creator-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 30px 70px rgba(239, 68, 68, 0.15);
-}
-
-/* Bottom Navigation Glow */
 .mobile-bottom-nav {
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(20px);
 }
 
-/* Keep your existing animations and add these new ones */
-@keyframes neon-pulse {
-  0%, 100% { text-shadow: 0 0 8px #ef4444; }
-  50% { text-shadow: 0 0 20px #f87171, 0 0 30px #f87171; }
+/* Animation System */
+.slide-up { animation: slide-up 280ms ease-out both; }
+.fade-in { animation: fade-in 220ms ease-out both; }
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

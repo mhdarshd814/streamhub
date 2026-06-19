@@ -4,23 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 
-type BlockRow = {
-  id: string;
-  blocked_id: string;
-  created_at: string;
-};
-
-type Profile = {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-};
-
 export default function BlocksPage() {
   const [loading, setLoading] = useState(true);
-  const [blocks, setBlocks] = useState<BlockRow[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [blocks, setBlocks] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,17 +26,11 @@ export default function BlocksPage() {
       return;
     }
 
-    const { data: blockData, error: blockError } = await supabase
+    const { data: blockData } = await supabase
       .from("user_blocks")
       .select("id, blocked_id, created_at")
       .eq("blocker_id", user.id)
       .order("created_at", { ascending: false });
-
-    if (blockError) {
-      console.error(blockError);
-      setLoading(false);
-      return;
-    }
 
     const cleanBlocks = blockData || [];
     setBlocks(cleanBlocks);
@@ -57,23 +38,17 @@ export default function BlocksPage() {
     const blockedIds = cleanBlocks.map((block) => block.blocked_id);
 
     if (blockedIds.length > 0) {
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("id, username, full_name, avatar_url")
         .in("id", blockedIds);
 
-      if (profileError) {
-        console.error(profileError);
-      }
-
-      const profileMap: Record<string, Profile> = {};
+      const profileMap: Record<string, any> = {};
       profileData?.forEach((profile) => {
         profileMap[profile.id] = profile;
       });
 
       setProfiles(profileMap);
-    } else {
-      setProfiles({});
     }
 
     setLoading(false);
@@ -87,8 +62,7 @@ export default function BlocksPage() {
     });
 
     if (error) {
-      console.error(error);
-      alert("Failed to unblock user.");
+      alert(error.message);
     } else {
       await loadBlockedUsers();
     }
@@ -98,34 +72,29 @@ export default function BlocksPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-zinc-950 text-white p-6">
-        <p className="text-zinc-400">Loading blocked users...</p>
+      <main className="min-h-screen bg-black px-4 py-6 text-white">
+        <p className="text-gray-400">Loading blocked users...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between gap-4 mb-8">
+    <main className="min-h-screen bg-black px-4 py-8 text-white">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-10 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Blocked Users</h1>
-            <p className="text-zinc-400 mt-1">
-              Manage users you have blocked on StreamHub.
-            </p>
+            <h1 className="text-4xl font-black">Blocked Users</h1>
+            <p className="text-gray-400 mt-2">Manage users you have blocked.</p>
           </div>
 
-          <Link
-            href="/dashboard"
-            className="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-sm"
-          >
+          <Link href="/dashboard" className="rounded-2xl bg-gray-800 px-6 py-3 font-bold hover:bg-gray-700">
             Back
           </Link>
         </div>
 
         {blocks.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center">
-            <p className="text-zinc-400">You have not blocked anyone.</p>
+          <div className="premium-glass rounded-3xl p-16 text-center">
+            <p className="text-2xl text-gray-400">You have not blocked anyone.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -133,48 +102,28 @@ export default function BlocksPage() {
               const profile = profiles[block.blocked_id];
 
               return (
-                <div
-                  key={block.id}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 flex items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
+                <div key={block.id} className="premium-glass rounded-3xl p-6 flex items-center justify-between">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gray-800">
                       {profile?.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt="Avatar"
-                          className="h-full w-full object-cover"
-                        />
+                        <img src={profile.avatar_url} className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-zinc-400 text-sm">
-                          {profile?.full_name?.[0] ||
-                            profile?.username?.[0] ||
-                            "U"}
-                        </span>
+                        <div className="w-full h-full flex items-center justify-center text-3xl">👤</div>
                       )}
                     </div>
 
                     <div>
-                      <p className="font-semibold">
-                        {profile?.full_name ||
-                          profile?.username ||
-                          "Unknown User"}
-                      </p>
-                      <p className="text-sm text-zinc-500">
-                        Blocked on{" "}
-                        {new Date(block.created_at).toLocaleDateString()}
-                      </p>
+                      <p className="font-bold text-xl">{profile?.full_name || profile?.username || "Unknown"}</p>
+                      <p className="text-sm text-gray-400">Blocked on {new Date(block.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
 
                   <button
                     onClick={() => handleUnblock(block.blocked_id)}
                     disabled={unblockingId === block.blocked_id}
-                    className="rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 px-4 py-2 text-sm font-medium"
+                    className="rounded-2xl bg-red-600 px-6 py-3 font-bold hover:bg-red-500"
                   >
-                    {unblockingId === block.blocked_id
-                      ? "Unblocking..."
-                      : "Unblock"}
+                    {unblockingId === block.blocked_id ? "Unblocking..." : "Unblock"}
                   </button>
                 </div>
               );
