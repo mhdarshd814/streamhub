@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Room, RoomEvent, Track } from "livekit-client";
 import { supabase } from "../../../lib/supabase";
 import { KeepAwake } from "@capacitor-community/keep-awake";
+import { startAttendanceSession, endAttendanceSession } from "../../../lib/attendance";
 
 type Stream = {
   id: string;
@@ -126,6 +127,7 @@ export default function LiveRoomPage() {
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
   const guestAutoJoinStartedRef = useRef(false);
+  const attendanceSessionIdRef = useRef<string | null>(null);
 
   async function getSafeDisplayName(user: any, fallback = "Viewer") {
     if (!user?.id) return fallback;
@@ -764,6 +766,7 @@ export default function LiveRoomPage() {
 
     return () => {
       KeepAwake.allowSleep().catch(() => {});
+      void endLiveAttendance();
       document.documentElement.classList.remove("streamhub-theater-mode");
       document.body.classList.remove("streamhub-theater-mode");
       document.documentElement.style.overflow = "";
@@ -1685,6 +1688,61 @@ export default function LiveRoomPage() {
     );
   }
 
+  async function getPrivateCallAttendanceContext(participantId: string) {
+    if (!stream || stream.visibility !== "private") {
+      return { callRequestId: null as string | null, participantRole: role };
+    }
+
+    const { data } = await supabase
+      .from("private_call_requests")
+      .select("id, caller_id, receiver_id, status")
+      .eq("stream_id", streamId)
+      .or(`caller_id.eq.${participantId},receiver_id.eq.${participantId}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data?.id) {
+      return {
+        callRequestId: null as string | null,
+        participantRole: role === "host" ? "host" : "guest",
+      };
+    }
+
+    return {
+      callRequestId: data.id as string,
+      participantRole:
+        data.caller_id === participantId
+          ? ("caller" as const)
+          : ("receiver" as const),
+    };
+  }
+
+  async function startLiveAttendance(participantId: string | null | undefined) {
+    if (!streamId || !participantId || attendanceSessionIdRef.current) return;
+
+    const context = await getPrivateCallAttendanceContext(participantId);
+
+    const attendanceId = await startAttendanceSession({
+      streamId,
+      participantId,
+      participantRole: context.participantRole as any,
+      callRequestId: context.callRequestId,
+    });
+
+    if (attendanceId) {
+      attendanceSessionIdRef.current = attendanceId;
+    }
+  }
+
+  async function endLiveAttendance() {
+    const attendanceId = attendanceSessionIdRef.current;
+    if (!attendanceId) return;
+
+    attendanceSessionIdRef.current = null;
+    await endAttendanceSession(attendanceId);
+  }
+
   function attachLocalVideoTrack(targetRoom: Room | null) {
     if (!targetRoom) return;
 
@@ -1962,6 +2020,7 @@ export default function LiveRoomPage() {
       });
 
       newRoom.on(RoomEvent.Disconnected, () => {
+        void endLiveAttendance();
         setStatusText("Disconnected from LiveKit room. Tap Join Stream to reconnect.");
         setRoom(null);
         setRemoteVideos([]);
@@ -1989,6 +2048,8 @@ export default function LiveRoomPage() {
       setRoom(newRoom);
       setCameraOn(cameraStarted);
       setMicOn(micStarted);
+
+      await startLiveAttendance(user.id);
 
       try {
         await KeepAwake.keepAwake();
@@ -2047,6 +2108,7 @@ export default function LiveRoomPage() {
     }
 
     await exitTheaterMode();
+    await endLiveAttendance();
 
     cleanupRemoteAudio();
 
