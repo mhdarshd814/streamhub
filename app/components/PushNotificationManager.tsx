@@ -89,16 +89,25 @@ export default function PushNotificationManager() {
       });
 
       PushNotifications.addListener(
-        "pushNotificationActionPerformed",
-        (notification) => {
-          const data = notification.notification.data || {};
-          const url = data.url || data.link;
+  "pushNotificationActionPerformed",
+  (notification) => {
+    const data = notification.notification.data || {};
 
-          if (typeof url === "string" && url.startsWith("/")) {
-            window.location.href = url;
-          }
-        }
-      );
+    if (
+      data.type === "incoming_call" &&
+      typeof data.callId === "string"
+    ) {
+      window.location.href = `/incoming-call/${data.callId}`;
+      return;
+    }
+
+    const url = data.url || data.link;
+
+    if (typeof url === "string" && url.startsWith("/")) {
+      window.location.href = url;
+    }
+  }
+);
     } catch (error) {
       console.error("Native push setup skipped:", error);
     }

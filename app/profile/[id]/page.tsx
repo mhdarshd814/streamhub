@@ -277,90 +277,135 @@ export default function PublicProfilePage() {
   }
 
   async function startPrivateCall() {
-    if (!viewerId || !profile || viewerId === profile.id) return;
+  if (!viewerId || !profile || viewerId === profile.id) return;
 
-    const confirmed = confirm(
-      `Start a private one-on-one call with ${
-        profile.display_name || profile.username || "this creator"
-      }?`
-    );
+  const confirmed = confirm(
+    `Start a private one-on-one call with ${
+      profile.display_name || profile.username || "this creator"
+    }?`
+  );
 
-    if (!confirmed) return;
+  if (!confirmed) return;
 
-    setCallLoading(true);
+  setCallLoading(true);
 
-    const allowed = await checkViewerAccess();
+  const allowed = await checkViewerAccess();
 
-    if (!allowed) {
-      setCallLoading(false);
-      return;
-    }
+  if (!allowed) {
+    setCallLoading(false);
+    return;
+  }
 
-    const callTitle = `Private Call with ${
-      profile.display_name || profile.username || "Creator"
-    }`;
+  const callTitle = `Private Call with ${
+    profile.display_name || profile.username || "Creator"
+  }`;
 
-    const { data: streamData, error: streamError } = await supabase
-      .from("streams")
-      .insert([
-        {
-          user_id: viewerId,
-          title: callTitle,
-          category: "One-on-One Call",
-          description: "Private one-on-one video call.",
-          tags: "private,call,one-on-one",
-          visibility: "private",
-          status: "offline",
-          thumbnail_url: null,
-        },
-      ])
-      .select()
-      .single();
+  const expiresAt = new Date(Date.now() + 30_000).toISOString();
 
-    if (streamError || !streamData) {
-      setCallLoading(false);
-      alert(streamError?.message || "Failed to create private call.");
-      return;
-    }
-
-    const { error: inviteError } = await supabase.from("stream_guests").insert([
+  const { data: streamData, error: streamError } = await supabase
+    .from("streams")
+    .insert([
       {
-        stream_id: streamData.id,
-        host_id: viewerId,
-        guest_id: profile.id,
-        status: "pending",
+        user_id: viewerId,
+        title: callTitle,
+        category: "One-on-One Call",
+        description: "Private one-on-one video call.",
+        tags: "private,call,one-on-one",
+        visibility: "private",
+        status: "offline",
+        thumbnail_url: null,
       },
-    ]);
+    ])
+    .select()
+    .single();
 
-    if (inviteError) {
-      setCallLoading(false);
-      alert(inviteError.message);
-      return;
-    }
+  if (streamError || !streamData) {
+    setCallLoading(false);
+    alert(streamError?.message || "Failed to create private call.");
+    return;
+  }
 
-    await supabase.from("private_call_requests").insert([
+  const { error: inviteError } = await supabase.from("stream_guests").insert([
+    {
+      stream_id: streamData.id,
+      host_id: viewerId,
+      guest_id: profile.id,
+      status: "pending",
+    },
+  ]);
+
+  if (inviteError) {
+    setCallLoading(false);
+    alert(inviteError.message);
+    return;
+  }
+
+  const { data: callData, error: callError } = await supabase
+    .from("private_call_requests")
+    .insert([
       {
         caller_id: viewerId,
         receiver_id: profile.id,
         stream_id: streamData.id,
         status: "pending",
+        ring_status: "ringing",
+        expires_at: expiresAt,
       },
-    ]);
+    ])
+    .select()
+    .single();
 
-    await supabase.from("notifications").insert([
-      {
-        user_id: profile.id,
-        type: "private_call_request",
-        title: "Private Call Request",
-        message: "Someone invited you to a private one-on-one call.",
-        link: "/calls",
-        is_read: false,
-      },
-    ]);
-
+  if (callError || !callData) {
     setCallLoading(false);
-    window.location.href = `/live/${streamData.id}`;
+    alert(callError?.message || "Failed to create call request.");
+    return;
   }
+
+  await supabase.from("notifications").insert([
+    {
+      user_id: profile.id,
+      type: "private_call_request",
+      title: "Incoming Private Call",
+      message: `${
+        profile.display_name || profile.username || "Someone"
+      } is receiving a private call request.`,
+      link: `/incoming-call/${callData.id}`,
+      is_read: false,
+    },
+  ]);
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    try {
+      await fetch("/api/fcm/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: profile.id,
+          title: "Incoming Private Call",
+          message: `${
+            profile.display_name || profile.username || "Someone"
+          } is calling you on StreamHub.`,
+          url: `/incoming-call/${callData.id}`,
+          type: "incoming_call",
+          streamId: streamData.id,
+          callId: callData.id,
+        }),
+      });
+    } catch (pushError) {
+      console.error("Incoming call push failed:", pushError);
+    }
+  }
+
+  setCallLoading(false);
+  window.location.href = `/live/${streamData.id}`;
+}
 
   async function toggleFollow() {
     if (!viewerId || !profile || viewerId === profile.id) return;
