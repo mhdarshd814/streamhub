@@ -17,13 +17,13 @@
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
     "@livekit/components-react": "^2.9.21",
-    "@supabase/supabase-js": "^2.108.1",
+    "@supabase/supabase-js": "^2.108.2",
     "firebase-admin": "^14.0.0",
     "livekit-client": "^2.19.2",
-    "livekit-server-sdk": "^2.15.4",
+    "livekit-server-sdk": "^2.15.5",
     "next": "16.2.9",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-hot-toast": "^2.6.0",
     "recharts": "^3.8.1",
     "web-push": "^3.6.7"
@@ -31,14 +31,14 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.0",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.1",
     "typescript": "^5"
   }
 }
