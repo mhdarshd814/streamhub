@@ -81,11 +81,11 @@ type WalletRow = {
   creator_id?: string;
   balance?: number | null;
   available_balance?: number | null;
-  available_balance_aed?: number | null;
+  available_balance_usd?: number | null;
   pending_balance?: number | null;
-  pending_balance_aed?: number | null;
+  pending_balance_usd?: number | null;
   total_earned?: number | null;
-  lifetime_earnings_aed?: number | null;
+  lifetime_earnings_usd?: number | null;
   total_withdrawn?: number | null;
 };
 
@@ -94,8 +94,8 @@ type TipRow = {
   creator_id?: string;
   receiver_id?: string;
   amount?: number | null;
-  amount_aed?: number | null;
-  creator_amount_aed?: number | null;
+  amount_usd?: number | null;
+  creator_amount_usd?: number | null;
   status: string | null;
   created_at: string;
 };
@@ -424,7 +424,7 @@ export default function DashboardPage() {
     );
 
     const totalTips = completedTips.reduce((total, tip) => {
-      const value = tip.creator_amount_aed ?? tip.amount_aed ?? tip.amount ?? 0;
+      const value = tip.creator_amount_usd ?? tip.amount_usd ?? tip.amount ?? 0;
       return total + Number(value || 0);
     }, 0);
 
@@ -438,10 +438,10 @@ export default function DashboardPage() {
     );
 
     const walletBalance = Number(
-      wallet?.available_balance_aed ??
+      wallet?.available_balance_usd ??
         wallet?.available_balance ??
         wallet?.balance ??
-        wallet?.lifetime_earnings_aed ??
+        wallet?.lifetime_earnings_usd ??
         wallet?.total_earned ??
         0
     );
@@ -545,7 +545,7 @@ export default function DashboardPage() {
           <StatCard label="Likes" value={stats.totalLikes} valueClass="text-red-500" />
           <StatCard label="Peak Viewers" value={stats.peakViewers} valueClass="text-yellow-400" />
           <StatCard label="Watch Minutes" value={stats.totalWatchMinutes} valueClass="text-green-400" />
-          <StatCard label="Revenue" value={`AED ${formatMoney(stats.estimatedRevenue)}`} valueClass="text-green-400" />
+          <StatCard label="Revenue" value={`$${formatMoney(stats.estimatedRevenue)}`} valueClass="text-green-400" />
         </div>
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">

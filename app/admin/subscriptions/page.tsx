@@ -57,7 +57,7 @@ export default function AdminSubscriptionsPage() {
         *,
         plan:plan_id (
           plan_name,
-          price_aed
+          price_usd
         )
       `
       )
@@ -94,7 +94,7 @@ export default function AdminSubscriptionsPage() {
   const cancelled = subscriptions.filter((item) => item.status === "cancelled");
 
   const estimatedRevenue = active.reduce(
-    (total, item) => total + Number(item.plan?.price_aed || 0),
+    (total, item) => total + Number(item.plan?.price_usd || 0),
     0
   );
 
@@ -175,7 +175,7 @@ export default function AdminSubscriptionsPage() {
           <Stat label="Cancelled" value={cancelled.length} color="text-gray-400" />
           <Stat
             label="Estimated Monthly Revenue"
-            value={`AED ${estimatedRevenue.toFixed(2)}`}
+            value={`$${estimatedRevenue.toFixed(2)}`}
             color="text-green-400"
           />
         </section>
@@ -250,7 +250,7 @@ export default function AdminSubscriptionsPage() {
                     </td>
 
                     <td className="px-5 py-4 text-green-400">
-                      AED {item.plan?.price_aed || 0}
+                      USD {item.plan?.price_usd || 0}
                     </td>
 
                     <td className="px-5 py-4">

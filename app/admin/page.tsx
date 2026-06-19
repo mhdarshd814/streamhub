@@ -140,7 +140,7 @@ export default function AdminHomePage() {
           creator_id,
           plan_id,
           creator_subscription_plans:plan_id (
-            price_aed
+            price_usd
           )
         `
         )
@@ -153,7 +153,7 @@ export default function AdminHomePage() {
 
     const estimatedSubscriptionRevenue = activeSubscriptionRows.reduce(
       (total: number, item: any) =>
-        total + Number(item.creator_subscription_plans?.price_aed || 0),
+        total + Number(item.creator_subscription_plans?.price_usd || 0),
       0
     );
 
@@ -232,7 +232,7 @@ export default function AdminHomePage() {
     { label: "Cancelled Subs", value: stats.cancelledSubscriptions, color: "text-gray-400" },
     {
       label: "Sub Revenue",
-      value: `AED ${stats.estimatedSubscriptionRevenue.toFixed(2)}`,
+      value: `$${stats.estimatedSubscriptionRevenue.toFixed(2)}`,
       color: "text-green-400",
     },
   ];
