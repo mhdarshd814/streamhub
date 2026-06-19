@@ -1,5 +1,6 @@
 "use client";
 
+import toast from "react-hot-toast";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Room,
@@ -204,6 +205,7 @@ export default function LiveFeedPage() {
     if (error) {
       setStatus(error.message);
       setLoading(false);
+      toast.error("Unable to load live feed.");
       return;
     }
 
@@ -389,6 +391,7 @@ export default function LiveFeedPage() {
 
     if (!livekitUrl) {
       setStatus("LiveKit URL missing.");
+      toast.error("LiveKit URL missing.");
       return;
     }
 
@@ -557,7 +560,7 @@ export default function LiveFeedPage() {
     });
 
     if (error) {
-      if (!fromDoubleTap) alert(error.message);
+      if (!fromDoubleTap) toast.error(error.message);
       return;
     }
 
@@ -592,7 +595,7 @@ export default function LiveFeedPage() {
       setFollowLoading(false);
 
       if (error) {
-        alert(error.message);
+        toast.error(error.message);
         return;
       }
 
@@ -600,6 +603,7 @@ export default function LiveFeedPage() {
         current.filter((id) => id !== activeStream.user_id)
       );
 
+      toast.success("Unfollowed creator");
       return;
     }
 
@@ -613,11 +617,12 @@ export default function LiveFeedPage() {
     setFollowLoading(false);
 
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
 
     setFollowingIds((current) => [...current, activeStream.user_id]);
+    toast.success("Following creator");
   }
 
   function openFullRoom() {
@@ -633,8 +638,8 @@ export default function LiveFeedPage() {
   if (!authChecked) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30">
+        <div className="slide-up w-full max-w-sm text-center">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
             <img
               src="/icon-512.png"
               alt="StreamHub"
@@ -651,8 +656,8 @@ export default function LiveFeedPage() {
             Checking Session
           </p>
 
-          <div className="mx-auto mt-6 h-1.5 w-36 overflow-hidden rounded-full bg-gray-800">
-            <div className="h-full w-1/2 animate-pulse rounded-full bg-red-600" />
+          <div className="mx-auto mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-gray-800">
+            <div className="opening-bar h-full w-1/2 rounded-full bg-red-600" />
           </div>
         </div>
       </main>
@@ -662,9 +667,32 @@ export default function LiveFeedPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-        <div className="text-center">
-          <div className="mb-4 text-5xl">📺</div>
-          <p className="text-gray-400">Loading live feed...</p>
+        <div className="slide-up w-full max-w-md">
+          <div className="mb-6 text-center">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-red-600/10 text-5xl">
+              📺
+            </div>
+            <h1 className="text-3xl font-black">Loading Live Feed</h1>
+            <p className="mt-2 text-sm text-gray-400">
+              Finding real active streams, not dead rooms.
+            </p>
+          </div>
+
+          <div className="space-y-4 rounded-3xl border border-red-900/30 bg-gray-950/70 p-5">
+            <div className="flex items-center gap-3">
+              <div className="skeleton skeleton-avatar" />
+              <div className="flex-1 space-y-2">
+                <div className="skeleton skeleton-line w-3/4" />
+                <div className="skeleton skeleton-line w-1/2" />
+              </div>
+            </div>
+            <div className="skeleton skeleton-card" />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="skeleton h-12 rounded-2xl" />
+              <div className="skeleton h-12 rounded-2xl" />
+              <div className="skeleton h-12 rounded-2xl" />
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -673,27 +701,34 @@ export default function LiveFeedPage() {
   if (!activeStream) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-red-600/10 text-6xl">
+        <div className="slide-up w-full max-w-md text-center">
+          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-red-600/10 text-6xl premium-glow">
             🎥
           </div>
 
-          <h1 className="text-3xl font-black">No One Is Live</h1>
-
-          <p className="mt-3 text-sm leading-6 text-gray-400">
-            There are no active live streams right now. Start your own live or
-            discover creators to follow.
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">
+            Live Feed
           </p>
 
-          <div className="mt-7 flex flex-col gap-3">
+          <h1 className="mt-3 text-3xl font-black">No One Is Live</h1>
+
+          <p className="mt-3 text-sm leading-6 text-gray-400">
+            This is normal while StreamHub is still growing. Empty feed is not a
+            bug. The next smart step is to start your own stream or follow
+            creators so your feed becomes useful.
+          </p>
+
+          <div className="mt-7 grid gap-3">
             <button
+              type="button"
               onClick={() => (window.location.href = "/go-live")}
               className="rounded-full bg-red-600 px-6 py-4 text-lg font-black shadow-lg shadow-red-600/20 active:scale-95"
             >
-              Go Live
+              Go Live Now
             </button>
 
             <button
+              type="button"
               onClick={() => (window.location.href = "/explore")}
               className="rounded-full border border-gray-700 bg-gray-900 px-6 py-4 font-bold text-gray-200 active:scale-95"
             >
@@ -701,10 +736,19 @@ export default function LiveFeedPage() {
             </button>
 
             <button
+              type="button"
+              onClick={() => (window.location.href = "/profile/edit")}
+              className="rounded-full border border-gray-800 bg-black/40 px-6 py-4 font-bold text-gray-300 active:scale-95"
+            >
+              Complete Profile
+            </button>
+
+            <button
+              type="button"
               onClick={() => loadLiveStreams(true)}
               className="rounded-full px-6 py-3 text-sm font-bold text-gray-500"
             >
-              Refresh
+              Refresh Feed
             </button>
           </div>
         </div>
@@ -715,18 +759,27 @@ export default function LiveFeedPage() {
   if (!readyToShowLive) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-red-600/10 text-6xl">
+        <div className="slide-up w-full max-w-sm text-center">
+          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-red-600/10 text-6xl premium-glow">
             📡
           </div>
 
-          <h1 className="text-2xl font-black">Finding Real Live Streams</h1>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">
+            Stream Check
+          </p>
+
+          <h1 className="mt-3 text-2xl font-black">Finding Real Live Video</h1>
 
           <p className="mt-3 text-sm leading-6 text-gray-400">
             {status || "Checking whether the creator camera is actually live..."}
           </p>
 
+          <div className="mx-auto mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-gray-800">
+            <div className="opening-bar h-full w-1/2 rounded-full bg-red-600" />
+          </div>
+
           <button
+            type="button"
             onClick={() => loadLiveStreams(true)}
             className="mt-7 rounded-full border border-gray-700 bg-gray-900 px-6 py-4 font-bold text-gray-200 active:scale-95"
           >
@@ -756,6 +809,19 @@ export default function LiveFeedPage() {
     >
       <div ref={videoRef} className="absolute inset-0 bg-black" />
 
+      {!connected && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-3xl bg-red-600/10 p-4 text-4xl">
+              📡
+            </div>
+            <p className="text-sm font-bold text-gray-400">
+              Connecting to live stream...
+            </p>
+          </div>
+        </div>
+      )}
+
       {showHeart && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
           <div className="animate-ping text-8xl">❤️</div>
@@ -764,7 +830,7 @@ export default function LiveFeedPage() {
 
       {streamEnded && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-6 text-center">
-          <div>
+          <div className="slide-up">
             <div className="mb-4 text-6xl">📴</div>
             <h2 className="text-3xl font-black">Stream Ended</h2>
             <p className="mt-3 text-sm text-gray-300">
@@ -776,24 +842,25 @@ export default function LiveFeedPage() {
 
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/85" />
 
-      <div className="absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 rounded-full bg-red-600 px-3 py-1 text-xs font-black">
+      <div className="absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 rounded-full bg-red-600 px-3 py-1 text-xs font-black shadow-lg shadow-red-600/20">
         LIVE
       </div>
 
-      <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 rounded-full bg-black/60 px-3 py-1 text-xs font-bold">
+      <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 rounded-full bg-black/60 px-3 py-1 text-xs font-bold backdrop-blur">
         {activeIndex + 1}/{streams.length}
       </div>
 
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-4 right-20 z-20">
         <div className="mb-3 flex items-center gap-3">
           <button
+            type="button"
             onClick={(event) => {
               event.stopPropagation();
               openProfile();
             }}
             className="flex min-w-0 items-center gap-3 text-left"
           >
-            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-700 ring-2 ring-white/20">
               {activeStream.profile?.avatar_url ? (
                 <img
                   src={activeStream.profile.avatar_url}
@@ -817,6 +884,7 @@ export default function LiveFeedPage() {
 
           {showFollowButton && (
             <button
+              type="button"
               onClick={(event) => {
                 event.stopPropagation();
                 toggleFollow();
@@ -824,8 +892,8 @@ export default function LiveFeedPage() {
               disabled={followLoading}
               className={
                 isFollowingActiveHost
-                  ? "rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-black text-white"
-                  : "rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white"
+                  ? "rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-black text-white backdrop-blur"
+                  : "rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white shadow-lg shadow-red-600/20"
               }
             >
               {followLoading
@@ -845,8 +913,9 @@ export default function LiveFeedPage() {
           {activeStream.category} • 👀 {activeStream.viewers || 0}
         </p>
 
-        {chatPreview.length > 0 && (
+        {chatPreview.length > 0 ? (
           <button
+            type="button"
             onClick={(event) => {
               event.stopPropagation();
               openFullRoom();
@@ -866,6 +935,17 @@ export default function LiveFeedPage() {
               Tap chat to join conversation
             </p>
           </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              openFullRoom();
+            }}
+            className="mt-4 rounded-2xl bg-black/30 px-4 py-3 text-left text-xs font-bold text-white/60 backdrop-blur"
+          >
+            Be first to join the chat
+          </button>
         )}
 
         <p className="mt-3 text-xs text-white/55">{status}</p>
@@ -873,12 +953,13 @@ export default function LiveFeedPage() {
 
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+2.5rem)] right-4 z-20 flex flex-col items-center gap-4">
         <button
+          type="button"
           onClick={(event) => {
             event.stopPropagation();
             toggleLike();
           }}
           disabled={streamEnded}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-2xl disabled:opacity-40"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-2xl backdrop-blur disabled:opacity-40"
         >
           ❤️
         </button>
@@ -886,12 +967,13 @@ export default function LiveFeedPage() {
         <p className="-mt-3 text-xs font-bold">{likes}</p>
 
         <button
+          type="button"
           onClick={(event) => {
             event.stopPropagation();
             openFullRoom();
           }}
           disabled={streamEnded}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-xl disabled:opacity-40"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-xl backdrop-blur disabled:opacity-40"
         >
           💬
         </button>

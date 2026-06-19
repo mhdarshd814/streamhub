@@ -1,5 +1,6 @@
 "use client";
 
+import toast from "react-hot-toast";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 
@@ -9,30 +10,52 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function cleanUsername(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "");
+  }
+
   async function handleSignup() {
-    if (!username || !email || !password) {
-      alert("Please complete all fields.");
+    const safeUsername = cleanUsername(username);
+    const cleanEmail = email.trim();
+
+    if (!safeUsername || !cleanEmail || !password) {
+      toast.error("Please complete all fields.");
       return;
     }
 
-    if (username.length < 3) {
-      alert("Username must be at least 3 characters.");
+    if (safeUsername.length < 3) {
+      toast.error("Username must be at least 3 characters.");
       return;
     }
 
     if (password.length < 6) {
-      alert("Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
       return;
     }
 
     setLoading(true);
 
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", safeUsername)
+      .maybeSingle();
+
+    if (existingProfile) {
+      setLoading(false);
+      toast.error("Username is already taken.");
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
         data: {
-          username,
+          username: safeUsername,
         },
       },
     });
@@ -40,23 +63,27 @@ export default function SignupPage() {
     setLoading(false);
 
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       return;
     }
 
-    alert(
-      "Account created successfully. Please check your email for verification."
-    );
+    toast.success("Account created. Check your email to verify.");
 
-    window.location.href = "/login";
+    setTimeout(() => {
+      window.location.href = "/login";
+    }, 900);
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-red-600 mb-5 shadow-lg shadow-red-600/30">
-            <span className="text-4xl font-black">▶</span>
+    <div className="flex min-h-[calc(100dvh-7rem)] items-center justify-center bg-black px-6 text-white">
+      <div className="slide-up w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
+            <img
+              src="/icon-512.png"
+              alt="StreamHub"
+              className="h-full w-full object-cover"
+            />
           </div>
 
           <h1 className="text-5xl font-black">
@@ -64,59 +91,82 @@ export default function SignupPage() {
             <span className="text-red-500">Hub</span>
           </h1>
 
-          <p className="text-gray-400 mt-3">
-            Join StreamHub and start building your audience.
+          <p className="mt-3 text-gray-400">
+            Create your account and build your live audience.
           </p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8">
-          <h2 className="text-3xl font-bold mb-6">
-            Create Account
-          </h2>
+        <div className="premium-card rounded-3xl p-8">
+          <div className="mb-6">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">
+              Start streaming
+            </p>
+            <h2 className="mt-2 text-3xl font-black">Create Account</h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Pick a clean username. You can improve your profile after login.
+            </p>
+          </div>
 
           <div className="space-y-4">
             <input
               placeholder="Username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500"
+              autoComplete="username"
+              onChange={(e) => setUsername(cleanUsername(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <input
               type="email"
               placeholder="Email Address"
               value={email}
+              autoComplete="email"
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <input
               type="password"
               placeholder="Password"
               value={password}
+              autoComplete="new-password"
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <button
+              type="button"
               onClick={handleSignup}
               disabled={loading}
-              className="w-full bg-red-600 py-4 rounded-xl font-bold text-lg hover:bg-red-700 disabled:bg-gray-700"
+              className="w-full rounded-xl bg-red-600 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </div>
 
+          <div className="mt-6 rounded-2xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+            After signup, verify your email first. Then login and complete your
+            profile so creators and viewers can recognize you.
+          </div>
+
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
-              Already have an account?
-            </p>
+            <p className="text-gray-400">Already have an account?</p>
 
             <button
+              type="button"
               onClick={() => {
                 window.location.href = "/login";
               }}
-              className="mt-2 text-red-500 font-bold hover:text-red-400"
+              className="mt-2 font-black text-red-500 hover:text-red-400"
             >
               Sign In
             </button>
