@@ -59,10 +59,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-7rem)] items-center justify-center bg-black px-6 text-white">
+    <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center bg-black px-5 py-4 text-white">
       <div className="slide-up w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
+        <div className="mb-5 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
             <img
               src="/icon-512.png"
               alt="StreamHub"
@@ -70,28 +70,28 @@ export default function LoginPage() {
             />
           </div>
 
-          <h1 className="text-5xl font-black">
+          <h1 className="text-4xl font-black">
             <span className="text-white">Stream</span>
             <span className="text-red-500">Hub</span>
           </h1>
 
-          <p className="mt-3 text-gray-400">
+          <p className="mt-2 text-sm text-gray-400">
             Login to watch, stream, and call creators.
           </p>
         </div>
 
-        <div className="premium-card rounded-3xl p-8">
-          <div className="mb-6">
-            <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">
+        <div className="premium-card rounded-3xl p-6">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-red-500">
               Welcome back
             </p>
             <h2 className="mt-2 text-3xl font-black">Login</h2>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-1 text-sm text-gray-400">
               Continue to your live feed.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <input
               type="email"
               placeholder="Email Address"
@@ -101,7 +101,7 @@ export default function LoginPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleLogin();
               }}
-              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <input
@@ -113,20 +113,20 @@ export default function LoginPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleLogin();
               }}
-              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <button
               type="button"
               onClick={handleLogin}
               disabled={loading}
-              className="w-full rounded-xl bg-red-600 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700"
+              className="w-full rounded-xl bg-red-600 py-3.5 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700"
             >
               {loading ? "Opening StreamHub..." : "Login"}
             </button>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+          <div className="mt-5 rounded-2xl border border-gray-800 bg-black/30 p-3.5 text-sm leading-6 text-gray-400">
             New users should complete their profile after login. Empty profiles
             look cheap and reduce trust.
           </div>
@@ -136,7 +136,7 @@ export default function LoginPage() {
             onClick={() => {
               window.location.href = "/signup";
             }}
-            className="mt-6 w-full text-center font-black text-red-500 hover:text-red-400"
+            className="mt-5 w-full text-center font-black text-red-500 hover:text-red-400"
           >
             Create Account
           </button>

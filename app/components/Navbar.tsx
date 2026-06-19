@@ -535,14 +535,17 @@ export default function Navbar() {
           )}
         </div>
       </nav>
+        {loggedIn && (
 
       <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
+      
         <div
           className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
           style={{
             height: "calc(76px + env(safe-area-inset-bottom))",
             paddingBottom: "env(safe-area-inset-bottom)",
           }}
+           
         >
           <MobileItem icon="📺" label="Live" href="/live-feed" goTo={goTo} />
           <MobileItem icon="🔎" label="Discover" href="/explore" goTo={goTo} />
@@ -591,7 +594,7 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
-
+       )}
       {mobileMenuOpen && (
         <div
           className="fade-in fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm xl:hidden"
