@@ -57,6 +57,42 @@ export default function RootLayout({
         <PWAInstallPrompt />
         <IncomingCallPopup />
 
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              html.streamhub-theater-mode,
+              body.streamhub-theater-mode {
+                overflow: hidden !important;
+                overscroll-behavior: none !important;
+                touch-action: none !important;
+                background: #000 !important;
+              }
+
+              body.streamhub-theater-mode nav,
+              body.streamhub-theater-mode .mobile-top-nav,
+              body.streamhub-theater-mode .mobile-bottom-nav {
+                display: none !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+              }
+
+              body.streamhub-theater-mode .app-shell {
+                padding: 0 !important;
+                margin: 0 !important;
+                min-height: 100dvh !important;
+                height: 100dvh !important;
+                overflow: hidden !important;
+              }
+
+              body.streamhub-theater-mode .page-enter {
+                animation: none !important;
+                transform: none !important;
+                transition: none !important;
+              }
+            `,
+          }}
+        />
+
         <Navbar />
 
         <main className="app-shell min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">

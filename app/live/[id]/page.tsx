@@ -764,6 +764,8 @@ export default function LiveRoomPage() {
 
     return () => {
       KeepAwake.allowSleep().catch(() => {});
+      document.documentElement.classList.remove("streamhub-theater-mode");
+      document.body.classList.remove("streamhub-theater-mode");
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
 
@@ -1784,15 +1786,28 @@ export default function LiveRoomPage() {
     return () => clearTimeout(timer);
   }, [focusedVideo, isCompactStudio, isTheaterMode, remoteVideos.length, room]);
 
+  function enableTheaterChromeLock() {
+    document.documentElement.classList.add("streamhub-theater-mode");
+    document.body.classList.add("streamhub-theater-mode");
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+  }
+
+  function disableTheaterChromeLock() {
+    document.documentElement.classList.remove("streamhub-theater-mode");
+    document.body.classList.remove("streamhub-theater-mode");
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+  }
+
   async function enterTheaterMode() {
     if (!roomRef.current) return;
 
-    // Use our own fixed overlay instead of relying on browser fullscreen.
-    // Android WebView often blocks/ignores requestFullscreen(), but fixed overlay works reliably.
+    // Android WebView is unreliable with browser fullscreen.
+    // This app-level theater lock hides global StreamHub chrome, removes layout padding,
+    // and lets the fixed overlay own the full viewport.
     setIsTheaterMode(true);
-
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    enableTheaterChromeLock();
 
     setTimeout(() => attachLocalVideoTrack(roomRef.current), 100);
     setTimeout(() => attachLocalVideoTrack(roomRef.current), 400);
@@ -1800,9 +1815,7 @@ export default function LiveRoomPage() {
 
   async function exitTheaterMode() {
     setIsTheaterMode(false);
-
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
+    disableTheaterChromeLock();
 
     try {
       if (document.fullscreenElement) {
@@ -2714,8 +2727,8 @@ export default function LiveRoomPage() {
       {!isTheaterMode && hostJoinRequestVideoOverlay}
 
       {room && isTheaterMode && (
-        <div className="fixed inset-0 z-[2147483647] h-[100dvh] w-screen overflow-hidden bg-black text-white">
-          <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
+        <div className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white">
+          <div className="relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black">
             {hostJoinRequestVideoOverlay}
             {focusedVideo === "local" ? (
               <>
