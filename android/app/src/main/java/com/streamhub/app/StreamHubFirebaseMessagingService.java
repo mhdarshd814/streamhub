@@ -16,6 +16,7 @@ import com.google.firebase.messaging.RemoteMessage;
 
 public class StreamHubFirebaseMessagingService extends FirebaseMessagingService {
     private static final String CALL_CHANNEL_ID = "incoming_calls";
+    private static final int CALL_NOTIFICATION_ID = 2001;
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
@@ -29,10 +30,19 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         String body = message.getData().get("message");
         String callId = message.getData().get("callId");
 
-        if (title == null || title.isEmpty()) title = "Incoming Private Call";
-        if (body == null || body.isEmpty()) body = "Someone is calling you on StreamHub";
+        if (title == null || title.isEmpty()) {
+            title = "Incoming Private Call";
+        }
 
-        String path = "/incoming-call/" + callId;
+        if (body == null || body.isEmpty()) {
+            body = "Someone is calling you on StreamHub";
+        }
+
+        if (callId == null || callId.isEmpty()) {
+            callId = "";
+        }
+
+        String path = callId.isEmpty() ? "/calls" : "/incoming-call/" + callId;
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
@@ -48,26 +58,38 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
 
         createCallChannel();
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CALL_CHANNEL_ID)
-                .setSmallIcon(getApplicationInfo().icon)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setOngoing(false)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .setFullScreenIntent(pendingIntent, true);
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(this, CALL_CHANNEL_ID)
+                        .setSmallIcon(getApplicationInfo().icon)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setPriority(NotificationCompat.PRIORITY_MAX)
+                        .setCategory(NotificationCompat.CATEGORY_CALL)
+                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                        .setOngoing(false)
+                        .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
+                        .setFullScreenIntent(pendingIntent, true);
 
-        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        manager.notify(2001, builder.build());
+        NotificationManager manager =
+                (NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+
+        if (manager != null) {
+            manager.notify(CALL_NOTIFICATION_ID, builder.build());
+        }
     }
 
     private void createCallChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
 
-        NotificationManager manager = getSystemService(NotificationManager.class);
+        NotificationManager manager =
+                (NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+
+        if (manager == null) {
+            return;
+        }
 
         NotificationChannel channel = new NotificationChannel(
                 CALL_CHANNEL_ID,
