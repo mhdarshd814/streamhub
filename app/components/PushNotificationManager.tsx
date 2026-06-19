@@ -8,49 +8,108 @@ import { supabase } from "../../lib/supabase";
 
 export default function PushNotificationManager() {
   useEffect(() => {
-    registerPushNotifications();
+    registerWebServiceWorker();
+    setupNativePushNotifications();
   }, []);
 
-  async function registerPushNotifications() {
+  async function registerWebServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      await navigator.serviceWorker.register("/sw.js");
+      console.log("Push Service Worker Registered");
+    } catch (error) {
+      console.error("Service Worker Registration Failed", error);
+    }
+  }
+
+  async function setupNativePushNotifications() {
+    if (!Capacitor.isNativePlatform()) return;
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session?.user) return;
 
-      if (!Capacitor.isNativePlatform()) {
-        console.log("Push notifications: Web PWA mode");
-        return;
-      }
+      const permissionStatus = await PushNotifications.checkPermissions();
 
-      const permStatus = await PushNotifications.checkPermissions();
+      if (permissionStatus.receive !== "granted") {
+        const requestStatus = await PushNotifications.requestPermissions();
 
-      if (permStatus.receive !== "granted") {
-        const result = await PushNotifications.requestPermissions();
-        if (result.receive !== "granted") {
-          toast("Enable notifications for best experience");
+        if (requestStatus.receive !== "granted") {
+          toast.error("Notifications are disabled");
           return;
         }
       }
 
       await PushNotifications.register();
 
-      // Registration success
       PushNotifications.addListener("registration", async (token) => {
-        await supabase.from("push_tokens").upsert({
-          user_id: session.user.id,
-          token: token.value,
-          platform: Capacitor.getPlatform(),
-          is_active: true,
-        });
+        const {
+          data: { session: latestSession },
+        } = await supabase.auth.getSession();
+
+        const user = latestSession?.user;
+
+        if (!user?.id) return;
+
+        const { error } = await supabase.from("push_tokens").upsert(
+          {
+            user_id: user.id,
+            token: token.value,
+            platform: "android",
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id,token",
+          }
+        );
+
+        if (error) {
+          console.error("Push token save failed:", error.message);
+          return;
+        }
+
+        console.log("Push token saved");
       });
 
-      // Notification received
+      PushNotifications.addListener("registrationError", (error) => {
+        console.error("Push registration error:", error);
+        toast.error("Push notification setup failed");
+      });
+
       PushNotifications.addListener("pushNotificationReceived", (notification) => {
-        toast.success(notification.title + ": " + notification.body);
+        const title = notification.title || "StreamHub";
+        const body = notification.body || "New notification";
+
+        toast(`${title}: ${body}`);
       });
 
-      console.log("Push notifications registered successfully");
+      PushNotifications.addListener(
+  "pushNotificationActionPerformed",
+  (notification) => {
+    const data = notification.notification.data || {};
+
+    if (
+      data.type === "incoming_call" &&
+      typeof data.callId === "string"
+    ) {
+      window.location.href = `/incoming-call/${data.callId}`;
+      return;
+    }
+
+    const url = data.url || data.link;
+
+    if (typeof url === "string" && url.startsWith("/")) {
+      window.location.href = url;
+    }
+  }
+);
     } catch (error) {
-      console.warn("Push notification setup failed:", error);
+      console.error("Native push setup skipped:", error);
     }
   }
 

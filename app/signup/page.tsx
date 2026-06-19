@@ -75,37 +75,48 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-black px-5 py-8 text-white">
+    <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center bg-black px-5 py-4 text-white">
       <div className="slide-up w-full max-w-md">
-        <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-red-600 to-rose-600 shadow-2xl shadow-red-600/50 premium-glow">
-            <img 
-              src="/icon-512.png" 
-              alt="StreamHub" 
-              className="h-full w-full object-cover rounded-[2rem]" 
+        <div className="mb-5 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
+            <img
+              src="/icon-512.png"
+              alt="StreamHub"
+              className="h-full w-full object-cover"
             />
           </div>
 
-          <h1 className="text-5xl font-black tracking-tighter">
-            Stream<span className="text-red-500">Hub</span>
+          <h1 className="text-4xl font-black">
+            <span className="text-white">Stream</span>
+            <span className="text-red-500">Hub</span>
           </h1>
-          <p className="mt-2 text-lg text-gray-400">Create your creator account</p>
+
+          <p className="mt-2 text-sm text-gray-400">
+            Create your account and build your live audience.
+          </p>
         </div>
 
-        <div className="premium-glass rounded-3xl p-8 shadow-2xl">
-          <div className="mb-8">
-            <p className="text-xs font-black uppercase tracking-[0.15em] text-red-400">Join the movement</p>
-            <h2 className="mt-2 text-4xl font-black tracking-tight">Create Account</h2>
+        <div className="premium-card rounded-3xl p-6">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-red-500">
+              Start streaming
+            </p>
+            <h2 className="mt-2 text-3xl font-black">Create Account</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Pick a clean username. Improve your profile after login.
+            </p>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-3.5">
             <input
               placeholder="Username"
               value={username}
               autoComplete="username"
               onChange={(e) => setUsername(cleanUsername(e.target.value))}
-              onKeyDown={(e) => e.key === "Enter" && handleSignup()}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base outline-none transition focus:border-red-500 focus:bg-white/10"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <input
@@ -114,8 +125,10 @@ export default function SignupPage() {
               value={email}
               autoComplete="email"
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSignup()}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base outline-none transition focus:border-red-500 focus:bg-white/10"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <input
@@ -124,24 +137,36 @@ export default function SignupPage() {
               value={password}
               autoComplete="new-password"
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSignup()}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base outline-none transition focus:border-red-500 focus:bg-white/10"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSignup();
+              }}
+              className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
             <button
+              type="button"
               onClick={handleSignup}
               disabled={loading}
-              className="w-full rounded-2xl bg-red-600 py-4 text-lg font-black text-white shadow-lg shadow-red-600/30 transition hover:bg-red-500 active:scale-[0.985] disabled:bg-gray-700"
+              className="w-full rounded-xl bg-red-600 py-3.5 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </div>
 
-          <div className="mt-8 text-center">
+          <div className="mt-5 rounded-2xl border border-gray-800 bg-black/30 p-3.5 text-sm leading-6 text-gray-400">
+            After signup, verify your email first. Then login and complete your
+            profile so creators and viewers can recognize you.
+          </div>
+
+          <div className="mt-5 text-center">
             <p className="text-sm text-gray-400">Already have an account?</p>
+
             <button
-              onClick={() => window.location.href = "/login"}
-              className="mt-1 text-red-400 hover:text-red-300 font-medium transition"
+              type="button"
+              onClick={() => {
+                window.location.href = "/login";
+              }}
+              className="mt-1.5 font-black text-red-500 hover:text-red-400"
             >
               Sign In
             </button>

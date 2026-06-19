@@ -30,7 +30,7 @@ function AuthLoadingScreen() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
       <section className="slide-up w-full max-w-sm text-center">
-        <div className="mx-auto mb-8 flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl premium-glow shadow-2xl shadow-red-600/40">
+        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
           <img
             src="/icon-512.png"
             alt="StreamHub"
@@ -43,12 +43,12 @@ function AuthLoadingScreen() {
           <span className="text-red-500">Hub</span>
         </h1>
 
-        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.25em] text-red-400">
-          Checking Access
+        <p className="mt-4 text-sm font-semibold uppercase tracking-[0.3em] text-gray-500">
+          Checking Session
         </p>
 
-        <div className="mx-auto mt-8 h-1.5 w-48 overflow-hidden rounded-full bg-zinc-900">
-          <div className="loading-bar h-full w-1/2 bg-gradient-to-r from-red-500 to-red-600 rounded-full" />
+        <div className="mx-auto mt-7 h-1.5 w-44 overflow-hidden rounded-full bg-gray-800">
+          <div className="opening-bar h-full w-1/2 rounded-full bg-red-600" />
         </div>
       </section>
     </main>
@@ -79,6 +79,7 @@ export default function AuthRouteGuard({
       }
 
       setChecking(true);
+      setAllowed(false);
 
       const {
         data: { session },
@@ -100,9 +101,11 @@ export default function AuthRouteGuard({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!protectedRoute || cancelled) return;
+      if (!protectedRoute) return;
 
       if (!session?.user || !session.access_token) {
+        setAllowed(false);
+        setChecking(false);
         router.replace(`/login?next=${encodeURIComponent(pathname)}`);
         return;
       }

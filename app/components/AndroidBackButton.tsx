@@ -29,19 +29,18 @@ export default function AndroidBackButton() {
 
           const now = Date.now();
 
-          if (now - lastBackPress < 1600) {
+          if (now - lastBackPress < 1500) {
             App.exitApp();
             return;
           }
 
           lastBackPress = now;
-          toast("Press back again to exit StreamHub", {
-            icon: "👋",
-            duration: 1800,
-          });
+          toast("Press back again to exit StreamHub");
         });
 
-        removeListener = () => listener.remove();
+        removeListener = () => {
+          listener.remove();
+        };
       } catch (error) {
         console.warn("Android back button setup skipped:", error);
       }

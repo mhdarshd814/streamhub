@@ -90,33 +90,35 @@ export default function NotificationSettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white">
-      <div className="mx-auto max-w-2xl">
-        <div className="premium-glass rounded-3xl p-10">
-          <div className="text-center mb-10">
-            <div className="mx-auto mb-6 text-6xl">🔔</div>
-            <h1 className="text-4xl font-black">Notification Settings</h1>
-            <p className="mt-3 text-gray-400">Enable browser push notifications for live streams, guest invites, and creator updates.</p>
-          </div>
+    <main className="min-h-screen bg-black px-4 py-6 text-white">
+      <div className="mx-auto max-w-2xl rounded-3xl border border-gray-800 bg-gray-900 p-6">
+        <h1 className="mb-3 text-3xl font-black">Notification Settings</h1>
 
-          <button
-            onClick={enablePush}
-            disabled={loading}
-            className="w-full py-5 rounded-2xl bg-red-600 font-black text-xl hover:bg-red-500"
-          >
-            {loading ? "Enabling..." : "Enable Push Notifications"}
-          </button>
+        <p className="mb-6 text-gray-400">
+          Enable browser push notifications for live streams, guest invites, and
+          creator updates.
+        </p>
 
-          {status && (
-            <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-6 text-center">
-              {status}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={enablePush}
+          disabled={loading}
+          className="w-full rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700 disabled:bg-gray-700"
+        >
+          {loading ? "Enabling..." : "Enable Push Notifications"}
+        </button>
 
-        <div className="mt-8 text-center">
-          <Link href="/notifications" className="text-red-400 hover:text-red-300 font-medium">Back to Notifications</Link>
-        </div>
+        {status && (
+          <p className="mt-5 rounded-xl border border-gray-800 bg-black p-4 text-sm text-gray-300">
+            {status}
+          </p>
+        )}
+
+        <Link
+          href="/notifications"
+          className="mt-6 inline-block text-sm font-bold text-red-400 hover:text-red-300"
+        >
+          Back to Notifications
+        </Link>
       </div>
     </main>
   );

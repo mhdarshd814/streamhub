@@ -3,11 +3,10 @@
 :root {
   --background: #000000;
   --foreground: #ededed;
-  --primary-red: #ef4444;
-  --red-glow: #f87171;
-  --panel: rgba(15, 23, 42, 0.92);
-  --glass-border: rgba(185, 28, 28, 0.35);
-  --accent-soft: rgba(239, 68, 68, 0.12);
+  --streamhub-red: #dc2626;
+  --streamhub-red-soft: rgba(220, 38, 38, 0.18);
+  --streamhub-panel: rgba(17, 24, 39, 0.92);
+  --streamhub-border: rgba(127, 29, 29, 0.45);
 }
 
 @theme inline {
@@ -18,96 +17,284 @@
 }
 
 /* =====================================================
-   NEXT-GEN BASE STYLES
+   GLOBAL
 ===================================================== */
 
-html, body {
+html,
+body {
   width: 100%;
-  min-height: 100dvh;
+  min-height: 100%;
   overflow-x: hidden;
-  background: #000;
-  color: var(--foreground);
-  font-family: var(--font-geist-sans);
-  -webkit-font-smoothing: antialiased;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: #000000;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: 
-    radial-gradient(circle at 50% 15%, rgba(153, 27, 27, 0.22), transparent 65%),
+  background:
+    radial-gradient(circle at top, rgba(127, 29, 29, 0.18), transparent 34rem),
     #000000;
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none;
 }
 
-/* Premium Glass & Glow System */
-.premium-glass {
-  background: var(--panel);
-  backdrop-filter: blur(24px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+* {
+  box-sizing: border-box;
 }
 
-.premium-glow {
-  box-shadow: 
-    0 0 0 1px rgba(239, 68, 68, 0.25),
-    0 0 35px rgba(239, 68, 68, 0.2),
-    0 20px 60px rgba(0, 0, 0, 0.6);
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Enhanced Buttons & Interactions */
 button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease;
 }
 
 button:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
-/* Loading Bar Animation */
-.loading-bar {
-  animation: loading-bar 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+img,
+video {
+  max-width: 100%;
+  height: auto;
 }
 
-@keyframes loading-bar {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+/* =====================================================
+   APP-WIDE ANIMATION
+===================================================== */
+
+.app-shell {
+  isolation: isolate;
 }
 
-/* Card & Content Styling */
+.page-enter {
+  animation: page-enter 260ms ease-out both;
+}
+
+.fade-in {
+  animation: fade-in 220ms ease-out both;
+}
+
+.slide-up {
+  animation: slide-up 240ms ease-out both;
+}
+
+.scale-in {
+  animation: scale-in 180ms ease-out both;
+}
+
 .premium-card {
-  background: var(--panel);
-  border: 1px solid var(--glass-border);
-  border-radius: 1.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(127, 29, 29, 0.35);
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(3, 7, 18, 0.96));
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
 }
 
-/* Safe Area & Mobile Optimizations */
-.safe-top { padding-top: env(safe-area-inset-top); }
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.premium-glow {
+  box-shadow:
+    0 0 0 1px rgba(220, 38, 38, 0.22),
+    0 16px 45px rgba(220, 38, 38, 0.16);
+}
+
+/* =====================================================
+   SKELETON LOADERS
+===================================================== */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: rgba(31, 41, 55, 0.85);
+}
+
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: skeleton-shimmer 1.35s infinite;
+}
+
+.skeleton-avatar {
+  height: 3rem;
+  width: 3rem;
+  border-radius: 9999px;
+}
+
+.skeleton-line {
+  height: 0.875rem;
+  border-radius: 9999px;
+}
+
+.skeleton-card {
+  min-height: 12rem;
+  border-radius: 1.5rem;
+}
+
+/* =====================================================
+   SAFE AREA HELPERS
+===================================================== */
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.android-safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.android-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* =====================================================
+   FIXED NAVBARS
+===================================================== */
+
+.mobile-top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9997;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 
 .mobile-bottom-nav {
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(20px);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9997;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Animation System */
-.slide-up { animation: slide-up 280ms ease-out both; }
-.fade-in { animation: fade-in 220ms ease-out both; }
+/* =====================================================
+   IPAD / SAFARI / PWA FIXES
+===================================================== */
 
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
+@supports (-webkit-touch-callout: none) {
+  .mobile-bottom-nav {
+    bottom: 0 !important;
+  }
+}
+
+/* =====================================================
+   ANIMATION KEYFRAMES
+===================================================== */
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
-/* Reduced Motion */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes opening-bar {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(220%);
+  }
+}
+
+.opening-bar {
+  animation: opening-bar 1.15s ease-in-out infinite;
+}
+
+/* =====================================================
+   REDUCED MOTION SAFETY
+===================================================== */
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 1ms !important;
   }
 }
