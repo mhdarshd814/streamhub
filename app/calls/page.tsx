@@ -813,8 +813,6 @@ function Stat({
 }
 
 async function cancelCall(callId: string, streamId?: string | null) {
-  const confirmed = confirm("Cancel this call?");
-  if (!confirmed) return;
 
   const { error } = await supabase
     .from("private_call_requests")
