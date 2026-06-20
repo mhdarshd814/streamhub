@@ -142,6 +142,43 @@ export default function GoLivePage() {
     }
   }
 
+  async function handleQuickPublicLive() {
+    if (saving || uploading) return;
+
+    setSaving(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setSaving(false);
+      window.location.href = "/login";
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("streams")
+      .insert([
+        {
+          user_id: user.id,
+          title: "Live Now",
+          category: "Live",
+          visibility: "public",
+          status: "offline",
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      setSaving(false);
+      alert(error.message);
+      return;
+    }
+
+    window.location.href = `/live/${data.id}`;
+  }
   async function handleStartStream() {
     if (saving || uploading) return;
 
@@ -243,6 +280,14 @@ export default function GoLivePage() {
             Choose Public or Call. Everything else is optional.
           </p>
         </div>
+
+        <button
+          onClick={handleQuickPublicLive}
+          disabled={saving || uploading}
+          className="mb-5 w-full rounded-3xl bg-red-600 px-6 py-6 text-xl font-black text-white shadow-lg shadow-red-600/30 hover:bg-red-700 disabled:bg-gray-700"
+        >
+          {saving ? "Opening..." : "🔴 GO LIVE NOW"}
+        </button>
 
         <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-gray-900 p-2">
           <button
