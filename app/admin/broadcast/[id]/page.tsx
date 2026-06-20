@@ -29,9 +29,12 @@ export default function AdminBroadcastStudioPage() {
   const [stream, setStream] = useState<Stream | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [connecting, setConnecting] = useState(false);
+
   const [screenOn, setScreenOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
+  const [systemAudioOn, setSystemAudioOn] = useState(true);
+
   const [copied, setCopied] = useState(false);
   const [statusText, setStatusText] = useState("Loading broadcast studio...");
 
@@ -106,7 +109,11 @@ export default function AdminBroadcastStudioPage() {
     }
 
     setStream(streamData as Stream);
-    setStatusText(streamData.status === "live" ? "Broadcast is live." : "Broadcast is ready.");
+    setStatusText(
+      streamData.status === "live"
+        ? "Broadcast is live."
+        : "Broadcast is ready.",
+    );
     setLoading(false);
   }
 
@@ -188,10 +195,16 @@ export default function AdminBroadcastStudioPage() {
 
     try {
       await activeRoom.localParticipant.setScreenShareEnabled(true, {
-        audio: true,
+        audio: systemAudioOn,
       } as any);
+
       setScreenOn(true);
-      setStatusText("Screen sharing is live. Viewers can watch from the public watch page.");
+      setStatusText(
+        systemAudioOn
+          ? "Screen sharing is live with system audio enabled. Viewers can watch from the public watch page."
+          : "Screen sharing is live without system audio. Viewers can watch from the public watch page.",
+      );
+
       setTimeout(() => attachLocalTracks(activeRoom), 300);
     } catch (error: any) {
       console.error("Screen share error:", error);
@@ -209,6 +222,8 @@ export default function AdminBroadcastStudioPage() {
     if (screenVideoRef.current) {
       screenVideoRef.current.srcObject = null;
     }
+
+    setStatusText("Screen share stopped.");
   }
 
   async function toggleCamera() {
@@ -230,9 +245,63 @@ export default function AdminBroadcastStudioPage() {
     setMicOn(next);
   }
 
+  async function toggleSystemAudio() {
+    const activeRoom = roomRef.current;
+    if (!activeRoom) return;
+
+    const next = !systemAudioOn;
+    setSystemAudioOn(next);
+
+    if (!screenOn) {
+      setStatusText(
+        next
+          ? "System audio will be included when screen share starts."
+          : "System audio will be muted when screen share starts.",
+      );
+      return;
+    }
+
+    try {
+      setStatusText("Restarting screen share to update system audio...");
+
+      await activeRoom.localParticipant.setScreenShareEnabled(false);
+      setScreenOn(false);
+
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = null;
+      }
+
+      setTimeout(async () => {
+        try {
+          await activeRoom.localParticipant.setScreenShareEnabled(true, {
+            audio: next,
+          } as any);
+
+          setScreenOn(true);
+          setStatusText(
+            next
+              ? "System audio enabled. Make sure you selected Share audio in the browser prompt."
+              : "System audio muted. Screen video remains live.",
+          );
+
+          setTimeout(() => attachLocalTracks(activeRoom), 300);
+        } catch (error) {
+          console.error("Restart screen share audio error:", error);
+          alert(
+            "Screen share needs to be selected again. Please start screen share and choose whether to share audio.",
+          );
+        }
+      }, 300);
+    } catch (error) {
+      console.error("Toggle system audio error:", error);
+      alert("Could not update system audio.");
+    }
+  }
+
   function attachLocalTracks(targetRoom: Room) {
     const publications = Array.from(
-      ((targetRoom.localParticipant as any).trackPublications?.values?.() || []) as any[]
+      ((targetRoom.localParticipant as any).trackPublications?.values?.() ||
+        []) as any[],
     );
 
     publications.forEach((publication: any) => {
@@ -273,7 +342,11 @@ export default function AdminBroadcastStudioPage() {
       await supabase.from("stream_chat").delete().eq("stream_id", stream.id);
     }
 
-    setStream({ ...stream, status, viewers: status === "offline" ? 0 : stream.viewers });
+    setStream({
+      ...stream,
+      status,
+      viewers: status === "offline" ? 0 : stream.viewers,
+    });
   }
 
   async function endBroadcast() {
@@ -299,7 +372,10 @@ export default function AdminBroadcastStudioPage() {
   async function copyWatchLink() {
     if (!stream) return;
 
-    await navigator.clipboard.writeText(`${window.location.origin}/watch/${stream.id}`);
+    await navigator.clipboard.writeText(
+      `${window.location.origin}/watch/${stream.id}`,
+    );
+
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -317,8 +393,13 @@ export default function AdminBroadcastStudioPage() {
       <main className="min-h-screen bg-black px-4 py-6 text-white">
         <div className="mx-auto max-w-xl rounded-2xl border border-red-800 bg-red-950/30 p-6 text-center">
           <h1 className="mb-3 text-3xl font-black">Access Denied</h1>
-          <p className="text-red-200">Your account does not have admin permission.</p>
-          <Link href="/admin" className="mt-6 inline-block rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700">
+          <p className="text-red-200">
+            Your account does not have admin permission.
+          </p>
+          <Link
+            href="/admin"
+            className="mt-6 inline-block rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700"
+          >
             Back to Admin
           </Link>
         </div>
@@ -341,12 +422,15 @@ export default function AdminBroadcastStudioPage() {
       <div className="mx-auto max-w-7xl">
         <section className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="mb-2 text-sm font-semibold text-red-400">Admin Broadcast Studio</p>
+            <p className="mb-2 text-sm font-semibold text-red-400">
+              Admin Broadcast Studio
+            </p>
             <h1 className="break-words text-4xl font-black sm:text-5xl">
               {stream.title}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              {stream.category} • {isLive ? "Live" : "Offline"} • Public admin broadcast
+              {stream.category} • {isLive ? "Live" : "Offline"} • Public admin
+              broadcast
             </p>
             <p className="mt-2 text-sm text-gray-500">{statusText}</p>
           </div>
@@ -373,20 +457,45 @@ export default function AdminBroadcastStudioPage() {
           </div>
         </section>
 
-        <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatusCard label="Status" value={isLive ? "LIVE" : "OFFLINE"} color={isLive ? "text-red-400" : "text-gray-400"} />
-          <StatusCard label="Screen Share" value={screenOn ? "On" : "Off"} color={screenOn ? "text-green-400" : "text-gray-400"} />
-          <StatusCard label="Camera" value={cameraOn ? "On" : "Off"} color={cameraOn ? "text-green-400" : "text-gray-400"} />
-          <StatusCard label="Microphone" value={micOn ? "On" : "Muted"} color={micOn ? "text-green-400" : "text-gray-400"} />
+        <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <StatusCard
+            label="Status"
+            value={isLive ? "LIVE" : "OFFLINE"}
+            color={isLive ? "text-red-400" : "text-gray-400"}
+          />
+          <StatusCard
+            label="Screen Share"
+            value={screenOn ? "On" : "Off"}
+            color={screenOn ? "text-green-400" : "text-gray-400"}
+          />
+          <StatusCard
+            label="Camera"
+            value={cameraOn ? "On" : "Off"}
+            color={cameraOn ? "text-green-400" : "text-gray-400"}
+          />
+          <StatusCard
+            label="Microphone"
+            value={micOn ? "On" : "Muted"}
+            color={micOn ? "text-green-400" : "text-gray-400"}
+          />
+          <StatusCard
+            label="System Audio"
+            value={systemAudioOn ? "On" : "Muted"}
+            color={systemAudioOn ? "text-green-400" : "text-gray-400"}
+          />
         </section>
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="overflow-hidden rounded-2xl border border-red-900/40 bg-gray-950 shadow-2xl shadow-red-950/30">
               <div className="border-b border-gray-800 p-5">
-                <h2 className="text-2xl font-black">Screen Broadcast Preview</h2>
+                <h2 className="text-2xl font-black">
+                  Screen Broadcast Preview
+                </h2>
                 <p className="mt-1 text-sm text-gray-400">
-                  Share your full screen, browser tab, presentation, dashboard, or any other app window.
+                  Share your full screen, browser tab, presentation, dashboard,
+                  or any other app window. To include system sound, enable
+                  system audio and select Share audio in the browser prompt.
                 </p>
               </div>
 
@@ -403,9 +512,14 @@ export default function AdminBroadcastStudioPage() {
                   <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-5 text-center">
                     <div>
                       <div className="mb-4 text-6xl">📡</div>
-                      <h2 className="mb-3 text-3xl font-black">Ready to Share Screen?</h2>
+                      <h2 className="mb-3 text-3xl font-black">
+                        Ready to Share Screen?
+                      </h2>
                       <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-gray-400">
-                        Click Start Broadcast, then choose the screen, app, or browser tab you want to stream.
+                        Click Start Broadcast, then choose the screen, app, or
+                        browser tab you want to stream. If you need system
+                        sound, choose a tab/screen option that supports audio
+                        and tick Share audio.
                       </p>
                       <button
                         onClick={connectRoom}
@@ -489,13 +603,40 @@ export default function AdminBroadcastStudioPage() {
                 >
                   {micOn ? "Mute Mic" : "Unmute Mic"}
                 </button>
+
+                <button
+                  onClick={toggleSystemAudio}
+                  disabled={!room}
+                  className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700 disabled:text-gray-500"
+                >
+                  {systemAudioOn
+                    ? "Mute System Audio"
+                    : "Unmute System Audio"}
+                </button>
               </div>
             </div>
 
             <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5 sm:p-6">
-              <h2 className="mb-3 text-xl font-black text-yellow-300">Important</h2>
+              <h2 className="mb-3 text-xl font-black text-yellow-300">
+                Important
+              </h2>
               <p className="text-sm leading-6 text-gray-300">
-                Do not rebroadcast copyrighted video from YouTube, Netflix, sports channels, or paid apps unless you own the rights. Screen sharing is powerful, but it can create copyright risk.
+                System audio depends on the browser. On Chrome or Edge desktop,
+                choose a browser tab or supported screen option and tick Share
+                audio. StreamHub cannot force system audio if the browser does
+                not provide it.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 sm:p-6">
+              <h2 className="mb-3 text-xl font-black text-red-300">
+                Copyright Warning
+              </h2>
+              <p className="text-sm leading-6 text-gray-300">
+                Do not rebroadcast copyrighted video or audio from YouTube,
+                Netflix, sports channels, paid apps, or music platforms unless
+                you own the rights. Screen and system audio sharing can create
+                serious copyright risk.
               </p>
             </div>
           </div>
