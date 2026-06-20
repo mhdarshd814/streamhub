@@ -297,10 +297,8 @@ export default function WatchPage() {
 
     document.documentElement.classList.remove("streamhub-theater-mode");
     document.body.classList.remove("streamhub-theater-mode");
-    document.documentElement.classList.remove("streamhub-theater-mode");
-      document.body.classList.remove("streamhub-theater-mode");
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
   }
 
 
@@ -737,7 +735,23 @@ export default function WatchPage() {
     async function loadStreamData() {
       const { data, error } = await supabase
         .from("streams")
-        .select("*")
+        .select(`
+          id,
+          title,
+          category,
+          thumbnail_url,
+          status,
+          likes,
+          viewers,
+          total_views,
+          peak_viewers,
+          watch_minutes,
+          user_id,
+          visibility,
+          private_call_price,
+          is_suspended,
+          created_at
+        `)
         .eq("id", streamId)
         .single();
 
@@ -871,12 +885,13 @@ export default function WatchPage() {
     async function loadChat() {
       const { data, error } = await supabase
         .from("stream_chat")
-        .select("*")
+        .select("id, username, message, created_at")
         .eq("stream_id", streamId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (!error && data) {
-        setMessages(data);
+        setMessages([...data].reverse());
       }
 
       chatChannel = supabase
@@ -2365,3 +2380,4 @@ export default function WatchPage() {
     </main>
   );
 }
+
