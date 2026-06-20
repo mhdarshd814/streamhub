@@ -17,6 +17,12 @@ type Profile = {
   is_global_muted: boolean | null;
   is_shadow_banned: boolean | null;
   created_at: string | null;
+
+  country_name: string | null;
+  country_code: string | null;
+  phone_number: string | null;
+  whatsapp_number: string | null;
+  phone_verified: boolean | null;
 };
 
 export default function AdminUsersPage() {
@@ -59,7 +65,7 @@ export default function AdminUsersPage() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, username, display_name, avatar_url, followers, following, is_verified, is_admin, is_banned, is_global_muted, is_shadow_banned, created_at"
+        "id, username, display_name, avatar_url, followers, following, is_verified, is_admin, is_banned, is_global_muted, is_shadow_banned, created_at, country_name, country_code, phone_number, whatsapp_number, phone_verified"
       )
       .order("created_at", { ascending: false });
 
@@ -100,6 +106,38 @@ export default function AdminUsersPage() {
     await loadUsers();
   }
 
+  async function togglePhoneVerified(targetUser: Profile) {
+    setUpdatingId(targetUser.id);
+
+    const nextValue = !targetUser.phone_verified;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        phone_verified: nextValue,
+      })
+      .eq("id", targetUser.id);
+
+    setUpdatingId(null);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await loadUsers();
+  }
+
+  function fullPhone(user: Profile) {
+    if (!user.phone_number) return "Not Added";
+    return `${user.country_code || ""} ${user.phone_number}`.trim();
+  }
+
+  function fullWhatsapp(user: Profile) {
+    if (!user.whatsapp_number) return "Not Added";
+    return `${user.country_code || ""} ${user.whatsapp_number}`.trim();
+  }
+
   const filteredUsers = useMemo(() => {
     const value = search.trim().toLowerCase();
 
@@ -109,7 +147,11 @@ export default function AdminUsersPage() {
       return (
         user.username?.toLowerCase().includes(value) ||
         user.display_name?.toLowerCase().includes(value) ||
-        user.id.toLowerCase().includes(value)
+        user.id.toLowerCase().includes(value) ||
+        user.country_name?.toLowerCase().includes(value) ||
+        user.country_code?.toLowerCase().includes(value) ||
+        user.phone_number?.toLowerCase().includes(value) ||
+        user.whatsapp_number?.toLowerCase().includes(value)
       );
     });
   }, [search, users]);
@@ -121,6 +163,7 @@ export default function AdminUsersPage() {
   const shadowBannedCount = users.filter(
     (user) => user.is_shadow_banned
   ).length;
+  const phoneVerifiedCount = users.filter((user) => user.phone_verified).length;
 
   if (loading) {
     return (
@@ -164,7 +207,8 @@ export default function AdminUsersPage() {
             </h1>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              Manage bans, mutes, shadow bans, verification and admin access.
+              Manage bans, mutes, shadow bans, verification, phone verification
+              and admin access.
             </p>
           </div>
 
@@ -185,44 +229,20 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        <div className="mb-7 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-            <p className="mb-2 text-sm text-gray-400">Users</p>
-            <h2 className="text-3xl font-black">{users.length}</h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-            <p className="mb-2 text-sm text-gray-400">Verified</p>
-            <h2 className="text-3xl font-black text-blue-400">
-              {verifiedCount}
-            </h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-            <p className="mb-2 text-sm text-gray-400">Admins</p>
-            <h2 className="text-3xl font-black text-red-500">{adminCount}</h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-            <p className="mb-2 text-sm text-gray-400">Banned</p>
-            <h2 className="text-3xl font-black text-yellow-400">
-              {bannedCount}
-            </h2>
-          </div>
-
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-            <p className="mb-2 text-sm text-gray-400">Muted/Shadow</p>
-            <h2 className="text-3xl font-black text-purple-400">
-              {mutedCount + shadowBannedCount}
-            </h2>
-          </div>
+        <div className="mb-7 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
+          <Stat label="Users" value={users.length} />
+          <Stat label="Verified" value={verifiedCount} color="text-blue-400" />
+          <Stat label="Phone Verified" value={phoneVerifiedCount} color="text-green-400" />
+          <Stat label="Admins" value={adminCount} color="text-red-500" />
+          <Stat label="Banned" value={bannedCount} color="text-yellow-400" />
+          <Stat label="Muted/Shadow" value={mutedCount + shadowBannedCount} color="text-purple-400" />
         </div>
 
         <div className="mb-7 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by username, display name, or user ID..."
+            placeholder="Search username, display name, user ID, country, phone, WhatsApp..."
             className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
           />
         </div>
@@ -269,35 +289,12 @@ export default function AdminUsersPage() {
                             {name}
                           </h3>
 
-                          {user.is_verified && (
-                            <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-black">
-                              VERIFIED
-                            </span>
-                          )}
-
-                          {user.is_admin && (
-                            <span className="rounded-full bg-red-600 px-2 py-1 text-xs font-black">
-                              ADMIN
-                            </span>
-                          )}
-
-                          {user.is_banned && (
-                            <span className="rounded-full bg-yellow-600 px-2 py-1 text-xs font-black">
-                              BANNED
-                            </span>
-                          )}
-
-                          {user.is_global_muted && (
-                            <span className="rounded-full bg-purple-600 px-2 py-1 text-xs font-black">
-                              MUTED
-                            </span>
-                          )}
-
-                          {user.is_shadow_banned && (
-                            <span className="rounded-full bg-zinc-600 px-2 py-1 text-xs font-black">
-                              SHADOW
-                            </span>
-                          )}
+                          {user.is_verified && <Badge text="VERIFIED" color="bg-blue-600" />}
+                          {user.phone_verified && <Badge text="PHONE VERIFIED" color="bg-green-600" />}
+                          {user.is_admin && <Badge text="ADMIN" color="bg-red-600" />}
+                          {user.is_banned && <Badge text="BANNED" color="bg-yellow-600" />}
+                          {user.is_global_muted && <Badge text="MUTED" color="bg-purple-600" />}
+                          {user.is_shadow_banned && <Badge text="SHADOW" color="bg-zinc-600" />}
                         </div>
 
                         <p className="text-sm text-gray-400">
@@ -312,10 +309,45 @@ export default function AdminUsersPage() {
                           {user.followers || 0} followers •{" "}
                           {user.following || 0} following
                         </p>
+
+                        <div className="mt-4 rounded-xl border border-gray-800 bg-black/40 p-4 text-xs text-gray-300">
+                          <p className="mb-2 font-black text-white">
+                            Private Contact Details
+                          </p>
+
+                          <p>
+                            <span className="font-bold text-gray-400">Country:</span>{" "}
+                            {user.country_name || "Not Added"}{" "}
+                            {user.country_code ? `(${user.country_code})` : ""}
+                          </p>
+
+                          <p className="mt-1">
+                            <span className="font-bold text-gray-400">Mobile:</span>{" "}
+                            {fullPhone(user)}
+                          </p>
+
+                          <p className="mt-1">
+                            <span className="font-bold text-gray-400">WhatsApp:</span>{" "}
+                            {fullWhatsapp(user)}
+                          </p>
+
+                          <p className="mt-1">
+                            <span className="font-bold text-gray-400">Phone Status:</span>{" "}
+                            {user.phone_verified ? (
+                              <span className="font-bold text-green-400">
+                                Verified
+                              </span>
+                            ) : (
+                              <span className="font-bold text-yellow-400">
+                                Not Verified
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:min-w-[520px]">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:min-w-[560px]">
                       <button
                         onClick={() =>
                           updateUserFlags(user, {
@@ -330,6 +362,20 @@ export default function AdminUsersPage() {
                         }
                       >
                         {user.is_verified ? "Remove Verify" : "Verify Creator"}
+                      </button>
+
+                      <button
+                        onClick={() => togglePhoneVerified(user)}
+                        disabled={updatingId === user.id || !user.phone_number}
+                        className={
+                          user.phone_verified
+                            ? "rounded-xl bg-gray-700 px-4 py-3 text-sm font-bold hover:bg-gray-600 disabled:opacity-50"
+                            : "rounded-xl bg-green-600 px-4 py-3 text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+                        }
+                      >
+                        {user.phone_verified
+                          ? "Remove Phone Verify"
+                          : "Verify Phone"}
                       </button>
 
                       <button
@@ -417,5 +463,30 @@ export default function AdminUsersPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  color = "text-white",
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+      <p className="mb-2 text-sm text-gray-400">{label}</p>
+      <h2 className={`text-3xl font-black ${color}`}>{value}</h2>
+    </div>
+  );
+}
+
+function Badge({ text, color }: { text: string; color: string }) {
+  return (
+    <span className={`rounded-full px-2 py-1 text-xs font-black ${color}`}>
+      {text}
+    </span>
   );
 }
