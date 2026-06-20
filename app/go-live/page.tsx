@@ -15,7 +15,7 @@ export default function GoLivePage() {
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<StreamVisibility>("public");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [privateCallPriceOption, setPrivateCallPriceOption] = useState("25");
+  const [privateCallPriceOption, setPrivateCallPriceOption] = useState("0");
   const [customPrivateCallPrice, setCustomPrivateCallPrice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
