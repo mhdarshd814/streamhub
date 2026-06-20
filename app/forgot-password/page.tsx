@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from "../../lib/supabase";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -37,21 +34,21 @@ export default function ForgotPasswordPage() {
     }
 
     setSent(true);
-    toast.success("Password reset email sent.");
-
-    setTimeout(() => {
-      router.replace("/login");
-    }, 2500);
+    toast.success("Check your email.");
   }
 
   return (
     <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center bg-black px-5 py-4 text-white">
       <div className="w-full max-w-md">
         <div className="premium-card rounded-3xl p-6">
-          <h1 className="text-3xl font-black">Forgot password?</h1>
+          <h1 className="text-3xl font-black">
+            {sent ? "Check Your Email" : "Forgot password?"}
+          </h1>
 
           <p className="mt-2 text-sm text-gray-400">
-            Enter your email and we will send you a password reset link.
+            {sent
+              ? "If this email is registered with StreamHub, a reset link has been sent. Please check your inbox or spam folder."
+              : "Enter your email and we will send you a password reset link."}
           </p>
 
           <div className="mt-6 space-y-4">
@@ -79,7 +76,7 @@ export default function ForgotPasswordPage() {
               {loading
                 ? "Sending..."
                 : sent
-                  ? "Email Sent - Returning to Login..."
+                  ? "Check Your Email"
                   : "Send Reset Link"}
             </button>
 
@@ -88,6 +85,13 @@ export default function ForgotPasswordPage() {
               className="block text-center text-sm font-semibold text-red-500 hover:text-red-400"
             >
               Back to login
+            </Link>
+
+            <Link
+              href="/signup"
+              className="block text-center text-sm font-semibold text-gray-300 hover:text-white"
+            >
+              Create Account
             </Link>
           </div>
         </div>
