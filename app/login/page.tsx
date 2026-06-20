@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -87,8 +88,12 @@ export default function LoginPage() {
     <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center bg-black px-5 py-4 text-white">
       <div className="slide-up w-full max-w-md">
         <div className="mb-5 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
-            <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+          <div className="premium-glow mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30">
+            <img
+              src="/icon-512.png"
+              alt="StreamHub"
+              className="h-full w-full object-cover"
+            />
           </div>
 
           <h1 className="text-4xl font-black">
@@ -107,7 +112,9 @@ export default function LoginPage() {
               Welcome back
             </p>
             <h2 className="mt-2 text-3xl font-black">Login</h2>
-            <p className="mt-1 text-sm text-gray-400">Continue to your live feed.</p>
+            <p className="mt-1 text-sm text-gray-400">
+              Continue to your live feed.
+            </p>
           </div>
 
           <div className="space-y-3.5">
@@ -136,6 +143,15 @@ export default function LoginPage() {
               }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20 disabled:opacity-70"
             />
+
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-semibold text-red-500 hover:text-red-400"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
             <button
               type="button"
