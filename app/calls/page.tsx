@@ -225,9 +225,13 @@ export default function CallsPage() {
       return;
     }
 
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     await Promise.all(
       expiredCalls.map(async (item: any) => {
-        if (!item.stream_id || !item.receiver_id) return;
+        if (!item.stream_id || !item.receiver_id || !item.caller_id) return;
 
         await supabase
           .from("stream_guests")
@@ -235,6 +239,61 @@ export default function CallsPage() {
           .eq("stream_id", item.stream_id)
           .eq("guest_id", item.receiver_id)
           .eq("status", "pending");
+
+        await supabase.from("notifications").insert([
+          {
+            user_id: item.caller_id,
+            type: "private_call_missed",
+            title: "Missed Call",
+            message: "Your private call was not answered.",
+            link: "/calls",
+            is_read: false,
+          },
+          {
+            user_id: item.receiver_id,
+            type: "private_call_missed",
+            title: "Missed Call",
+            message: "You missed a private call.",
+            link: "/calls",
+            is_read: false,
+          },
+        ]);
+
+        if (session?.access_token) {
+          await Promise.all([
+            fetch("/api/push/send", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                userId: item.caller_id,
+                title: "Missed Call",
+                message: "Your private call was not answered.",
+                url: "/calls",
+                notificationType: "private_call_missed",
+                streamId: item.stream_id,
+              }),
+            }).catch(() => {}),
+
+            fetch("/api/push/send", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                userId: item.receiver_id,
+                title: "Missed Call",
+                message: "You missed a private call.",
+                url: "/calls",
+                notificationType: "private_call_missed",
+                streamId: item.stream_id,
+              }),
+            }).catch(() => {}),
+          ]);
+        }
       })
     );
 
