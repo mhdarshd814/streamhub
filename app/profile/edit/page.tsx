@@ -43,6 +43,8 @@ const COUNTRIES = [
   { name: "United States", code: "+1" },
 ];
 
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+
 export default function EditProfilePage() {
   const [profileId, setProfileId] = useState("");
   const [username, setUsername] = useState("");
@@ -122,7 +124,6 @@ export default function EditProfilePage() {
       return;
     }
 
-    const maxSize = 200 * 1024;
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
     if (!allowedTypes.includes(file.type)) {
@@ -130,8 +131,8 @@ export default function EditProfilePage() {
       return;
     }
 
-    if (file.size > maxSize) {
-      alert("Avatar image must be less than 200 KB.");
+    if (file.size > MAX_AVATAR_SIZE) {
+      alert("Avatar image must be less than 2 MB.");
       return;
     }
 
@@ -160,9 +161,10 @@ export default function EditProfilePage() {
       }
 
       const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+      const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
 
-      setAvatarUrl(data.publicUrl);
-      alert("Avatar uploaded successfully!");
+      setAvatarUrl(publicUrl);
+      alert("Avatar uploaded successfully. Click Save Profile to apply it.");
     } catch (error: any) {
       alert(error.message || "Upload failed");
     } finally {
@@ -384,7 +386,7 @@ export default function EditProfilePage() {
 
             <div className="rounded-2xl border border-gray-800 bg-black/30 p-4">
               <label className="mb-3 block text-sm font-semibold text-gray-300">
-                Profile Picture Max 200 KB
+                Profile Picture Max 2 MB
               </label>
 
               <div className="mb-5 flex justify-center">
@@ -393,6 +395,7 @@ export default function EditProfilePage() {
                     src={avatarUrl}
                     alt="Avatar preview"
                     className="h-28 w-28 rounded-full border border-gray-700 bg-gray-700 object-cover sm:h-32 sm:w-32"
+                    onError={() => setAvatarUrl("")}
                   />
                 ) : (
                   <div className="flex h-28 w-28 items-center justify-center rounded-full border border-gray-700 bg-gray-800 text-4xl sm:h-32 sm:w-32">
@@ -414,7 +417,7 @@ export default function EditProfilePage() {
               {uploading && <p className="text-sm text-gray-400">Uploading image...</p>}
 
               <p className="mt-4 text-xs leading-5 text-gray-500">
-                Use a clear square image. Large images will be rejected, so keep it below 200 KB.
+                JPG, PNG and WEBP images up to 2 MB are supported.
               </p>
             </div>
           </div>
