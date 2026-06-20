@@ -29,6 +29,8 @@ type CallRequest = {
   created_at: string;
   accepted_at: string | null;
   declined_at: string | null;
+  expires_at?: string | null;
+  ring_status?: string | null;
   caller?: Profile | null;
   receiver?: Profile | null;
   stream?: CallStream | null;
@@ -48,6 +50,12 @@ export default function CallsPage() {
 
   useEffect(() => {
     loadCalls();
+
+    const expiryTimer = setInterval(() => {
+      expireStaleCalls();
+    }, 10000);
+
+    return () => clearInterval(expiryTimer);
   }, []);
 
   useEffect(() => {
@@ -177,6 +185,61 @@ export default function CallsPage() {
     setLoading(false);
   }
 
+  async function expireStaleCalls() {
+    const now = new Date().toISOString();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id) return;
+
+    const { data: expiredCalls, error } = await supabase
+      .from("private_call_requests")
+      .select("id, stream_id, caller_id, receiver_id")
+      .eq("status", "pending")
+      .lt("expires_at", now)
+      .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+    if (error) {
+      console.warn("Call expiry check skipped:", error.message);
+      return;
+    }
+
+    if (!expiredCalls || expiredCalls.length === 0) return;
+
+    const expiredIds = expiredCalls.map((item: any) => item.id).filter(Boolean);
+
+    if (expiredIds.length === 0) return;
+
+    const { error: updateError } = await supabase
+      .from("private_call_requests")
+      .update({
+        status: "missed",
+        ring_status: "expired",
+      })
+      .in("id", expiredIds);
+
+    if (updateError) {
+      console.warn("Call expiry update skipped:", updateError.message);
+      return;
+    }
+
+    await Promise.all(
+      expiredCalls.map(async (item: any) => {
+        if (!item.stream_id || !item.receiver_id) return;
+
+        await supabase
+          .from("stream_guests")
+          .update({ status: "declined" })
+          .eq("stream_id", item.stream_id)
+          .eq("guest_id", item.receiver_id)
+          .eq("status", "pending");
+      })
+    );
+
+    await loadCalls();
+  }
   async function searchUsers() {
     const keyword = searchText.trim();
 
