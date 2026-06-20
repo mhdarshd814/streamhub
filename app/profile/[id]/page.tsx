@@ -690,6 +690,9 @@ export default function PublicProfilePage() {
                       <ProfileAction label="🎥 Go Live" href="/go-live" />
                       <ProfileAction label="📅 Schedule Stream" href="/schedule" />
                       <ProfileAction label="⚙️ Settings" href="/notifications/settings" />
+                      <ProfileAction label="🔐 Privacy Policy" href="/privacy" />
+                      <ProfileAction label="📜 Terms" href="/terms" />
+                      <ProfileAction label="🗑️ Delete Account" href="/delete-account" />
 
                       <button
                         onClick={logout}
