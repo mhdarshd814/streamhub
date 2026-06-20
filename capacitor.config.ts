@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: "public",
 
   server: {
-    url: "https://streamhub-ebon.vercel.app",
+    url: "https://streamhubhq.com",
     cleartext: false,
   },
 

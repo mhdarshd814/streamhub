@@ -3,12 +3,59 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 
+const COUNTRIES = [
+  { name: "Afghanistan", code: "+93" },
+  { name: "Albania", code: "+355" },
+  { name: "Algeria", code: "+213" },
+  { name: "Argentina", code: "+54" },
+  { name: "Australia", code: "+61" },
+  { name: "Austria", code: "+43" },
+  { name: "Bahrain", code: "+973" },
+  { name: "Bangladesh", code: "+880" },
+  { name: "Belgium", code: "+32" },
+  { name: "Brazil", code: "+55" },
+  { name: "Canada", code: "+1" },
+  { name: "China", code: "+86" },
+  { name: "Egypt", code: "+20" },
+  { name: "France", code: "+33" },
+  { name: "Germany", code: "+49" },
+  { name: "India", code: "+91" },
+  { name: "Indonesia", code: "+62" },
+  { name: "Italy", code: "+39" },
+  { name: "Japan", code: "+81" },
+  { name: "Jordan", code: "+962" },
+  { name: "Kuwait", code: "+965" },
+  { name: "Malaysia", code: "+60" },
+  { name: "Morocco", code: "+212" },
+  { name: "Nepal", code: "+977" },
+  { name: "Netherlands", code: "+31" },
+  { name: "Oman", code: "+968" },
+  { name: "Pakistan", code: "+92" },
+  { name: "Philippines", code: "+63" },
+  { name: "Qatar", code: "+974" },
+  { name: "Saudi Arabia", code: "+966" },
+  { name: "Singapore", code: "+65" },
+  { name: "South Africa", code: "+27" },
+  { name: "Sri Lanka", code: "+94" },
+  { name: "Turkey", code: "+90" },
+  { name: "United Arab Emirates", code: "+971" },
+  { name: "United Kingdom", code: "+44" },
+  { name: "United States", code: "+1" },
+];
+
 export default function EditProfilePage() {
   const [profileId, setProfileId] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
+
+  const [countryName, setCountryName] = useState("");
+  const [countryCode, setCountryCode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+
   const [uploading, setUploading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
 
@@ -48,7 +95,25 @@ export default function EditProfilePage() {
     setDisplayName(data.display_name || "");
     setAvatarUrl(data.avatar_url || "");
     setBio(data.bio || "");
+
+    setCountryName(data.country_name || "");
+    setCountryCode(data.country_code || "");
+    setPhoneNumber(data.phone_number || "");
+    setWhatsappNumber(data.whatsapp_number || "");
+    setPhoneVerified(!!data.phone_verified);
+
     setCheckingAccess(false);
+  }
+
+  function handleCountryChange(value: string) {
+    const selected = COUNTRIES.find((item) => item.name === value);
+
+    setCountryName(selected?.name || "");
+    setCountryCode(selected?.code || "");
+  }
+
+  function cleanNumber(value: string) {
+    return value.replace(/[^\d]/g, "");
   }
 
   async function uploadAvatar(file: File) {
@@ -58,13 +123,7 @@ export default function EditProfilePage() {
     }
 
     const maxSize = 200 * 1024;
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/webp",
-    ];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
     if (!allowedTypes.includes(file.type)) {
       alert("Only JPG, PNG and WEBP images are allowed.");
@@ -84,26 +143,7 @@ export default function EditProfilePage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setUploading(false);
         window.location.href = "/login";
-        return;
-      }
-
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("is_banned")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        alert(profileError.message);
-        setUploading(false);
-        return;
-      }
-
-      if (profileData?.is_banned) {
-        setUploading(false);
-        window.location.href = "/banned";
         return;
       }
 
@@ -112,13 +152,10 @@ export default function EditProfilePage() {
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(fileName, file, {
-          upsert: true,
-        });
+        .upload(fileName, file, { upsert: true });
 
       if (uploadError) {
         alert(uploadError.message);
-        setUploading(false);
         return;
       }
 
@@ -141,6 +178,16 @@ export default function EditProfilePage() {
 
     if (!username.trim()) {
       alert("Username is required.");
+      return;
+    }
+
+    if (phoneNumber.trim() && !countryCode) {
+      alert("Please select a country before adding a mobile number.");
+      return;
+    }
+
+    if (whatsappNumber.trim() && !countryCode) {
+      alert("Please select a country before adding a WhatsApp number.");
       return;
     }
 
@@ -176,6 +223,10 @@ export default function EditProfilePage() {
         display_name: displayName.trim(),
         avatar_url: avatarUrl || null,
         bio: bio.trim() || null,
+        country_name: countryName || null,
+        country_code: countryCode || null,
+        phone_number: cleanNumber(phoneNumber) || null,
+        whatsapp_number: cleanNumber(whatsappNumber) || null,
       })
       .eq("id", profileId);
 
@@ -200,10 +251,8 @@ export default function EditProfilePage() {
     <div className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-4xl">
         <button
-          onClick={() => {
-            window.location.href = "/profile";
-          }}
-          className="mb-6 rounded-xl bg-gray-800 px-5 py-3 text-sm font-bold hover:bg-gray-700 sm:mb-8 sm:text-base"
+          onClick={() => (window.location.href = "/profile")}
+          className="mb-6 rounded-xl bg-gray-800 px-5 py-3 text-sm font-bold hover:bg-gray-700"
         >
           Back to Profile
         </button>
@@ -219,41 +268,110 @@ export default function EditProfilePage() {
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-gray-400 sm:text-base">
-              Update your public creator identity, avatar, and profile details.
+              Update your public creator identity and private account contact details.
             </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-300 sm:text-base">
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
                 Username
               </label>
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Username"
-                className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
+                className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
               />
 
-              <label className="mb-2 block text-sm font-semibold text-gray-300 sm:text-base">
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
                 Display Name
               </label>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Display Name"
-                className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
+                className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
               />
 
-              <label className="mb-2 block text-sm font-semibold text-gray-300 sm:text-base">
+              <label className="mb-2 block text-sm font-semibold text-gray-300">
                 Bio
               </label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Tell people about yourself..."
-                className="mb-6 h-32 w-full resize-none rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm outline-none focus:border-red-500 sm:p-4 sm:text-base"
+                className="mb-6 h-32 w-full resize-none rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
               />
+
+              <div className="mb-6 rounded-2xl border border-gray-800 bg-black/30 p-4">
+                <h2 className="mb-4 text-xl font-black">Private Contact Details</h2>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-300">
+                  Country
+                </label>
+                <select
+                  value={countryName}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
+                >
+                  <option value="">Select country</option>
+                  {COUNTRIES.map((country) => (
+                    <option key={`${country.name}-${country.code}`} value={country.name}>
+                      {country.name} ({country.code})
+                    </option>
+                  ))}
+                </select>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-300">
+                  Mobile Number
+                </label>
+                <input
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(cleanNumber(e.target.value))}
+                  placeholder="Enter mobile number without country code"
+                  inputMode="numeric"
+                  className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
+                />
+
+                <label className="mb-2 block text-sm font-semibold text-gray-300">
+                  WhatsApp Number Optional
+                </label>
+                <input
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(cleanNumber(e.target.value))}
+                  placeholder="Enter WhatsApp number without country code"
+                  inputMode="numeric"
+                  className="mb-5 w-full rounded-xl border border-gray-700 bg-gray-800 p-4 outline-none focus:border-red-500"
+                />
+
+                <div className="rounded-xl border border-gray-700 bg-gray-800 p-4">
+                  <p className="text-sm text-gray-300">
+                    Saved Format:{" "}
+                    <span className="font-bold text-white">
+                      {countryCode || "+Code"} {phoneNumber || "Mobile Number"}
+                    </span>
+                  </p>
+
+                  <p className="mt-2 text-sm text-gray-300">
+                    Phone Verification:{" "}
+                    <span
+                      className={
+                        phoneVerified
+                          ? "font-bold text-green-400"
+                          : "font-bold text-yellow-400"
+                      }
+                    >
+                      {phoneVerified ? "Verified" : "Not Verified"}
+                    </span>
+                  </p>
+
+                  <p className="mt-3 text-xs leading-5 text-gray-500">
+                    These details are private. They are used for account recovery,
+                    creator verification, payout verification, and future SMS OTP.
+                  </p>
+                </div>
+              </div>
 
               <button
                 onClick={saveProfile}
@@ -288,21 +406,15 @@ export default function EditProfilePage() {
                 accept="image/jpeg,image/png,image/webp"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-
-                  if (file) {
-                    uploadAvatar(file);
-                  }
+                  if (file) uploadAvatar(file);
                 }}
                 className="mb-4 w-full rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white"
               />
 
-              {uploading && (
-                <p className="text-sm text-gray-400">Uploading image...</p>
-              )}
+              {uploading && <p className="text-sm text-gray-400">Uploading image...</p>}
 
               <p className="mt-4 text-xs leading-5 text-gray-500">
-                Use a clear square image. Large images will be rejected, so keep
-                it below 200 KB.
+                Use a clear square image. Large images will be rejected, so keep it below 200 KB.
               </p>
             </div>
           </div>
