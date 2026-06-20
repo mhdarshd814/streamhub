@@ -119,58 +119,70 @@ export default function EditProfilePage() {
   }
 
   async function uploadAvatar(file: File) {
-    if (!profileId) {
-      alert("Profile not loaded yet.");
-      return;
-    }
-
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
-    if (!allowedTypes.includes(file.type)) {
-      alert("Only JPG, PNG and WEBP images are allowed.");
-      return;
-    }
-
-    if (file.size > MAX_AVATAR_SIZE) {
-      alert("Avatar image must be less than 2 MB.");
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${profileId}-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) {
-        alert(uploadError.message);
-        return;
-      }
-
-      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
-
-      setAvatarUrl(publicUrl);
-      alert("Avatar uploaded successfully. Click Save Profile to apply it.");
-    } catch (error: any) {
-      alert(error.message || "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+  if (!profileId) {
+    alert("Profile not loaded yet.");
+    return;
   }
+
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+  if (!allowedTypes.includes(file.type)) {
+    alert("Only JPG, PNG and WEBP images are allowed.");
+    return;
+  }
+
+  if (file.size > MAX_AVATAR_SIZE) {
+    alert("Avatar image must be less than 2 MB.");
+    return;
+  }
+
+  setUploading(true);
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
+    const fileName = `${profileId}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) {
+      alert(uploadError.message);
+      return;
+    }
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+    const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        avatar_url: publicUrl,
+      })
+      .eq("id", profileId);
+
+    if (profileError) {
+      alert(profileError.message);
+      return;
+    }
+
+    setAvatarUrl(publicUrl);
+    alert("Avatar uploaded and saved successfully!");
+  } catch (error: any) {
+    alert(error.message || "Upload failed");
+  } finally {
+    setUploading(false);
+  }
+}
 
   async function saveProfile() {
     if (!profileId) {
