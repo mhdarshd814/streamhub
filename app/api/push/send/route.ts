@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +13,36 @@ type PushSendBody = {
   url?: string;
   streamId?: string;
   notificationType?: string;
+  callId?: string;
 };
 
 function bad(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
+}
+
+function getFirebaseAdmin() {
+  if (getApps().length > 0) return;
+
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+
+  if (!raw) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is missing");
+  }
+
+  const serviceAccount = JSON.parse(raw);
+
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
+}
+
+function getCallIdFromUrl(url?: string, explicitCallId?: string) {
+  if (explicitCallId) return explicitCallId;
+
+  if (!url) return "";
+
+  const match = url.match(/\/incoming-call\/([^/?#]+)/);
+  return match?.[1] || "";
 }
 
 export async function POST(req: Request) {
@@ -33,10 +61,6 @@ export async function POST(req: Request) {
 
     if (!supabaseUrl || !serviceRoleKey) {
       return bad("Supabase server keys are missing", 500);
-    }
-
-    if (!vapidPublicKey || !vapidPrivateKey || !vapidEmail) {
-      return bad("VAPID keys are missing", 500);
     }
 
     const authHeader = req.headers.get("authorization");
@@ -75,13 +99,8 @@ export async function POST(req: Request) {
 
     let allowedToSend = false;
 
-    if (profile?.is_admin) {
-      allowedToSend = true;
-    }
-
-    if (user.id === body.userId) {
-      allowedToSend = true;
-    }
+    if (profile?.is_admin) allowedToSend = true;
+    if (user.id === body.userId) allowedToSend = true;
 
     if (!allowedToSend && body.streamId) {
       const { data: streamData, error: streamError } = await supabase
@@ -103,71 +122,147 @@ export async function POST(req: Request) {
       return bad("Permission denied for this push notification", 403);
     }
 
-    webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+    const notificationType = body.notificationType || "general";
+    const url = body.url || "/notifications";
+    const callId = getCallIdFromUrl(url, body.callId);
 
-    const { data: subscriptions, error: subError } = await supabase
-      .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth")
-      .eq("user_id", body.userId);
+    let webSent = 0;
+    let webFailed = 0;
+    let androidSent = 0;
+    let androidFailed = 0;
 
-    if (subError) {
-      return bad(subError.message, 500);
-    }
+    if (vapidPublicKey && vapidPrivateKey && vapidEmail) {
+      webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
 
-    if (!subscriptions || subscriptions.length === 0) {
-      return NextResponse.json({
-        success: true,
-        sent: 0,
-        failed: 0,
-        message: "No active push subscriptions found for this user",
+      const { data: subscriptions, error: subError } = await supabase
+        .from("push_subscriptions")
+        .select("id, endpoint, p256dh, auth")
+        .eq("user_id", body.userId);
+
+      if (subError) {
+        return bad(subError.message, 500);
+      }
+
+      const webPayload = JSON.stringify({
+        title: body.title,
+        body: body.message || "",
+        url,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        notificationType,
+        type: notificationType,
+        streamId: body.streamId || "",
+        callId,
       });
+
+      await Promise.all(
+        (subscriptions || []).map(async (subscription) => {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: subscription.endpoint,
+                keys: {
+                  p256dh: subscription.p256dh,
+                  auth: subscription.auth,
+                },
+              },
+              webPayload
+            );
+
+            webSent++;
+          } catch (error: any) {
+            webFailed++;
+
+            if (error?.statusCode === 404 || error?.statusCode === 410) {
+              await supabase
+                .from("push_subscriptions")
+                .delete()
+                .eq("id", subscription.id);
+            }
+          }
+        })
+      );
     }
 
-    const payload = JSON.stringify({
-      title: body.title,
-      body: body.message || "",
-      url: body.url || "/notifications",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      notificationType: body.notificationType || "general",
-      streamId: body.streamId || null,
-    });
+    const { data: androidTokens, error: tokenError } = await supabase
+      .from("push_tokens")
+      .select("id, token")
+      .eq("user_id", body.userId)
+      .eq("platform", "android")
+      .eq("is_active", true);
 
-    let sent = 0;
-    let failed = 0;
+    if (tokenError) {
+      return bad(tokenError.message, 500);
+    }
 
-    await Promise.all(
-      subscriptions.map(async (subscription) => {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: subscription.endpoint,
-              keys: {
-                p256dh: subscription.p256dh,
-                auth: subscription.auth,
+    if (androidTokens && androidTokens.length > 0) {
+      getFirebaseAdmin();
+
+      await Promise.all(
+        androidTokens.map(async (row) => {
+          try {
+            await getMessaging().send({
+              token: row.token,
+              notification: {
+                title: body.title || "StreamHub",
+                body: body.message || "New notification",
               },
-            },
-            payload
-          );
+              data: {
+                type: notificationType,
+                notificationType,
+                url,
+                link: url,
+                streamId: body.streamId || "",
+                callId,
+              },
+              android: {
+                priority: "high",
+                ttl: 60 * 1000,
+                notification: {
+                  channelId:
+                    notificationType === "incoming_call"
+                      ? "incoming_calls"
+                      : "default",
+                  sound: "default",
+                  priority: "max",
+                  visibility: "public",
+                  defaultSound: true,
+                  defaultVibrateTimings: true,
+                },
+              },
+            });
 
-          sent++;
-        } catch (error: any) {
-          failed++;
+            androidSent++;
+          } catch (error: any) {
+            androidFailed++;
 
-          if (error?.statusCode === 404 || error?.statusCode === 410) {
-            await supabase
-              .from("push_subscriptions")
-              .delete()
-              .eq("id", subscription.id);
+            const code = error?.code || "";
+
+            if (
+              code.includes("registration-token-not-registered") ||
+              code.includes("invalid-registration-token")
+            ) {
+              await supabase
+                .from("push_tokens")
+                .update({
+                  is_active: false,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", row.id);
+            }
           }
-        }
-      })
-    );
+        })
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      sent,
-      failed,
+      webSent,
+      webFailed,
+      androidSent,
+      androidFailed,
+      totalSent: webSent + androidSent,
+      totalFailed: webFailed + androidFailed,
     });
   } catch (error: any) {
     console.error("Push send error:", error);
@@ -178,3 +273,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
