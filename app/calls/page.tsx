@@ -279,8 +279,6 @@ export default function CallsPage() {
     const targetName =
       target.display_name || target.username || "this user";
 
-    const confirmed = confirm(`Start a free private call with ${targetName}?`);
-    if (!confirmed) return;
 
     setCallingId(target.id);
 
