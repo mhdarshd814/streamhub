@@ -456,6 +456,9 @@ export default function Navbar() {
                       <MenuItem label="Schedule Stream" href="/schedule" goTo={goTo} />
                       <MenuItem label="Upcoming Streams" href="/streams/upcoming" goTo={goTo} />
                       <MenuItem label="Notifications" href="/notifications" goTo={goTo} />
+                      <MenuItem label="Privacy Policy" href="/privacy" goTo={goTo} />
+                      <MenuItem label="Terms of Service" href="/terms" goTo={goTo} />
+                      <MenuItem label="Delete Account" href="/delete-account" goTo={goTo} />
 
                       {profile?.is_admin && (
                         <button
