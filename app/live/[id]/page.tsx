@@ -2803,20 +2803,27 @@ export default function LiveRoomPage() {
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
 
-                {remoteVideos.length > 0 ? (
-                  <div className="absolute bottom-28 right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
-                    <RemoteVideoTile
-                      track={remoteVideos[0].track}
-                      identity={remoteVideos[0].identity}
-                      onClick={() => setFocusedVideo(remoteVideos[0].id)}
-                      className="h-full w-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="absolute bottom-28 right-4 flex h-32 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:bottom-8 sm:h-44 sm:w-36">
-                    Waiting
-                  </div>
-                )}
+                {visibleRemoteVideos.length > 0 ? (
+               <div className="absolute right-3 top-[calc(112px+env(safe-area-inset-top))] z-30 flex max-h-[calc(100dvh-280px)] w-24 flex-col gap-2 overflow-y-auto sm:right-5 sm:w-36">
+              {visibleRemoteVideos.map((video, index) => (
+               <div
+             key={video.id}
+         className="h-28 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/25 bg-black shadow-2xl sm:h-40 sm:w-36"
+          >
+           <RemoteVideoTile
+            track={video.track}
+          identity={video.identity || `Guest ${index + 1}`}
+          onClick={() => setFocusedVideo(video.id)}
+          className="h-full w-full"
+          />
+          </div>
+         ))}
+         </div>
+        ) : (
+       <div className="absolute right-3 top-[calc(112px+env(safe-area-inset-top))] z-30 flex h-28 w-24 items-center justify-center rounded-2xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:right-5 sm:h-40 sm:w-36">
+       Waiting
+       </div>
+       )}
               </>
             ) : (
               <>
@@ -2847,7 +2854,7 @@ export default function LiveRoomPage() {
 
                 <div
                   onClick={() => setFocusedVideo("local")}
-                  className="absolute bottom-28 right-4 h-32 w-24 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:bottom-8 sm:h-44 sm:w-36"
+                  className="absolute left-3 bottom-[calc(170px+env(safe-area-inset-bottom))] z-30 h-28 w-24 overflow-hidden rounded-2xl border border-white/25 bg-black shadow-2xl sm:left-5 sm:bottom-8 sm:h-40 sm:w-36"
                 >
                   <video
                     ref={theaterLocalVideoRef}
