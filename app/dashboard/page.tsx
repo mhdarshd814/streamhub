@@ -221,39 +221,62 @@ export default function DashboardPage() {
 
     setProfile(profileData || null);
 
-    const { data: streamsData, error: streamsError } = await supabase
-      .from("streams")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    const [
+      streamsResult,
+      scheduledResult,
+      walletCreatorResult,
+      walletUserResult,
+      tipsResult,
+      subscriptionsResult,
+      privateCallsResult,
+      privatePaymentsResult,
+      analyticsResult,
+    ] = await Promise.all([
+      safeSelect<Stream>(
+        supabase.from("streams").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(loadDesktopOnly ? 80 : 25)
+      ),
+      safeSelect<ScheduledStream>(
+        supabase.from("scheduled_streams").select("*").eq("creator_id", user.id).order("scheduled_start", { ascending: true }).limit(20)
+      ),
+      safeSelect<WalletRow>(
+        supabase.from("creator_wallets").select("*").eq("creator_id", user.id).limit(1)
+      ),
+      safeSelect<WalletRow>(
+        supabase.from("creator_wallets").select("*").eq("user_id", user.id).limit(1)
+      ),
+      safeSelect<TipRow>(
+        supabase.from("stream_tips").select("*").eq("creator_id", user.id).order("created_at", { ascending: false }).limit(loadDesktopOnly ? 60 : 15)
+      ),
+      safeSelect<SubscriptionRow>(
+        supabase.from("creator_subscriptions").select("*").eq("creator_id", user.id).order("created_at", { ascending: false }).limit(loadDesktopOnly ? 60 : 15)
+      ),
+      safeSelect<PrivateCallRow>(
+        supabase.from("private_call_requests").select("*").or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`).order("created_at", { ascending: false }).limit(loadDesktopOnly ? 60 : 20)
+      ),
+      safeSelect<PrivateCallPaymentRow>(
+        supabase.from("private_call_payments").select("*").or(`creator_id.eq.${user.id},caller_id.eq.${user.id},receiver_id.eq.${user.id}`).order("created_at", { ascending: false }).limit(loadDesktopOnly ? 60 : 20)
+      ),
+      loadDesktopOnly
+        ? safeSelect<AnalyticsRow>(
+            supabase.from("stream_daily_analytics").select("*").eq("creator_id", user.id).order("analytics_date", { ascending: true }).limit(90)
+          )
+        : Promise.resolve([]),
+    ]);
 
-    if (streamsError) {
-      alert(streamsError.message);
-      setLoading(false);
-      return;
-    }
+    setStreams(streamsResult);
+    setScheduledStreams(scheduledResult);
+    setWallet(walletCreatorResult[0] || walletUserResult[0] || null);
+    setTips(tipsResult);
+    setSubscriptions(subscriptionsResult);
+    setPrivateCalls(privateCallsResult);
+    setPrivateCallPayments(privatePaymentsResult);
+    setAnalyticsData(analyticsResult);
 
-    const userStreams = (streamsData || []) as Stream[];
-    setStreams(userStreams);
-
-    const scheduledData = await safeSelect<ScheduledStream>(
-      supabase
-        .from("scheduled_streams")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("scheduled_start", { ascending: true })
-    );
-
-    setScheduledStreams(scheduledData);
-
-    if (scheduledData.length > 0) {
-      const scheduledIds = scheduledData.map((item) => item.id);
+    if (scheduledResult.length > 0) {
+      const scheduledIds = scheduledResult.map((item) => item.id);
 
       const reminderData = await safeSelect<ReminderRow>(
-        supabase
-          .from("stream_reminders")
-          .select("id, scheduled_stream_id, user_id")
-          .in("scheduled_stream_id", scheduledIds)
+        supabase.from("stream_reminders").select("id, scheduled_stream_id, user_id").in("scheduled_stream_id", scheduledIds)
       );
 
       setReminders(reminderData);
@@ -261,88 +284,8 @@ export default function DashboardPage() {
       setReminders([]);
     }
 
-    const walletByCreator = await safeSelect<WalletRow>(
-      supabase
-        .from("creator_wallets")
-        .select("*")
-        .eq("creator_id", user.id)
-        .limit(1)
-    );
-
-    const walletByUser =
-      walletByCreator.length > 0
-        ? walletByCreator
-        : await safeSelect<WalletRow>(
-            supabase
-              .from("creator_wallets")
-              .select("*")
-              .eq("user_id", user.id)
-              .limit(1)
-          );
-
-    setWallet(walletByUser[0] || null);
-
-    const tipsByCreator = await safeSelect<TipRow>(
-      supabase
-        .from("stream_tips")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(loadDesktopOnly ? 100 : 20)
-    );
-
-    setTips(tipsByCreator);
-
-    const activeSubscriptions = await safeSelect<SubscriptionRow>(
-      supabase
-        .from("creator_subscriptions")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(loadDesktopOnly ? 100 : 20)
-    );
-
-    setSubscriptions(activeSubscriptions);
-
-    const privateCallRows = await safeSelect<PrivateCallRow>(
-      supabase
-        .from("private_call_requests")
-        .select("*")
-        .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(loadDesktopOnly ? 100 : 30)
-    );
-
-    setPrivateCalls(privateCallRows);
-
-    const privateCallPaymentRows = await safeSelect<PrivateCallPaymentRow>(
-      supabase
-        .from("private_call_payments")
-        .select("*")
-        .or(`creator_id.eq.${user.id},caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(loadDesktopOnly ? 100 : 30)
-    );
-
-    setPrivateCallPayments(privateCallPaymentRows);
-
-    if (loadDesktopOnly) {
-      const analyticsRows = await safeSelect<AnalyticsRow>(
-        supabase
-          .from("stream_daily_analytics")
-          .select("*")
-          .eq("creator_id", user.id)
-          .order("analytics_date", { ascending: true })
-      );
-
-      setAnalyticsData(analyticsRows);
-    } else {
-      setAnalyticsData([]);
-    }
-
     setLoading(false);
   }
-
   async function deleteStream(id: string) {
     const confirmed = confirm("Delete this stream? This cannot be undone.");
     if (!confirmed) return;
@@ -1104,3 +1047,4 @@ function formatMoney(value: number) {
     maximumFractionDigits: 2,
   });
 }
+
