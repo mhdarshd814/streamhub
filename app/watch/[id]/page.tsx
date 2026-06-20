@@ -276,6 +276,9 @@ export default function WatchPage() {
 
     setIsViewerFullscreen(true);
     setFullscreenChatOpen(false);
+
+    document.documentElement.classList.add("streamhub-theater-mode");
+    document.body.classList.add("streamhub-theater-mode");
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
 
@@ -291,8 +294,13 @@ export default function WatchPage() {
   function closeViewerFullscreen() {
     setIsViewerFullscreen(false);
     setFullscreenChatOpen(false);
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
+
+    document.documentElement.classList.remove("streamhub-theater-mode");
+    document.body.classList.remove("streamhub-theater-mode");
+    document.documentElement.classList.remove("streamhub-theater-mode");
+      document.body.classList.remove("streamhub-theater-mode");
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
   }
 
 
@@ -331,8 +339,10 @@ export default function WatchPage() {
     } catch {}
 
     await KeepAwake.allowSleep().catch(() => {});
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
+    document.documentElement.classList.remove("streamhub-theater-mode");
+      document.body.classList.remove("streamhub-theater-mode");
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
   }
 
   async function openAcceptedGuestStudio() {
@@ -1102,6 +1112,8 @@ export default function WatchPage() {
 
       removeViewerRecord();
       KeepAwake.allowSleep().catch(() => {});
+      document.documentElement.classList.remove("streamhub-theater-mode");
+      document.body.classList.remove("streamhub-theater-mode");
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
 
@@ -1830,7 +1842,7 @@ export default function WatchPage() {
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       {isViewerFullscreen && (
-        <div className="fixed inset-0 z-[10000] bg-black text-white">
+        <div className="fixed inset-0 z-[2147483647] bg-black text-white">
           <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
             <div
               ref={fullscreenVideoContainerRef}
