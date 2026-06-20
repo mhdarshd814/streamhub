@@ -9,6 +9,7 @@ type Profile = {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  is_banned?: boolean | null;
 };
 
 type CallStream = {
@@ -40,6 +41,11 @@ export default function CallsPage() {
   const [calls, setCalls] = useState<CallRequest[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  const [searchText, setSearchText] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<Profile[]>([]);
+  const [callingId, setCallingId] = useState<string | null>(null);
+
   useEffect(() => {
     loadCalls();
   }, []);
@@ -66,6 +72,16 @@ export default function CallsPage() {
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const timer = setTimeout(() => {
+      searchUsers();
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchText, userId]);
 
   async function loadCalls() {
     setLoading(true);
@@ -96,7 +112,8 @@ export default function CallsPage() {
       .from("private_call_requests")
       .select("*")
       .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     if (error) {
       alert(error.message);
@@ -131,7 +148,11 @@ export default function CallsPage() {
 
         let isPaid = false;
 
-        if (item.stream_id && stream?.private_call_price && stream.private_call_price > 0) {
+        if (
+          item.stream_id &&
+          stream?.private_call_price &&
+          stream.private_call_price > 0
+        ) {
           const { data: payment } = await supabase
             .from("private_call_payments")
             .select("id")
@@ -154,6 +175,159 @@ export default function CallsPage() {
 
     setCalls(enriched);
     setLoading(false);
+  }
+
+  async function searchUsers() {
+    const keyword = searchText.trim();
+
+    if (!keyword || keyword.length < 2 || !userId) {
+      setResults([]);
+      return;
+    }
+
+    const safeKeyword = keyword.replace(/[,()%]/g, "");
+
+    setSearching(true);
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url, is_banned")
+      .or(`username.ilike.%${safeKeyword}%,display_name.ilike.%${safeKeyword}%`)
+      .limit(8);
+
+    setSearching(false);
+
+    if (error) {
+      console.error("User search failed:", error.message);
+      setResults([]);
+      return;
+    }
+
+    setResults(
+      (data || []).filter(
+        (profile) => profile.id !== userId && !profile.is_banned
+      ) as Profile[]
+    );
+  }
+
+  async function startQuickCall(target: Profile) {
+    if (!userId || callingId) return;
+
+    const targetName =
+      target.display_name || target.username || "this user";
+
+    const confirmed = confirm(`Start a free private call with ${targetName}?`);
+    if (!confirmed) return;
+
+    setCallingId(target.id);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setCallingId(null);
+      window.location.href = "/login";
+      return;
+    }
+
+    const callTitle = `Private Call with ${targetName}`;
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+
+    const { data: streamData, error: streamError } = await supabase
+      .from("streams")
+      .insert([
+        {
+          user_id: userId,
+          title: callTitle,
+          category: "One-on-One Call",
+          description: "Private one-on-one video call.",
+          tags: "private,call,one-on-one",
+          visibility: "private",
+          status: "offline",
+          thumbnail_url: null,
+          private_call_price: 0,
+        },
+      ])
+      .select()
+      .single();
+
+    if (streamError || !streamData) {
+      setCallingId(null);
+      alert(streamError?.message || "Failed to create private call.");
+      return;
+    }
+
+    const { error: guestError } = await supabase.from("stream_guests").insert([
+      {
+        stream_id: streamData.id,
+        host_id: userId,
+        guest_id: target.id,
+        status: "pending",
+      },
+    ]);
+
+    if (guestError) {
+      setCallingId(null);
+      alert(guestError.message);
+      return;
+    }
+
+    const { data: callData, error: callError } = await supabase
+      .from("private_call_requests")
+      .insert([
+        {
+          caller_id: userId,
+          receiver_id: target.id,
+          stream_id: streamData.id,
+          status: "pending",
+          ring_status: "ringing",
+          expires_at: expiresAt,
+        },
+      ])
+      .select()
+      .single();
+
+    if (callError || !callData) {
+      setCallingId(null);
+      alert(callError?.message || "Failed to create call request.");
+      return;
+    }
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: target.id,
+        type: "private_call_request",
+        title: "Incoming Private Call",
+        message: "Someone is calling you on StreamHub.",
+        link: `/incoming-call/${callData.id}`,
+        is_read: false,
+      },
+    ]);
+
+    try {
+      await fetch("/api/push/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: target.id,
+          title: "Incoming Private Call",
+          message: "Someone is calling you on StreamHub.",
+          url: `/incoming-call/${callData.id}`,
+          notificationType: "incoming_call",
+          streamId: streamData.id,
+          callId: callData.id,
+        }),
+      });
+    } catch (pushError) {
+      console.error("Incoming call push failed:", pushError);
+    }
+
+    setCallingId(null);
+    window.location.href = `/live/${streamData.id}`;
   }
 
   async function acceptCall(call: CallRequest) {
@@ -183,16 +357,16 @@ export default function CallsPage() {
         return;
       }
     } else {
-  const { error } = await supabase.rpc("accept_private_call_request", {
-    p_call_request_id: call.id,
-  });
+      const { error } = await supabase.rpc("accept_private_call_request", {
+        p_call_request_id: call.id,
+      });
 
-  if (error) {
-    setUpdatingId(null);
-    alert(error.message);
-    return;
-  }
-}
+      if (error) {
+        setUpdatingId(null);
+        alert(error.message);
+        return;
+      }
+    }
 
     await supabase.from("notifications").insert([
       {
@@ -224,6 +398,7 @@ export default function CallsPage() {
       .from("private_call_requests")
       .update({
         status: "declined",
+        ring_status: "declined",
         declined_at: new Date().toISOString(),
       })
       .eq("id", call.id);
@@ -275,7 +450,7 @@ export default function CallsPage() {
             </h1>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              Manage incoming and outgoing private call requests. Incoming calls now also appear as a popup anywhere in the app.
+              Search a user, start a private call, and notify their Android phone instantly.
             </p>
           </div>
 
@@ -295,6 +470,80 @@ export default function CallsPage() {
             </Link>
           </div>
         </div>
+
+        <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
+          <div className="mb-5">
+            <p className="mb-2 text-sm font-bold text-purple-300">
+              Quick Private Call
+            </p>
+            <h2 className="text-2xl font-black">Search and Call</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              Type a username or display name. StreamHub will create the private room and send the Android call notification automatically.
+            </p>
+          </div>
+
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search username or display name..."
+            className="w-full rounded-2xl border border-purple-500/20 bg-black px-4 py-4 text-white outline-none placeholder:text-gray-500 focus:border-purple-500"
+          />
+
+          <div className="mt-4 space-y-3">
+            {searching && (
+              <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                Searching...
+              </div>
+            )}
+
+            {!searching && searchText.trim().length >= 2 && results.length === 0 && (
+              <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                No users found.
+              </div>
+            )}
+
+            {results.map((profile) => {
+              const name =
+                profile.display_name || profile.username || "StreamHub user";
+
+              return (
+                <div
+                  key={profile.id}
+                  className="flex flex-col gap-4 rounded-2xl border border-gray-800 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                      {profile.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        "??"
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-lg font-black">{name}</p>
+                      <p className="truncate text-sm text-gray-400">
+                        @{profile.username || "streamhub"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => startQuickCall(profile)}
+                    disabled={!!callingId}
+                    className="rounded-xl bg-green-600 px-5 py-3 text-sm font-black hover:bg-green-700 disabled:bg-gray-700"
+                  >
+                    {callingId === profile.id ? "Calling..." : "Call"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         <section className="mb-8 grid gap-4 sm:grid-cols-4">
           <Stat label="Incoming" value={incoming.length} color="text-purple-300" />
@@ -379,7 +628,7 @@ function CallCard({
                 className="h-full w-full object-cover"
               />
             ) : (
-              "👤"
+              "??"
             )}
           </div>
 
@@ -396,7 +645,7 @@ function CallCard({
 
             {call.stream && (
               <p className="mt-2 text-sm font-bold text-purple-300">
-                {call.stream.title} • {price > 0 ? `$${price.toFixed(2)}` : "Free"}
+                {call.stream.title} � {price > 0 ? `$${price.toFixed(2)}` : "Free"}
               </p>
             )}
           </div>
@@ -409,6 +658,8 @@ function CallCard({
                 call.status === "accepted"
                   ? "bg-green-500/10 text-green-400"
                   : call.status === "declined"
+                  ? "bg-red-500/10 text-red-300"
+                  : call.status === "missed"
                   ? "bg-red-500/10 text-red-300"
                   : "bg-yellow-500/10 text-yellow-300"
               }`}
