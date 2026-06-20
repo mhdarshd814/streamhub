@@ -2556,6 +2556,34 @@ export default function LiveRoomPage() {
     await loadGuestInvites();
   }
 
+  async function cancelOutgoingPrivateCall() {
+    if (!stream || !currentUserId || stream.visibility !== "private") return;
+
+    const { error } = await supabase
+      .from("private_call_requests")
+      .update({
+        status: "cancelled",
+        ring_status: "cancelled",
+        declined_at: new Date().toISOString(),
+      })
+      .eq("stream_id", stream.id)
+      .eq("caller_id", currentUserId)
+      .eq("status", "pending");
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await supabase
+      .from("stream_guests")
+      .update({ status: "declined" })
+      .eq("stream_id", stream.id)
+      .eq("status", "pending");
+
+    setStatusText("Private call cancelled.");
+    router.push("/calls");
+  }
   async function acceptInvite() {
     if (!pendingInvite) return;
 
@@ -3364,19 +3392,30 @@ export default function LiveRoomPage() {
                             : "Join with your camera and microphone as guest streamer."}
                         </p>
 
-                        <button
-                          onClick={startLiveStream}
-                          disabled={starting}
-                          className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
-                        >
-                          {starting
-                            ? "Starting..."
-                            : role === "host"
-                              ? isPrivate
-                                ? "Start Private Call"
-                                : "Start Live Stream"
-                              : "Join Stream"}
-                        </button>
+                        <div className="flex flex-col gap-3 sm:items-center">
+                          <button
+                            onClick={startLiveStream}
+                            disabled={starting}
+                            className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
+                          >
+                            {starting
+                              ? "Starting..."
+                              : role === "host"
+                                ? isPrivate
+                                  ? "Start Private Call"
+                                  : "Start Live Stream"
+                                : "Join Stream"}
+                          </button>
+
+                          {role === "host" && isPrivate && !room && (
+                            <button
+                              onClick={cancelOutgoingPrivateCall}
+                              className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
+                            >
+                              Cancel Call
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -3388,19 +3427,30 @@ export default function LiveRoomPage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
                   {!room ? (
-                    <button
-                      onClick={startLiveStream}
-                      disabled={starting}
-                      className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700 disabled:bg-gray-700"
-                    >
-                      {starting
-                        ? "Starting..."
-                        : role === "host"
-                          ? isPrivate
-                            ? "Start Private Call"
-                            : "Start Stream"
-                          : "Join Stream"}
-                    </button>
+                    <>
+                      <button
+                        onClick={startLiveStream}
+                        disabled={starting}
+                        className="rounded-xl bg-red-600 px-6 py-3 font-bold hover:bg-red-700 disabled:bg-gray-700"
+                      >
+                        {starting
+                          ? "Starting..."
+                          : role === "host"
+                            ? isPrivate
+                              ? "Start Private Call"
+                              : "Start Stream"
+                            : "Join Stream"}
+                      </button>
+
+                      {role === "host" && isPrivate && (
+                        <button
+                          onClick={cancelOutgoingPrivateCall}
+                          className="rounded-xl border border-white/10 bg-white/10 px-6 py-3 font-black hover:bg-white/20"
+                        >
+                          Cancel Call
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <button
                       onClick={stopLiveStream}
