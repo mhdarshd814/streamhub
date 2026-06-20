@@ -406,6 +406,7 @@ export default function WatchPage() {
     let chatChannel: any = null;
     let streamChannel: any = null;
     let viewerChannel: any = null;
+    let viewerSyncTimer: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
 
     async function getViewerCount() {
@@ -872,7 +873,11 @@ export default function WatchPage() {
             filter: `stream_id=eq.${streamId}`,
           },
           async () => {
-            await getViewerCount();
+            if (viewerSyncTimer) clearTimeout(viewerSyncTimer);
+
+            viewerSyncTimer = setTimeout(() => {
+              getViewerCount();
+            }, 1000);
           }
         )
         .subscribe();
@@ -1147,6 +1152,7 @@ export default function WatchPage() {
       if (viewerRoomRef.current === room) viewerRoomRef.current = null;
       if (chatChannel) supabase.removeChannel(chatChannel);
       if (streamChannel) supabase.removeChannel(streamChannel);
+      if (viewerSyncTimer) clearTimeout(viewerSyncTimer);
       if (viewerChannel) supabase.removeChannel(viewerChannel);
     };
   }, [streamId, router]);
@@ -2380,4 +2386,5 @@ export default function WatchPage() {
     </main>
   );
 }
+
 
