@@ -899,8 +899,9 @@ export default function WatchPage() {
         setMessages([...data].reverse());
       }
 
-      chatChannel = supabase
-        .channel("watch-chat-" + streamId + "-" + Date.now())
+      setTimeout(() => {
+        chatChannel = supabase
+          .channel("watch-chat-" + streamId + "-" + Date.now())
         .on(
           "postgres_changes",
           {
@@ -918,8 +919,8 @@ export default function WatchPage() {
               return [...current, newMsg];
             });
           }
-        )
-        .subscribe();
+        )          .subscribe();
+      }, 750);
     }
 
     function attachTrack(track: RemoteTrack) {
@@ -2386,5 +2387,6 @@ export default function WatchPage() {
     </main>
   );
 }
+
 
 
