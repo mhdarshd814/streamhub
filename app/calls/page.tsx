@@ -774,12 +774,21 @@ function CallCard({
             )}
 
             {call.stream_id && call.status === "pending" && !isIncoming && (
-              <Link
-                href={`/live/${call.stream_id}`}
-                className="rounded-xl bg-gray-800 px-4 py-2 text-sm font-bold hover:bg-gray-700"
-              >
-                Open Waiting Room
-              </Link>
+              <>
+                <Link
+                  href={`/live/${call.stream_id}`}
+                  className="rounded-xl bg-gray-800 px-4 py-2 text-sm font-bold hover:bg-gray-700"
+                >
+                  Open Waiting Room
+                </Link>
+
+                <button
+                  onClick={() => cancelCall(call.id, call.stream_id)}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700"
+                >
+                  Cancel Call
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -803,6 +812,34 @@ function Stat({
       <h2 className={`text-3xl font-black ${color}`}>{value}</h2>
     </div>
   );
+}
+
+async function cancelCall(callId: string, streamId?: string | null) {
+  const confirmed = confirm("Cancel this call?");
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("private_call_requests")
+    .update({
+      status: "cancelled",
+      ring_status: "cancelled",
+    })
+    .eq("id", callId)
+    .eq("status", "pending");
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (streamId) {
+    await supabase
+      .from("stream_guests")
+      .update({ status: "cancelled" })
+      .eq("stream_id", streamId);
+  }
+
+  window.location.reload();
 }
 
 function EmptyState({ text }: { text: string }) {
