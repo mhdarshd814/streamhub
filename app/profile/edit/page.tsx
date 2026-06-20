@@ -60,6 +60,7 @@ export default function EditProfilePage() {
 
   const [uploading, setUploading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -104,12 +105,12 @@ export default function EditProfilePage() {
     setWhatsappNumber(data.whatsapp_number || "");
     setPhoneVerified(!!data.phone_verified);
 
+    setAvatarLoadFailed(false);
     setCheckingAccess(false);
   }
 
   function handleCountryChange(value: string) {
     const selected = COUNTRIES.find((item) => item.name === value);
-
     setCountryName(selected?.name || "");
     setCountryCode(selected?.code || "");
   }
@@ -119,70 +120,77 @@ export default function EditProfilePage() {
   }
 
   async function uploadAvatar(file: File) {
-  if (!profileId) {
-    alert("Profile not loaded yet.");
-    return;
-  }
-
-  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
-  if (!allowedTypes.includes(file.type)) {
-    alert("Only JPG, PNG and WEBP images are allowed.");
-    return;
-  }
-
-  if (file.size > MAX_AVATAR_SIZE) {
-    alert("Avatar image must be less than 2 MB.");
-    return;
-  }
-
-  setUploading(true);
-
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href = "/login";
+    if (!profileId) {
+      alert("Profile not loaded yet.");
       return;
     }
 
-    const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
-    const fileName = `${profileId}-${Date.now()}.${fileExt}`;
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(fileName, file, { upsert: true });
-
-    if (uploadError) {
-      alert(uploadError.message);
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only JPG, PNG and WEBP images are allowed.");
       return;
     }
 
-    const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
-    const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        avatar_url: publicUrl,
-      })
-      .eq("id", profileId);
-
-    if (profileError) {
-      alert(profileError.message);
+    if (file.size > MAX_AVATAR_SIZE) {
+      alert("Avatar image must be less than 2 MB.");
       return;
     }
 
-    setAvatarUrl(publicUrl);
-    alert("Avatar uploaded and saved successfully!");
-  } catch (error: any) {
-    alert(error.message || "Upload failed");
-  } finally {
-    setUploading(false);
+    setUploading(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) {
+        alert(`Avatar upload failed: ${uploadError.message}`);
+        return;
+      }
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
+      const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id)
+        .select("id, avatar_url")
+        .single();
+
+      if (profileError) {
+        alert(`Avatar uploaded, but profile update failed: ${profileError.message}`);
+        return;
+      }
+
+      if (!updatedProfile?.avatar_url) {
+        alert("Avatar uploaded, but avatar_url was not saved. Check profiles table RLS/update policy.");
+        return;
+      }
+
+      setAvatarUrl(updatedProfile.avatar_url);
+      setAvatarLoadFailed(false);
+
+      alert("Avatar uploaded and saved successfully!");
+    } catch (error: any) {
+      alert(error.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
   }
-}
 
   async function saveProfile() {
     if (!profileId) {
@@ -230,7 +238,7 @@ export default function EditProfilePage() {
       return;
     }
 
-    const { error } = await supabase
+    const { data: updatedProfile, error } = await supabase
       .from("profiles")
       .update({
         username: username.trim(),
@@ -242,10 +250,17 @@ export default function EditProfilePage() {
         phone_number: cleanNumber(phoneNumber) || null,
         whatsapp_number: cleanNumber(whatsappNumber) || null,
       })
-      .eq("id", profileId);
+      .eq("id", user.id)
+      .select("id, avatar_url")
+      .single();
 
     if (error) {
       alert(error.message);
+      return;
+    }
+
+    if (avatarUrl && !updatedProfile?.avatar_url) {
+      alert("Profile saved, but avatar_url was not saved. Check profiles RLS/update policy.");
       return;
     }
 
@@ -402,12 +417,12 @@ export default function EditProfilePage() {
               </label>
 
               <div className="mb-5 flex justify-center">
-                {avatarUrl ? (
+                {avatarUrl && !avatarLoadFailed ? (
                   <img
                     src={avatarUrl}
                     alt="Avatar preview"
                     className="h-28 w-28 rounded-full border border-gray-700 bg-gray-700 object-cover sm:h-32 sm:w-32"
-                    onError={() => setAvatarUrl("")}
+                    onError={() => setAvatarLoadFailed(true)}
                   />
                 ) : (
                   <div className="flex h-28 w-28 items-center justify-center rounded-full border border-gray-700 bg-gray-800 text-4xl sm:h-32 sm:w-32">
