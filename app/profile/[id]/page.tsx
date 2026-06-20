@@ -380,7 +380,7 @@ export default function PublicProfilePage() {
 
   if (session?.access_token) {
     try {
-      await fetch("/api/fcm/send", {
+      await fetch("/api/push/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -393,7 +393,7 @@ export default function PublicProfilePage() {
             profile.display_name || profile.username || "Someone"
           } is calling you on StreamHub.`,
           url: `/incoming-call/${callData.id}`,
-          type: "incoming_call",
+          notificationType: "incoming_call",
           streamId: streamData.id,
           callId: callData.id,
         }),
