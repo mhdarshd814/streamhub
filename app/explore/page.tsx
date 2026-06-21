@@ -269,7 +269,7 @@ export default function ExplorePage() {
               type="button"
               className="rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-600/20"
             >
-              ?? Live Streams
+              Live Streams
             </button>
 
             <button
@@ -277,7 +277,7 @@ export default function ExplorePage() {
               onClick={() => (window.location.href = "/streams/upcoming")}
               className="rounded-xl border border-gray-800 bg-gray-900 px-5 py-3 text-sm font-black text-white hover:border-red-600 hover:bg-gray-800"
             >
-              ?? Upcoming Streams
+              Upcoming Streams
             </button>
           </div>
         </div>
