@@ -276,6 +276,27 @@ export default function PublicProfilePage() {
     window.location.href = "/";
   }
 
+  async function isMutualFollow(targetUserId: string) {
+    if (!viewerId) return false;
+
+    const [{ data: iFollow }, { data: followsMe }] = await Promise.all([
+      supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", viewerId)
+        .eq("following_id", targetUserId)
+        .maybeSingle(),
+      supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", targetUserId)
+        .eq("following_id", viewerId)
+        .maybeSingle(),
+    ]);
+
+    return !!iFollow && !!followsMe;
+  }
+
   async function startPrivateCall() {
   if (!viewerId || !profile || viewerId === profile.id) return;
 
@@ -293,6 +314,14 @@ export default function PublicProfilePage() {
 
   if (!allowed) {
     setCallLoading(false);
+    return;
+  }
+
+  const canCall = await isMutualFollow(profile.id);
+
+  if (!canCall) {
+    setCallLoading(false);
+    alert("Private calls are only available between mutual followers.");
     return;
   }
 
