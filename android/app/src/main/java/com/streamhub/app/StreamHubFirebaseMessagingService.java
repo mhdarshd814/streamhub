@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -15,7 +16,7 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
 public class StreamHubFirebaseMessagingService extends FirebaseMessagingService {
-    private static final String CALL_CHANNEL_ID = "incoming_calls";
+    private static final String CALL_CHANNEL_ID = "incoming_calls_v2";
     private static final int CALL_NOTIFICATION_ID = 2001;
 
     @Override
@@ -26,26 +27,17 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
             return;
         }
 
+        wakeDeviceBriefly();
+
         String title = message.getData().get("title");
         String body = message.getData().get("message");
         String callId = message.getData().get("callId");
         String streamId = message.getData().get("streamId");
 
-        if (title == null || title.isEmpty()) {
-            title = "Incoming Private Call";
-        }
-
-        if (body == null || body.isEmpty()) {
-            body = "Someone is calling you on StreamHub";
-        }
-
-        if (callId == null || callId.isEmpty()) {
-            callId = "";
-        }
-
-        if (streamId == null) {
-            streamId = "";
-        }
+        if (title == null || title.isEmpty()) title = "Incoming Private Call";
+        if (body == null || body.isEmpty()) body = "Someone is calling you on StreamHub";
+        if (callId == null) callId = "";
+        if (streamId == null) streamId = "";
 
         String path = callId.isEmpty() ? "/calls" : "/incoming-call/" + callId;
         int notificationId = callId.isEmpty() ? CALL_NOTIFICATION_ID : Math.abs(callId.hashCode());
@@ -103,6 +95,7 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setOngoing(true)
                         .setAutoCancel(false)
+                        .setTimeoutAfter(60000)
                         .setContentIntent(fullScreenPendingIntent)
                         .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Decline", declinePendingIntent)
                         .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
@@ -116,25 +109,38 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         }
     }
 
-    private void createCallChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return;
+    private void wakeDeviceBriefly() {
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+            if (powerManager == null) return;
+
+            PowerManager.WakeLock wakeLock = powerManager.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
+                    PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                    PowerManager.ON_AFTER_RELEASE,
+                    "StreamHub:IncomingCallWakeLock"
+            );
+
+            wakeLock.acquire(10000);
+        } catch (Exception ignored) {
         }
+    }
+
+    private void createCallChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
 
         NotificationManager manager =
                 (NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
 
-        if (manager == null) {
-            return;
-        }
+        if (manager == null) return;
 
         NotificationChannel channel = new NotificationChannel(
                 CALL_CHANNEL_ID,
-                "Incoming Calls",
+                "StreamHub Incoming Calls",
                 NotificationManager.IMPORTANCE_HIGH
         );
 
-        channel.setDescription("StreamHub incoming private call alerts");
+        channel.setDescription("StreamHub private incoming call alerts");
         channel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
         Uri soundUri = android.provider.Settings.System.DEFAULT_RINGTONE_URI;
@@ -146,7 +152,7 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
 
         channel.setSound(soundUri, attributes);
         channel.enableVibration(true);
-        channel.setVibrationPattern(new long[]{700, 300, 700, 300});
+        channel.setVibrationPattern(new long[]{700, 300, 700, 300, 700});
 
         manager.createNotificationChannel(channel);
     }
