@@ -16,7 +16,7 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
 public class StreamHubFirebaseMessagingService extends FirebaseMessagingService {
-    private static final String CALL_CHANNEL_ID = "incoming_calls_v2";
+    private static final String CALL_CHANNEL_ID = "incoming_calls_v3";
     private static final int CALL_NOTIFICATION_ID = 2001;
 
     @Override
@@ -162,6 +162,7 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
                 .build();
 
         channel.setSound(soundUri, attributes);
+        channel.setBypassDnd(true);
         channel.enableVibration(true);
         channel.setVibrationPattern(new long[]{700, 300, 700, 300, 700});
 
