@@ -613,11 +613,9 @@ export default function PublicProfilePage() {
 
         <div className="overflow-hidden rounded-3xl border border-gray-800 bg-gray-900">
           <div
-            className="relative h-44 overflow-hidden bg-black bg-cover bg-center sm:h-56 lg:h-64"
-            style={{ backgroundImage: "url('/profile-banner.png')" }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-gray-900" />
-          </div>
+            className="relative h-28 overflow-hidden bg-gradient-to-r from-black via-red-950/60 to-black bg-cover bg-center sm:h-36"
+            style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.25), rgba(17,24,39,0.85)), url('/profile-banner.png')" }}
+          />
 
           <div className="p-5 sm:p-8">
             <div className="-mt-16 flex flex-col gap-5 sm:-mt-20 lg:flex-row lg:items-end lg:justify-between">
@@ -1054,6 +1052,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
 
 
