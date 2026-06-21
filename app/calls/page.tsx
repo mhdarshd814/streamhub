@@ -299,6 +299,48 @@ export default function CallsPage() {
 
     await loadCalls();
   }
+  async function getMutualFollowIds(currentUserId: string) {
+    const [{ data: followingRows }, { data: followerRows }] = await Promise.all([
+      supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", currentUserId),
+      supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("following_id", currentUserId),
+    ]);
+
+    const followingSet = new Set(
+      (followingRows || []).map((item: any) => item.following_id)
+    );
+
+    return (followerRows || [])
+      .map((item: any) => item.follower_id)
+      .filter((id: string) => followingSet.has(id));
+  }
+
+  async function isMutualFollow(targetUserId: string) {
+    if (!userId) return false;
+
+    const [{ data: iFollow }, { data: followsMe }] = await Promise.all([
+      supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", userId)
+        .eq("following_id", targetUserId)
+        .maybeSingle(),
+      supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", targetUserId)
+        .eq("following_id", userId)
+        .maybeSingle(),
+    ]);
+
+    return !!iFollow && !!followsMe;
+  }
+
   async function searchUsers() {
     const keyword = searchText.trim();
 
@@ -311,9 +353,18 @@ export default function CallsPage() {
 
     setSearching(true);
 
+    const mutualIds = await getMutualFollowIds(userId);
+
+    if (mutualIds.length === 0) {
+      setSearching(false);
+      setResults([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("profiles")
       .select("id, username, display_name, avatar_url, is_banned")
+      .in("id", mutualIds)
       .or(`username.ilike.%${safeKeyword}%,display_name.ilike.%${safeKeyword}%`)
       .limit(8);
 
@@ -325,11 +376,7 @@ export default function CallsPage() {
       return;
     }
 
-    setResults(
-      (data || []).filter(
-        (profile) => profile.id !== userId && !profile.is_banned
-      ) as Profile[]
-    );
+    setResults((data || []).filter((profile) => !profile.is_banned) as Profile[]);
   }
 
   async function startQuickCall(target: Profile) {
@@ -340,6 +387,14 @@ export default function CallsPage() {
 
 
     setCallingId(target.id);
+
+    const canCall = await isMutualFollow(target.id);
+
+    if (!canCall) {
+      setCallingId(null);
+      alert("Private calls are only available between mutual followers.");
+      return;
+    }
 
     const {
       data: { session },
@@ -598,7 +653,7 @@ export default function CallsPage() {
             </p>
             <h2 className="text-2xl font-black">One-on-One Calls</h2>
             <p className="mt-2 text-sm leading-6 text-gray-400">
-              Search for a creator or viewer and start a private video call instantly.
+              Search mutual followers and start a private one-on-one video call.
             </p>
           </div>
 
@@ -618,7 +673,7 @@ export default function CallsPage() {
 
             {!searching && searchText.trim().length >= 2 && results.length === 0 && (
               <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                No users found.
+                No mutual followers found.
               </div>
             )}
 
@@ -904,4 +959,5 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
 
