@@ -341,7 +341,7 @@ export default function Navbar() {
                   onClick={() => goTo("/go-live")}
                   className="rounded-xl bg-red-600 px-5 py-3 font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700"
                 >
-                  + Create
+                  + Go Live
                 </button>
 
                 <DesktopLink label="Calls" href="/calls" goTo={goTo} />
@@ -775,3 +775,4 @@ function MobileSheetItem({
     </button>
   );
 }
+
