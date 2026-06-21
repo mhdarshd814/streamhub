@@ -120,7 +120,7 @@ export default function CallsPage() {
     }
 
     setUserId(user.id);
-    await loadFollowingIds(user.id);
+    void loadFollowingIds(user.id);
 
     const { data: myProfile } = await supabase
       .from("profiles")
@@ -138,7 +138,7 @@ export default function CallsPage() {
       .select("*")
       .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(20);
 
     if (error) {
       alert(error.message);
@@ -146,57 +146,59 @@ export default function CallsPage() {
       return;
     }
 
-    const rows = data || [];
+    const rows = (data || []) as CallRequest[];
 
-    const enriched = await Promise.all(
-      rows.map(async (item: CallRequest) => {
-        const [{ data: caller }, { data: receiver }, { data: stream }] =
-          await Promise.all([
-            supabase
-              .from("profiles")
-              .select("id, username, display_name, avatar_url")
-              .eq("id", item.caller_id)
-              .maybeSingle(),
-            supabase
-              .from("profiles")
-              .select("id, username, display_name, avatar_url")
-              .eq("id", item.receiver_id)
-              .maybeSingle(),
-            item.stream_id
-              ? supabase
-                  .from("streams")
-                  .select("id, title, status, user_id, private_call_price")
-                  .eq("id", item.stream_id)
-                  .maybeSingle()
-              : Promise.resolve({ data: null }),
-          ]);
-
-        let isPaid = false;
-
-        if (
-          item.stream_id &&
-          stream?.private_call_price &&
-          stream.private_call_price > 0
-        ) {
-          const { data: payment } = await supabase
-            .from("private_call_payments")
-            .select("id")
-            .eq("stream_id", item.stream_id)
-            .eq("caller_id", item.receiver_id)
-            .maybeSingle();
-
-          isPaid = !!payment;
-        }
-
-        return {
-          ...item,
-          caller,
-          receiver,
-          stream,
-          is_paid: isPaid,
-        };
-      })
+    const profileIds = Array.from(
+      new Set(rows.flatMap((item) => [item.caller_id, item.receiver_id]).filter(Boolean))
     );
+
+    const streamIds = Array.from(
+      new Set(rows.map((item) => item.stream_id).filter(Boolean))
+    ) as string[];
+
+    const [{ data: profiles }, { data: streams }, { data: payments }] =
+      await Promise.all([
+        profileIds.length
+          ? supabase
+              .from("profiles")
+              .select("id, username, display_name, avatar_url")
+              .in("id", profileIds)
+          : Promise.resolve({ data: [] }),
+        streamIds.length
+          ? supabase
+              .from("streams")
+              .select("id, title, status, user_id, private_call_price")
+              .in("id", streamIds)
+          : Promise.resolve({ data: [] }),
+        streamIds.length
+          ? supabase
+              .from("private_call_payments")
+              .select("id, stream_id, caller_id")
+              .in("stream_id", streamIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+    const profileMap = new Map((profiles || []).map((item: any) => [item.id, item]));
+    const streamMap = new Map((streams || []).map((item: any) => [item.id, item]));
+    const paymentSet = new Set(
+      (payments || []).map((item: any) => `${item.stream_id}:${item.caller_id}`)
+    );
+
+    const enriched = rows.map((item) => {
+      const stream = item.stream_id ? streamMap.get(item.stream_id) || null : null;
+
+      return {
+        ...item,
+        caller: profileMap.get(item.caller_id) || null,
+        receiver: profileMap.get(item.receiver_id) || null,
+        stream,
+        is_paid:
+          !!item.stream_id &&
+          !!stream?.private_call_price &&
+          stream.private_call_price > 0 &&
+          paymentSet.has(`${item.stream_id}:${item.receiver_id}`),
+      };
+    });
 
     setCalls(enriched);
     setLoading(false);
@@ -1191,6 +1193,7 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
 
 
 
