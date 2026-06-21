@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
@@ -228,7 +228,7 @@ export async function POST(req: Request) {
                 notification: {
                   channelId:
                     notificationType === "incoming_call"
-                      ? "incoming_calls_v2"
+                      ? "incoming_calls_v3"
                       : "default",
                   sound: "default",
                   priority: "max",
