@@ -330,6 +330,9 @@ export default function Navbar() {
           <div className="flex items-center gap-5">
             <DesktopLink label="Live Feed" href="/live-feed" goTo={goTo} />
             <DesktopLink label="Discover" href="/explore" goTo={goTo} />
+            <DesktopLink label="Dashboard" href="/dashboard" goTo={goTo} />
+            <DesktopLink label="Wallet" href="/wallet" goTo={goTo} />
+            <DesktopLink label={`Invites${pendingInvites > 0 ? ` (${pendingInvites})` : ""}`} href="/invites" goTo={goTo} />
 
             {loggedIn ? (
               <>
@@ -338,7 +341,7 @@ export default function Navbar() {
                   onClick={() => goTo("/go-live")}
                   className="rounded-xl bg-red-600 px-5 py-3 font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700"
                 >
-                  + Go Live
+                  + Create
                 </button>
 
                 <DesktopLink label="Calls" href="/calls" goTo={goTo} />
@@ -450,11 +453,6 @@ export default function Navbar() {
                     <div className="scale-in absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
                       <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />
                       <MenuItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
-                      <MenuItem label="Dashboard" href="/dashboard" goTo={goTo} />
-                      <MenuItem label="Wallet" href="/wallet" goTo={goTo} />
-                      <MenuItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
-                      <MenuItem label="Schedule Stream" href="/schedule" goTo={goTo} />
-                      <MenuItem label="Upcoming Streams" href="/streams/upcoming" goTo={goTo} />
                       <MenuItem label="Notifications" href="/notifications" goTo={goTo} />
                       <MenuItem label="Privacy Policy" href="/privacy" goTo={goTo} />
                       <MenuItem label="Terms of Service" href="/terms" goTo={goTo} />
