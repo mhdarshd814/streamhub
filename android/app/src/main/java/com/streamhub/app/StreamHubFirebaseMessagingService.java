@@ -85,6 +85,17 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
 
         createCallChannel();
 
+        try {
+            Intent directLaunchIntent = new Intent(this, IncomingCallActivity.class);
+            directLaunchIntent.setAction(Intent.ACTION_VIEW);
+            directLaunchIntent.putExtra("streamhub_url", path);
+            directLaunchIntent.putExtra("callId", callId);
+            directLaunchIntent.putExtra("streamId", streamId);
+            directLaunchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(directLaunchIntent);
+        } catch (Exception ignored) {
+        }
+
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(this, CALL_CHANNEL_ID)
                         .setSmallIcon(getApplicationInfo().icon)
