@@ -62,6 +62,9 @@
 
         </activity>
 
+        <receiver
+            android:name=".IncomingCallActionReceiver"
+            android:exported="false" />
         <!-- Firebase Incoming Call Service -->
         <service
             android:name=".StreamHubFirebaseMessagingService"
@@ -88,3 +91,4 @@
     </application>
 
 </manifest>
+
