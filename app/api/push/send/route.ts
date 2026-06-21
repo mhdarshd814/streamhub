@@ -201,12 +201,19 @@ export async function POST(req: Request) {
       await Promise.all(
         androidTokens.map(async (row) => {
           try {
+            const isIncomingCall =
+              notificationType === "incoming_call";
+
             await getMessaging().send({
               token: row.token,
-              notification: {
-                title: body.title || "StreamHub",
-                body: body.message || "New notification",
-              },
+              ...(isIncomingCall
+                ? {}
+                : {
+                    notification: {
+                      title: body.title || "StreamHub",
+                      body: body.message || "New notification",
+                    },
+                  }),
               data: {
                 type: notificationType,
                 notificationType,
@@ -273,4 +280,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
