@@ -525,6 +525,20 @@ export default function CallsPage() {
     window.location.href = `/live/${streamData.id}`;
   }
 
+  async function callBack(call: CallRequest) {
+    const target =
+      call.receiver_id === userId
+        ? call.caller
+        : call.receiver;
+
+    if (!target) {
+      alert("User not found.");
+      return;
+    }
+
+    await startQuickCall(target);
+  }
+
   async function acceptCall(call: CallRequest) {
     if (!userId || call.receiver_id !== userId || !call.stream_id) return;
 
@@ -762,6 +776,7 @@ export default function CallsPage() {
                   updatingId={updatingId}
                   onAccept={() => acceptCall(call)}
                   onDecline={() => declineCall(call)}
+                  onCallBack={() => callBack(call)}
                 />
               ))}
             </div>
@@ -783,6 +798,7 @@ export default function CallsPage() {
                   updatingId={updatingId}
                   onAccept={() => acceptCall(call)}
                   onDecline={() => declineCall(call)}
+                  onCallBack={() => callBack(call)}
                 />
               ))}
             </div>
@@ -799,12 +815,14 @@ function CallCard({
   updatingId,
   onAccept,
   onDecline,
+  onCallBack,
 }: {
   call: CallRequest;
   currentUserId: string | null;
   updatingId: string | null;
   onAccept: () => void;
   onDecline: () => void;
+  onCallBack: () => void;
 }) {
   const isIncoming = call.receiver_id === currentUserId;
   const otherPerson = isIncoming ? call.caller : call.receiver;
@@ -905,6 +923,15 @@ function CallCard({
               </Link>
             )}
 
+            {call.status === "missed" && (
+              <button
+                onClick={onCallBack}
+                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold hover:bg-green-700"
+              >
+                Call Back
+              </button>
+            )}
+
             {call.stream_id && call.status === "pending" && !isIncoming && (
               <>
                 <Link
@@ -979,6 +1006,8 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
+
 
 
 
