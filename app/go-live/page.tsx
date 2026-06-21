@@ -334,7 +334,7 @@ export default function GoLivePage() {
             <p className="mt-2 text-sm leading-6 text-gray-400">
               {visibility === "private"
                 ? "Set your call price, open the room, then invite or wait for the viewer."
-                : "Use the GO LIVE NOW button above for the fastest public stream flow."}
+                : "Review optional settings, then start your public live room."}
             </p>
           </div>
 
@@ -468,15 +468,15 @@ export default function GoLivePage() {
             </div>
           )}
 
-          {visibility === "private" && (
+          {(
             <button
               onClick={handleStartStream}
               disabled={saving || uploading}
               className="mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:bg-gray-700"
             >
-              {saving ? "Opening..." : "Start Call"}
+              {saving ? "Opening..." : visibility === "private" ? "Start Private Call" : "Start Public Live"}
             </button>
-          )}
+            )}
         </div>
       </div>
     </div>
