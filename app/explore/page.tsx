@@ -257,12 +257,29 @@ export default function ExplorePage() {
           </p>
 
           <h1 className="mb-3 text-3xl font-black sm:text-4xl lg:text-5xl">
-            Explore <span className="text-red-500">Live Streams</span>
+            Discover <span className="text-red-500">Streams</span>
           </h1>
 
           <p className="max-w-4xl text-sm leading-6 text-gray-400 sm:text-base lg:text-lg">
-            Trending streams, recommended creators, personalized feed and category rankings.
+            Find live streams now or check upcoming scheduled streams.
           </p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-600/20"
+            >
+              ?? Live Streams
+            </button>
+
+            <button
+              type="button"
+              onClick={() => (window.location.href = "/streams/upcoming")}
+              className="rounded-xl border border-gray-800 bg-gray-900 px-5 py-3 text-sm font-black text-white hover:border-red-600 hover:bg-gray-800"
+            >
+              ?? Upcoming Streams
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:mb-8 lg:gap-6">
@@ -725,3 +742,4 @@ function getPreferredCategories(streams: Stream[]) {
     .slice(0, 3)
     .map(([category]) => category);
 }
+
