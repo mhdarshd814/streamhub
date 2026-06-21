@@ -613,14 +613,14 @@ export default function PublicProfilePage() {
 
         <div className="overflow-hidden rounded-3xl border border-gray-800 bg-gray-900">
           <div
-            className="relative h-28 overflow-hidden bg-gradient-to-r from-black via-red-950/60 to-black bg-cover bg-center sm:h-36"
+            className="relative h-40 overflow-hidden bg-gradient-to-r from-black via-red-950/60 to-black bg-cover bg-center sm:h-52 lg:h-56"
             style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.25), rgba(17,24,39,0.85)), url('/profile-banner.png')" }}
           />
 
           <div className="p-5 sm:p-8">
-            <div className="-mt-16 flex flex-col gap-5 sm:-mt-20 lg:flex-row lg:items-end lg:justify-between">
+            <div className="-mt-10 flex flex-col gap-5 sm:-mt-14 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-gray-900 bg-gray-800 sm:h-36 sm:w-36">
+                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-gray-900 bg-gray-800 shadow-xl shadow-red-950/40 sm:h-32 sm:w-32">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -636,7 +636,7 @@ export default function PublicProfilePage() {
 
                 <div className="pb-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-3xl font-black text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)] sm:text-4xl">
+                    <h1 className="text-3xl font-black text-white drop-shadow-[0_4px_14px_rgba(0,0,0,1)] sm:text-4xl">
                       {profile.display_name || profile.username || "Creator"}
                     </h1>
 
@@ -675,7 +675,7 @@ export default function PublicProfilePage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:justify-end">
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
                 {!isOwnProfile && (
                   <>
                     <button
@@ -1052,6 +1052,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
 
 
