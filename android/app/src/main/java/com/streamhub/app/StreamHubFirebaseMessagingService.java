@@ -29,6 +29,7 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         String title = message.getData().get("title");
         String body = message.getData().get("message");
         String callId = message.getData().get("callId");
+        String streamId = message.getData().get("streamId");
 
         if (title == null || title.isEmpty()) {
             title = "Incoming Private Call";
@@ -42,19 +43,51 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
             callId = "";
         }
 
+        if (streamId == null) {
+            streamId = "";
+        }
+
         String path = callId.isEmpty() ? "/calls" : "/incoming-call/" + callId;
+        int notificationId = callId.isEmpty() ? CALL_NOTIFICATION_ID : Math.abs(callId.hashCode());
 
-        Intent intent = new Intent(this, IncomingCallActivity.class);
-        intent.setAction(Intent.ACTION_VIEW);
-        intent.putExtra("streamhub_url", path);
-        intent.putExtra("callId", callId);
-        intent.putExtra("streamId", message.getData().get("streamId"));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        Intent fullScreenIntent = new Intent(this, IncomingCallActivity.class);
+        fullScreenIntent.setAction(Intent.ACTION_VIEW);
+        fullScreenIntent.putExtra("streamhub_url", path);
+        fullScreenIntent.putExtra("callId", callId);
+        fullScreenIntent.putExtra("streamId", streamId);
+        fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(
+        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
                 this,
-                callId.isEmpty() ? 1001 : Math.abs(callId.hashCode()),
-                intent,
+                notificationId,
+                fullScreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Intent acceptIntent = new Intent(this, IncomingCallActionReceiver.class);
+        acceptIntent.setAction(IncomingCallActionReceiver.ACTION_ACCEPT_CALL);
+        acceptIntent.putExtra("streamhub_url", path);
+        acceptIntent.putExtra("callId", callId);
+        acceptIntent.putExtra("streamId", streamId);
+        acceptIntent.putExtra("notificationId", notificationId);
+
+        PendingIntent acceptPendingIntent = PendingIntent.getBroadcast(
+                this,
+                notificationId + 10,
+                acceptIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Intent declineIntent = new Intent(this, IncomingCallActionReceiver.class);
+        declineIntent.setAction(IncomingCallActionReceiver.ACTION_DECLINE_CALL);
+        declineIntent.putExtra("callId", callId);
+        declineIntent.putExtra("streamId", streamId);
+        declineIntent.putExtra("notificationId", notificationId);
+
+        PendingIntent declinePendingIntent = PendingIntent.getBroadcast(
+                this,
+                notificationId + 20,
+                declineIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
@@ -68,16 +101,17 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setCategory(NotificationCompat.CATEGORY_CALL)
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                        .setOngoing(false)
-                        .setAutoCancel(true)
-                        .setContentIntent(pendingIntent)
-                        .setFullScreenIntent(pendingIntent, true);
+                        .setOngoing(true)
+                        .setAutoCancel(false)
+                        .setContentIntent(fullScreenPendingIntent)
+                        .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Decline", declinePendingIntent)
+                        .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
+                        .setFullScreenIntent(fullScreenPendingIntent, true);
 
         NotificationManager manager =
                 (NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
 
         if (manager != null) {
-            int notificationId = callId.isEmpty() ? CALL_NOTIFICATION_ID : Math.abs(callId.hashCode());
             manager.notify(notificationId, builder.build());
         }
     }
@@ -117,6 +151,3 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         manager.createNotificationChannel(channel);
     }
 }
-
-
-
