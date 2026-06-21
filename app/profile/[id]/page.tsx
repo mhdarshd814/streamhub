@@ -611,16 +611,16 @@ export default function PublicProfilePage() {
           {backLabel}
         </button>
 
-        <div className="overflow-hidden rounded-3xl border border-gray-800 bg-gray-900">
+        <div className="overflow-hidden rounded-3xl border border-red-900/30 bg-gray-950 shadow-2xl shadow-red-950/20">
           <div
             className="relative h-40 overflow-hidden bg-gradient-to-r from-black via-red-950/60 to-black bg-cover bg-center sm:h-52 lg:h-56"
             style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.25), rgba(17,24,39,0.85)), url('/profile-banner.png')" }}
           />
 
-          <div className="p-5 sm:p-8">
-            <div className="flex flex-col gap-5 pt-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="border-t border-red-900/20 bg-gradient-to-b from-gray-950 via-gray-950 to-black p-5 sm:p-8">
+            <div className="flex flex-col gap-6 pt-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-red-900/50 bg-gray-800 shadow-xl shadow-red-950/40 sm:h-28 sm:w-28">
+                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-red-700/70 bg-gray-800 shadow-2xl shadow-red-600/20 sm:h-28 sm:w-28">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -791,12 +791,12 @@ export default function PublicProfilePage() {
             </p>
 
             <div className="mt-6 grid grid-cols-2 gap-4 sm:max-w-md">
-              <div className="rounded-2xl border border-gray-800 bg-black/30 p-4">
+              <div className="rounded-2xl border border-red-900/25 bg-black/40 p-4 shadow-lg shadow-black/20">
                 <p className="text-2xl font-black">{profile.followers || 0}</p>
                 <p className="text-sm text-gray-400">Followers</p>
               </div>
 
-              <div className="rounded-2xl border border-gray-800 bg-black/30 p-4">
+              <div className="rounded-2xl border border-red-900/25 bg-black/40 p-4 shadow-lg shadow-black/20">
                 <p className="text-2xl font-black">{profile.following || 0}</p>
                 <p className="text-sm text-gray-400">Following</p>
               </div>
@@ -1052,6 +1052,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
 
 
