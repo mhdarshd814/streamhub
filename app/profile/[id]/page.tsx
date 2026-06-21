@@ -645,7 +645,7 @@ export default function PublicProfilePage() {
 
                     {profile.is_admin && (
                       <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs font-black text-yellow-300">
-                        ?? Admin
+                        ADMIN
                       </span>
                     )}
 
@@ -886,7 +886,7 @@ export default function PublicProfilePage() {
                       ? "Please wait..."
                       : isSubscribed
                       ? "Cancel Subscription"
-                      : "Subscribe Now"}
+                      : "Subscribe to this creator"}
                   </button>
                 </div>
               )}
@@ -1049,5 +1049,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
+
 
 

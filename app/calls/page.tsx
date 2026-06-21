@@ -838,7 +838,7 @@ export default function CallsPage() {
                       </p>
                       {profile.is_admin && (
                         <p className="mt-1 w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-black text-yellow-300">
-                          ?? Admin
+                          ADMIN
                         </p>
                       )}
                     </div>
@@ -920,7 +920,7 @@ export default function CallsPage() {
                       </p>
                       {profile.is_admin && (
                         <p className="mt-1 w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-black text-yellow-300">
-                          ?? Admin
+                          ADMIN
                         </p>
                       )}
                     </div>
@@ -1208,6 +1208,8 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
+
 
 
 
