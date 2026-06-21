@@ -48,6 +48,12 @@ export default function CallsPage() {
   const [results, setResults] = useState<Profile[]>([]);
   const [callingId, setCallingId] = useState<string | null>(null);
 
+  const [peopleSearchText, setPeopleSearchText] = useState("");
+  const [peopleSearching, setPeopleSearching] = useState(false);
+  const [peopleResults, setPeopleResults] = useState<Profile[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [followUpdatingId, setFollowUpdatingId] = useState<string | null>(null);
+
   useEffect(() => {
     loadCalls();
 
@@ -91,6 +97,16 @@ export default function CallsPage() {
     return () => clearTimeout(timer);
   }, [searchText, userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    const timer = setTimeout(() => {
+      searchPeople();
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [peopleSearchText, userId]);
+
   async function loadCalls() {
     setLoading(true);
 
@@ -104,6 +120,7 @@ export default function CallsPage() {
     }
 
     setUserId(user.id);
+    await loadFollowingIds(user.id);
 
     const { data: myProfile } = await supabase
       .from("profiles")
@@ -299,6 +316,15 @@ export default function CallsPage() {
 
     await loadCalls();
   }
+  async function loadFollowingIds(currentUserId: string) {
+    const { data } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", currentUserId);
+
+    setFollowingIds((data || []).map((item: any) => item.following_id));
+  }
+
   async function getMutualFollowIds(currentUserId: string) {
     const [{ data: followingRows }, { data: followerRows }] = await Promise.all([
       supabase
@@ -377,6 +403,71 @@ export default function CallsPage() {
     }
 
     setResults((data || []).filter((profile) => !profile.is_banned) as Profile[]);
+  }
+
+  async function searchPeople() {
+    const keyword = peopleSearchText.trim();
+
+    if (!keyword || keyword.length < 2 || !userId) {
+      setPeopleResults([]);
+      return;
+    }
+
+    const safeKeyword = keyword.replace(/[,()%]/g, "");
+
+    setPeopleSearching(true);
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url, is_banned")
+      .or(`username.ilike.%${safeKeyword}%,display_name.ilike.%${safeKeyword}%`)
+      .limit(10);
+
+    setPeopleSearching(false);
+
+    if (error) {
+      console.error("People search failed:", error.message);
+      setPeopleResults([]);
+      return;
+    }
+
+    setPeopleResults(
+      (data || []).filter(
+        (profile) => profile.id !== userId && !profile.is_banned
+      ) as Profile[]
+    );
+  }
+
+  async function followUser(target: Profile) {
+    if (!userId || followUpdatingId) return;
+
+    setFollowUpdatingId(target.id);
+
+    const { error } = await supabase.from("follows").insert({
+      follower_id: userId,
+      following_id: target.id,
+    });
+
+    if (error) {
+      setFollowUpdatingId(null);
+      alert(error.message);
+      return;
+    }
+
+    await supabase.from("notifications").insert([
+      {
+        user_id: target.id,
+        type: "new_follower",
+        title: "New Follower",
+        message: "Someone followed you on StreamHub. Follow back to enable private calls.",
+        link: `/profile/${userId}`,
+        is_read: false,
+      },
+    ]);
+
+    setFollowingIds((current) => [...current, target.id]);
+    setFollowUpdatingId(null);
+    alert("Followed. They can follow back to enable private calls.");
   }
 
   async function startQuickCall(target: Profile) {
@@ -683,7 +774,7 @@ export default function CallsPage() {
         <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
           <div className="mb-5">
             <p className="mb-2 text-sm font-bold text-purple-300">
-              Start a Private Call
+              Call Mutual Followers
             </p>
             <h2 className="text-2xl font-black">One-on-One Calls</h2>
             <p className="mt-2 text-sm leading-6 text-gray-400">
@@ -748,6 +839,100 @@ export default function CallsPage() {
                   >
                     {callingId === profile.id ? "Calling..." : "Call"}
                   </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
+          <div className="mb-5">
+            <p className="mb-2 text-sm font-bold text-red-300">
+              Find People
+            </p>
+            <h2 className="text-2xl font-black">Build Your Call Network</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              Search StreamHub users, follow them, and wait for a follow back to unlock private calls.
+            </p>
+          </div>
+
+          <input
+            value={peopleSearchText}
+            onChange={(e) => setPeopleSearchText(e.target.value)}
+            placeholder="Search StreamHub users to follow..."
+            className="w-full rounded-2xl border border-gray-700 bg-black px-4 py-4 text-white outline-none placeholder:text-gray-500 focus:border-red-500"
+          />
+
+          <div className="mt-4 space-y-3">
+            {peopleSearching && (
+              <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                Searching people...
+              </div>
+            )}
+
+            {!peopleSearching &&
+              peopleSearchText.trim().length >= 2 &&
+              peopleResults.length === 0 && (
+                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                  No users found.
+                </div>
+              )}
+
+            {peopleResults.map((profile) => {
+              const name =
+                profile.display_name || profile.username || "StreamHub user";
+              const isFollowingUser = followingIds.includes(profile.id);
+
+              return (
+                <div
+                  key={profile.id}
+                  className="flex flex-col gap-4 rounded-2xl border border-gray-800 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                      {profile.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        "??"
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-lg font-black">{name}</p>
+                      <p className="truncate text-sm text-gray-400">
+                        @{profile.username || "streamhub"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={`/profile/${profile.id}`}
+                      className="rounded-xl bg-gray-800 px-5 py-3 text-sm font-black hover:bg-gray-700"
+                    >
+                      View Profile
+                    </Link>
+
+                    <button
+                      onClick={() => followUser(profile)}
+                      disabled={isFollowingUser || followUpdatingId === profile.id}
+                      className={
+                        isFollowingUser
+                          ? "rounded-xl bg-gray-700 px-5 py-3 text-sm font-black text-gray-300"
+                          : "rounded-xl bg-red-600 px-5 py-3 text-sm font-black hover:bg-red-700 disabled:bg-gray-700"
+                      }
+                    >
+                      {followUpdatingId === profile.id
+                        ? "Following..."
+                        : isFollowingUser
+                        ? "Following"
+                        : "Follow"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -1006,6 +1191,7 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
 
 
 
