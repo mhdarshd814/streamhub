@@ -60,13 +60,23 @@ export default function CallsPage() {
 
     const expiryTimer = setInterval(() => {
       expireStaleCalls();
-    }, 10000);
+    }, 60000);
 
     return () => clearInterval(expiryTimer);
   }, []);
 
   useEffect(() => {
     if (!userId) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+
+      refreshTimer = setTimeout(() => {
+        loadCalls();
+      }, 700);
+    };
 
     const channel = supabase
       .channel(`calls-page-${userId}`)
@@ -77,15 +87,20 @@ export default function CallsPage() {
           schema: "public",
           table: "private_call_requests",
         },
-        async () => {
-          await loadCalls();
-        }
+        scheduleRefresh
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    void loadFollowingIds(userId);
   }, [userId]);
 
   useEffect(() => {
@@ -121,7 +136,6 @@ export default function CallsPage() {
     }
 
     setUserId(user.id);
-    void loadFollowingIds(user.id);
 
     const { data: myProfile } = await supabase
       .from("profiles")
@@ -1208,6 +1222,9 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
+
+
 
 
 
