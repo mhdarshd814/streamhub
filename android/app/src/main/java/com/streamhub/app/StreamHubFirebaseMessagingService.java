@@ -44,9 +44,11 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
 
         String path = callId.isEmpty() ? "/calls" : "/incoming-call/" + callId;
 
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(this, IncomingCallActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
         intent.putExtra("streamhub_url", path);
+        intent.putExtra("callId", callId);
+        intent.putExtra("streamId", message.getData().get("streamId"));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -115,5 +117,6 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         manager.createNotificationChannel(channel);
     }
 }
+
 
 
