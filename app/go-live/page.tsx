@@ -89,6 +89,7 @@ export default function GoLivePage() {
 
   function getPrivateCallPriceAmount() {
     if (visibility !== "private") return 0;
+
     if (privateCallPriceOption === "custom") {
       return Number(customPrivateCallPrice);
     }
@@ -179,6 +180,7 @@ export default function GoLivePage() {
 
     window.location.href = `/live/${data.id}`;
   }
+
   async function handleStartStream() {
     if (saving || uploading) return;
 
@@ -271,35 +273,39 @@ export default function GoLivePage() {
   return (
     <div className="min-h-screen bg-black px-4 pb-32 pt-5 text-white sm:px-6 lg:px-8 lg:pb-16 lg:pt-10">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-6">
-          <p className="mb-2 text-sm font-bold text-red-400">StreamHub Live</p>
-          <h1 className="text-3xl font-black sm:text-4xl">
-            Start <span className="text-red-500">Now</span>
+        <div className="mb-5">
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-red-400">
+            StreamHub Creator Studio
+          </p>
+
+          <h1 className="text-3xl font-black leading-tight sm:text-4xl">
+            Start your <span className="text-red-500">live room</span>
           </h1>
-          <p className="mt-2 text-sm text-gray-400">
-            Choose Public or Call. Everything else is optional.
+
+          <p className="mt-2 text-sm leading-6 text-gray-400">
+            Go public instantly or prepare a private call room. Keep it simple.
           </p>
         </div>
 
         <button
           onClick={handleQuickPublicLive}
           disabled={saving || uploading}
-          className="mb-5 w-full rounded-3xl bg-red-600 px-6 py-6 text-xl font-black text-white shadow-lg shadow-red-600/30 hover:bg-red-700 disabled:bg-gray-700"
+          className="mb-5 w-full rounded-3xl bg-red-600 px-6 py-6 text-xl font-black text-white shadow-lg shadow-red-600/30 transition hover:bg-red-700 disabled:bg-gray-700"
         >
           {saving ? "Opening..." : "🔴 GO LIVE NOW"}
         </button>
 
-        <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-gray-900 p-2">
+        <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-gray-800 bg-gray-950 p-2">
           <button
             type="button"
             onClick={() => selectVisibility("public")}
             className={
               visibility === "public"
-                ? "rounded-xl bg-red-600 px-3 py-5 text-base font-black"
-                : "rounded-xl bg-gray-800 px-3 py-5 text-base font-bold text-gray-300"
+                ? "rounded-xl bg-red-600 px-3 py-5 text-base font-black text-white shadow-md shadow-red-600/20"
+                : "rounded-xl bg-black px-3 py-5 text-base font-bold text-gray-300 hover:bg-gray-900"
             }
           >
-            Public
+            Public Live
           </button>
 
           <button
@@ -307,34 +313,34 @@ export default function GoLivePage() {
             onClick={() => selectVisibility("private")}
             className={
               visibility === "private"
-                ? "rounded-xl bg-purple-600 px-3 py-5 text-base font-black"
-                : "rounded-xl bg-gray-800 px-3 py-5 text-base font-bold text-gray-300"
+                ? "rounded-xl bg-red-600 px-3 py-5 text-base font-black text-white shadow-md shadow-red-600/20"
+                : "rounded-xl bg-black px-3 py-5 text-base font-bold text-gray-300 hover:bg-gray-900"
             }
           >
-            Call
+            Private Call
           </button>
         </div>
 
         <div className="rounded-3xl border border-gray-800 bg-gray-950 p-4 shadow-2xl sm:p-6">
           <div className="mb-4 rounded-2xl border border-gray-800 bg-black p-4">
-            <p className="text-sm font-bold text-gray-400">
+            <p className="text-sm font-bold text-red-400">
               {visibility === "private" ? "Private Call Room" : "Public Live Stream"}
             </p>
 
             <h2 className="mt-2 text-2xl font-black">
-              {visibility === "private" ? "Start a private call" : "Go live instantly"}
+              {visibility === "private" ? "Set up a private call" : "Public room ready"}
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-gray-400">
               {visibility === "private"
-                ? "Create a one-to-one room. Price is optional."
-                : "Create your public live room immediately."}
+                ? "Set your call price, open the room, then invite or wait for the viewer."
+                : "Use the GO LIVE NOW button above for the fastest public stream flow."}
             </p>
           </div>
 
           {visibility === "private" && (
-            <div className="mb-4 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
-              <label className="mb-2 block text-sm font-black text-purple-300">
+            <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+              <label className="mb-2 block text-sm font-black text-red-300">
                 Call price
               </label>
 
@@ -344,13 +350,13 @@ export default function GoLivePage() {
                   setPrivateCallPriceOption(e.target.value);
                   if (e.target.value !== "custom") setCustomPrivateCallPrice("");
                 }}
-                className="w-full rounded-xl border border-purple-500/20 bg-black p-3 text-white outline-none"
+                className="w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
               >
                 <option value="0">Free</option>
                 <option value="1">$1 Fan</option>
                 <option value="3">$3 Premium</option>
                 <option value="5">$5 VIP</option>
-                <option value="10">$10 Creator Pro</option>                
+                <option value="10">$10 Creator Pro</option>
                 <option value="custom">Custom</option>
               </select>
 
@@ -362,7 +368,7 @@ export default function GoLivePage() {
                   value={customPrivateCallPrice}
                   onChange={(e) => setCustomPrivateCallPrice(e.target.value)}
                   placeholder="Enter amount"
-                  className="mt-3 w-full rounded-xl border border-purple-500/20 bg-black p-3 text-white outline-none"
+                  className="mt-3 w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
                 />
               )}
             </div>
@@ -371,7 +377,7 @@ export default function GoLivePage() {
           <button
             type="button"
             onClick={() => setAdvancedOpen(!advancedOpen)}
-            className="mb-4 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold text-gray-300"
+            className="mb-4 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold text-gray-300 hover:bg-gray-800"
           >
             {advancedOpen ? "Hide Optional Settings" : "Optional Settings"}
           </button>
@@ -462,21 +468,15 @@ export default function GoLivePage() {
             </div>
           )}
 
-          <button
-            onClick={handleStartStream}
-            disabled={saving || uploading}
-            className={
-              visibility === "private"
-                ? "mt-5 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-purple-600/20 hover:bg-purple-700 disabled:bg-gray-700"
-                : "mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:bg-gray-700"
-            }
-          >
-            {saving
-              ? "Opening..."
-              : visibility === "private"
-                ? "Start Call"
-                : "Start Live"}
-          </button>
+          {visibility === "private" && (
+            <button
+              onClick={handleStartStream}
+              disabled={saving || uploading}
+              className="mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:bg-gray-700"
+            >
+              {saving ? "Opening..." : "Start Call"}
+            </button>
+          )}
         </div>
       </div>
     </div>
