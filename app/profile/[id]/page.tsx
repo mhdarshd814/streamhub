@@ -618,9 +618,9 @@ export default function PublicProfilePage() {
           />
 
           <div className="p-5 sm:p-8">
-            <div className="-mt-10 flex flex-col gap-5 sm:-mt-14 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-5 pt-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-gray-900 bg-gray-800 shadow-xl shadow-red-950/40 sm:h-32 sm:w-32">
+                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-red-900/50 bg-gray-800 shadow-xl shadow-red-950/40 sm:h-28 sm:w-28">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -1052,6 +1052,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
 
 
