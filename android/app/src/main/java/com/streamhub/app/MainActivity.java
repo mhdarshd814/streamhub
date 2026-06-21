@@ -1,8 +1,12 @@
 package com.streamhub.app;
 
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Window;
 import android.view.WindowInsetsController;
 import android.webkit.WebView;
@@ -13,10 +17,14 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
+    private static final String PREFS_NAME = "streamhub_prefs";
+    private static final String FULL_SCREEN_PERMISSION_ASKED = "full_screen_permission_asked";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        maybeRequestFullScreenIntentPermission();
         handleIncomingIntent(getIntent());
 
         Window window = getWindow();
@@ -48,6 +56,34 @@ public class MainActivity extends BridgeActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         handleIncomingIntent(intent);
+    }
+
+    private void maybeRequestFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT < 34) return;
+
+        try {
+            NotificationManager notificationManager =
+                    (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+            if (notificationManager == null) return;
+
+            if (notificationManager.canUseFullScreenIntent()) return;
+
+            boolean alreadyAsked = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .getBoolean(FULL_SCREEN_PERMISSION_ASKED, false);
+
+            if (alreadyAsked) return;
+
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(FULL_SCREEN_PERMISSION_ASKED, true)
+                    .apply();
+
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception ignored) {
+        }
     }
 
     private void handleIncomingIntent(Intent intent) {
