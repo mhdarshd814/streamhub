@@ -238,10 +238,23 @@ export default function EditProfilePage() {
       return;
     }
 
+    const normalizedUsername = username.trim().toLowerCase();
+
+    const { data: existingUser } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", normalizedUsername)
+      .neq("id", user.id)
+      .maybeSingle();
+
+    if (existingUser) {
+      alert("Username already taken. Please choose another username.");
+      return;
+    }
     const { data: updatedProfile, error } = await supabase
       .from("profiles")
       .update({
-        username: username.trim(),
+        username: normalizedUsername,
         display_name: displayName.trim(),
         avatar_url: avatarUrl || null,
         bio: bio.trim() || null,
@@ -453,3 +466,5 @@ export default function EditProfilePage() {
     </div>
   );
 }
+
+
