@@ -1,0 +1,167 @@
+package com.streamhub.app;
+
+import android.app.Activity;
+import android.app.KeyguardManager;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+public class IncomingCallActivity extends Activity {
+    private static final int CALL_NOTIFICATION_ID = 2001;
+
+    private String callId = "";
+    private String streamId = "";
+    private String targetUrl = "/calls";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        wakeAndShowOnLockScreen();
+        readIntentData();
+        buildUi();
+    }
+
+    private void wakeAndShowOnLockScreen() {
+        Window window = getWindow();
+
+        window.addFlags(
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        );
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+
+            KeyguardManager keyguardManager =
+                    (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+
+            if (keyguardManager != null) {
+                keyguardManager.requestDismissKeyguard(this, null);
+            }
+        }
+    }
+
+    private void readIntentData() {
+        Intent intent = getIntent();
+        if (intent == null) return;
+
+        String incomingCallId = intent.getStringExtra("callId");
+        String incomingStreamId = intent.getStringExtra("streamId");
+        String incomingUrl = intent.getStringExtra("streamhub_url");
+
+        if (incomingCallId != null) callId = incomingCallId;
+        if (incomingStreamId != null) streamId = incomingStreamId;
+
+        if (incomingUrl != null && !incomingUrl.isEmpty()) {
+            targetUrl = incomingUrl;
+        } else if (!callId.isEmpty()) {
+            targetUrl = "/incoming-call/" + callId;
+        }
+    }
+
+    private void buildUi() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(48, 48, 48, 48);
+        root.setBackgroundColor(Color.parseColor("#020617"));
+
+        TextView appName = new TextView(this);
+        appName.setText("StreamHub");
+        appName.setTextColor(Color.parseColor("#ef4444"));
+        appName.setTextSize(18);
+        appName.setGravity(Gravity.CENTER);
+        appName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        TextView title = new TextView(this);
+        title.setText("Incoming Private Call");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(30);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, 32, 0, 12);
+
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Someone is calling you on StreamHub");
+        subtitle.setTextColor(Color.parseColor("#94a3b8"));
+        subtitle.setTextSize(16);
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setPadding(0, 0, 0, 56);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.CENTER);
+
+        Button declineButton = new Button(this);
+        declineButton.setText("Decline");
+        declineButton.setTextColor(Color.WHITE);
+        declineButton.setTextSize(16);
+        declineButton.setAllCaps(false);
+        declineButton.setBackgroundColor(Color.parseColor("#374151"));
+
+        Button acceptButton = new Button(this);
+        acceptButton.setText("Accept");
+        acceptButton.setTextColor(Color.WHITE);
+        acceptButton.setTextSize(16);
+        acceptButton.setAllCaps(false);
+        acceptButton.setBackgroundColor(Color.parseColor("#dc2626"));
+
+        LinearLayout.LayoutParams buttonParams =
+                new LinearLayout.LayoutParams(0, 140, 1);
+        buttonParams.setMargins(12, 0, 12, 0);
+
+        actions.addView(declineButton, buttonParams);
+        actions.addView(acceptButton, buttonParams);
+
+        root.addView(appName);
+        root.addView(title);
+        root.addView(subtitle);
+        root.addView(actions, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+
+        setContentView(root);
+
+        declineButton.setOnClickListener(view -> declineCall());
+        acceptButton.setOnClickListener(view -> acceptCall());
+    }
+
+    private void acceptCall() {
+        clearNotification();
+
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra("streamhub_url", targetUrl);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        startActivity(intent);
+        finish();
+    }
+
+    private void declineCall() {
+        clearNotification();
+        finish();
+    }
+
+    private void clearNotification() {
+        NotificationManager manager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (manager != null) {
+            manager.cancel(CALL_NOTIFICATION_ID);
+        }
+    }
+}
