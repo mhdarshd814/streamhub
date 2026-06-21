@@ -278,9 +278,8 @@ export default function GoLivePage() {
         <button
           type="button"
           onClick={() => (window.location.href = "/schedule")}
-          className="mb-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-800 bg-gray-900 px-5 py-4 text-base font-black text-white transition hover:border-red-600 hover:bg-gray-800"
+          className="mb-5 w-full rounded-2xl border border-gray-800 bg-gray-950 px-5 py-4 text-base font-black text-white transition hover:border-red-600 hover:bg-gray-900"
         >
-          <span aria-hidden="true">??</span>
           <span>Schedule Stream</span>
         </button>
 
@@ -445,6 +444,7 @@ export default function GoLivePage() {
     </div>
   );
 }
+
 
 
 
