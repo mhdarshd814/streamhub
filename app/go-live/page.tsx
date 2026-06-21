@@ -283,7 +283,7 @@ export default function GoLivePage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-400">
-            Go public instantly or prepare a private call room. Keep it simple.
+            Choose public live, private call, or schedule a stream.
           </p>
         </div>
 
@@ -320,6 +320,14 @@ export default function GoLivePage() {
             Private Call
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => (window.location.href = "/schedule")}
+          className="mb-5 w-full rounded-2xl border border-gray-800 bg-gray-900 px-5 py-4 text-base font-black text-white hover:border-red-600 hover:bg-gray-800"
+        >
+          ?? Schedule Stream
+        </button>
 
         <div className="rounded-3xl border border-gray-800 bg-gray-950 p-4 shadow-2xl sm:p-6">
           <div className="mb-4 rounded-2xl border border-gray-800 bg-black p-4">
@@ -482,3 +490,4 @@ export default function GoLivePage() {
     </div>
   );
 }
+
