@@ -612,7 +612,12 @@ export default function PublicProfilePage() {
         </button>
 
         <div className="overflow-hidden rounded-3xl border border-gray-800 bg-gray-900">
-          <div className="h-28 bg-gradient-to-r from-red-700 via-red-600 to-orange-500 sm:h-36" />
+          <div
+            className="relative h-44 overflow-hidden bg-black bg-cover bg-center sm:h-56 lg:h-64"
+            style={{ backgroundImage: "url('/profile-banner.png')" }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-gray-900" />
+          </div>
 
           <div className="p-5 sm:p-8">
             <div className="-mt-16 flex flex-col gap-5 sm:-mt-20 lg:flex-row lg:items-end lg:justify-between">
@@ -633,7 +638,7 @@ export default function PublicProfilePage() {
 
                 <div className="pb-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-3xl font-black sm:text-4xl">
+                    <h1 className="text-3xl font-black text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.9)] sm:text-4xl">
                       {profile.display_name || profile.username || "Creator"}
                     </h1>
 
@@ -1049,6 +1054,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
 
 
