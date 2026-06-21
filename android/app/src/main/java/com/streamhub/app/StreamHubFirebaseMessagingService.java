@@ -51,7 +51,7 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
-                1001,
+                callId.isEmpty() ? 1001 : Math.abs(callId.hashCode()),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
@@ -75,7 +75,8 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
                 (NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
 
         if (manager != null) {
-            manager.notify(CALL_NOTIFICATION_ID, builder.build());
+            int notificationId = callId.isEmpty() ? CALL_NOTIFICATION_ID : Math.abs(callId.hashCode());
+            manager.notify(notificationId, builder.build());
         }
     }
 
@@ -114,3 +115,4 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         manager.createNotificationChannel(channel);
     }
 }
+
