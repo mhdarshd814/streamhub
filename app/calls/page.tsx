@@ -10,6 +10,7 @@ type Profile = {
   display_name: string | null;
   avatar_url: string | null;
   is_banned?: boolean | null;
+  is_admin?: boolean | null;
 };
 
 type CallStream = {
@@ -391,7 +392,7 @@ export default function CallsPage() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, is_banned")
+      .select("id, username, display_name, avatar_url, is_banned, is_admin")
       .in("id", mutualIds)
       .or(`username.ilike.%${safeKeyword}%,display_name.ilike.%${safeKeyword}%`)
       .limit(8);
@@ -404,7 +405,11 @@ export default function CallsPage() {
       return;
     }
 
-    setResults((data || []).filter((profile) => !profile.is_banned) as Profile[]);
+    setResults(
+      ((data || []).filter((profile) => !profile.is_banned) as Profile[]).sort(
+        (a, b) => Number(!!b.is_admin) - Number(!!a.is_admin)
+      )
+    );
   }
 
   async function searchPeople() {
@@ -421,7 +426,7 @@ export default function CallsPage() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, is_banned")
+      .select("id, username, display_name, avatar_url, is_banned, is_admin")
       .or(`username.ilike.%${safeKeyword}%,display_name.ilike.%${safeKeyword}%`)
       .limit(10);
 
@@ -434,9 +439,9 @@ export default function CallsPage() {
     }
 
     setPeopleResults(
-      (data || []).filter(
+      ((data || []).filter(
         (profile) => profile.id !== userId && !profile.is_banned
-      ) as Profile[]
+      ) as Profile[]).sort((a, b) => Number(!!b.is_admin) - Number(!!a.is_admin))
     );
   }
 
@@ -831,6 +836,11 @@ export default function CallsPage() {
                       <p className="truncate text-sm text-gray-400">
                         @{profile.username || "streamhub"}
                       </p>
+                      {profile.is_admin && (
+                        <p className="mt-1 w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-black text-yellow-300">
+                          ?? Admin
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -908,12 +918,17 @@ export default function CallsPage() {
                       <p className="truncate text-sm text-gray-400">
                         @{profile.username || "streamhub"}
                       </p>
+                      {profile.is_admin && (
+                        <p className="mt-1 w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-black text-yellow-300">
+                          ?? Admin
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <Link
-                      href={`/profile/${profile.id}`}
+                      href={`/profile/${profile.id}?from=calls`}
                       className="rounded-xl bg-gray-800 px-5 py-3 text-sm font-black hover:bg-gray-700"
                     >
                       View Profile
@@ -1193,6 +1208,7 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
 
 
 

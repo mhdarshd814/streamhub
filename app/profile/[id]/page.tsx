@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
 type Profile = {
@@ -14,6 +14,7 @@ type Profile = {
   following: number | null;
   is_banned?: boolean | null;
   is_verified?: boolean | null;
+  is_admin?: boolean | null;
 };
 
 type SubscriptionPlan = {
@@ -27,7 +28,11 @@ type SubscriptionPlan = {
 
 export default function PublicProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const profileId = params?.id as string;
+  const fromPage = searchParams.get("from");
+  const backHref = fromPage === "calls" ? "/calls" : "/explore";
+  const backLabel = fromPage === "calls" ? "Back to Calls" : "Back to Explore";
 
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -47,8 +52,8 @@ export default function PublicProfilePage() {
 
   const isOwnProfile = viewerId === profile?.id;
   const hasPremiumPlan = !!plan?.is_active;
-  const planName = plan?.plan_name || "Premium";
-  const planPrice = plan?.price_usd ?? 9.99;
+  const planName = plan?.plan_name || null;
+  const planPrice = typeof plan?.price_usd === "number" ? plan.price_usd : null;
 
   const completionItems = useMemo(() => {
     if (!profile) return [];
@@ -586,7 +591,7 @@ export default function PublicProfilePage() {
             This creator profile does not exist or is unavailable.
           </p>
           <button
-            onClick={() => (window.location.href = "/explore")}
+            onClick={() => (window.location.href = backHref)}
             className="mt-6 rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
           >
             Go to Explore
@@ -600,10 +605,10 @@ export default function PublicProfilePage() {
     <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-5xl">
         <button
-          onClick={() => (window.location.href = "/explore")}
+          onClick={() => (window.location.href = backHref)}
           className="mb-6 rounded-xl bg-gray-800 px-5 py-3 text-sm font-bold hover:bg-gray-700 sm:text-base"
         >
-          Back to Explore
+          {backLabel}
         </button>
 
         <div className="overflow-hidden rounded-3xl border border-gray-800 bg-gray-900">
@@ -635,6 +640,12 @@ export default function PublicProfilePage() {
                     {profile.is_verified && (
                       <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold">
                         Verified
+                      </span>
+                    )}
+
+                    {profile.is_admin && (
+                      <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs font-black text-yellow-300">
+                        ?? Admin
                       </span>
                     )}
 
@@ -695,7 +706,7 @@ export default function PublicProfilePage() {
                     <button
                       onClick={toggleSubscription}
                       disabled={
-                        subscriptionLoading || followLoading || callLoading
+                        subscriptionLoading || followLoading || callLoading || planPrice === null
                       }
                       className={`rounded-xl px-5 py-3 font-black disabled:bg-gray-700 ${
                         isSubscribed
@@ -707,7 +718,7 @@ export default function PublicProfilePage() {
                         ? "Please wait..."
                         : isSubscribed
                         ? "Subscribed ✓"
-                        : `Subscribe USD ${planPrice}`}
+                        : planPrice !== null ? `Subscribe USD ${planPrice}` : "No Active Plan"}
                     </button>
                   </>
                 )}
@@ -799,12 +810,25 @@ export default function PublicProfilePage() {
               </p>
             </div>
 
+            {!isOwnProfile && (
+              <div className="mt-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5">
+                <h2 className="mb-2 text-xl font-black text-purple-300">
+                  Private Call Access
+                </h2>
+                <p className="text-sm leading-6 text-gray-300">
+                  {isFollowing
+                    ? "You are following this creator. Private calls unlock when they follow you back."
+                    : "Follow this creator first. Private calls require both users to follow each other."}
+                </p>
+              </div>
+            )}
+
             <div className="mt-8 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-black">
-                      {planName} Subscription
+                      {planName ? `${planName} Subscription` : "Subscription"}
                     </h2>
 
                     <span
@@ -826,9 +850,11 @@ export default function PublicProfilePage() {
 
                 <div className="rounded-2xl border border-yellow-500/30 bg-black/40 px-5 py-4 text-left sm:text-right">
                   <p className="text-2xl font-black text-yellow-300">
-                    USD {planPrice}
+                    {planPrice !== null ? `USD ${planPrice}` : "No active plan"}
                   </p>
-                  <p className="text-xs text-gray-400">Monthly</p>
+                  <p className="text-xs text-gray-400">
+                    {planPrice !== null ? "Monthly" : "Subscription unavailable"}
+                  </p>
                 </div>
               </div>
 
@@ -1023,4 +1049,5 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
