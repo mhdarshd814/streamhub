@@ -391,8 +391,28 @@ export default function CallsPage() {
     const canCall = await isMutualFollow(target.id);
 
     if (!canCall) {
+      const { data: myProfile } = await supabase
+        .from("profiles")
+        .select("display_name, username")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const callerName =
+        myProfile?.display_name || myProfile?.username || "A StreamHub user";
+
+      await supabase.from("notifications").insert([
+        {
+          user_id: target.id,
+          type: "follow_back_for_calls",
+          title: "Connection Request",
+          message: `${callerName} wants to connect with you. Follow back to enable private calls.`,
+          link: `/profile/${userId}`,
+          is_read: false,
+        },
+      ]);
+
       setCallingId(null);
-      alert("Private calls are only available between mutual followers.");
+      alert("You can only call mutual followers. A follow-back notification has been sent.");
       return;
     }
 
@@ -959,5 +979,6 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
 
 
