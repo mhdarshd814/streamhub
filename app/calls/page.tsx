@@ -562,7 +562,7 @@ export default function CallsPage() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="mb-2 text-sm font-bold text-purple-300">
-              WhatsApp-Style Private Video Calls
+              Private Video Calling
             </p>
 
             <h1 className="text-4xl font-black sm:text-5xl">
@@ -570,7 +570,7 @@ export default function CallsPage() {
             </h1>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              Search a user, start a private call, and notify their Android phone instantly.
+              Connect with creators and viewers through private one-on-one video calls.
             </p>
           </div>
 
@@ -594,11 +594,11 @@ export default function CallsPage() {
         <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
           <div className="mb-5">
             <p className="mb-2 text-sm font-bold text-purple-300">
-              Quick Private Call
+              Start a Private Call
             </p>
-            <h2 className="text-2xl font-black">Search and Call</h2>
+            <h2 className="text-2xl font-black">One-on-One Calls</h2>
             <p className="mt-2 text-sm leading-6 text-gray-400">
-              Type a username or display name. StreamHub will create the private room and send the Android call notification automatically.
+              Search for a creator or viewer and start a private video call instantly.
             </p>
           </div>
 
@@ -904,3 +904,4 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
