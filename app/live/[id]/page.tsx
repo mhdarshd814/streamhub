@@ -734,7 +734,39 @@ export default function LiveRoomPage() {
 
             if (updatedCall.status === "missed") {
               setStatusText("Private call missed. No answer.");
-              await loadGuestInvites();
+
+              try {
+                await KeepAwake.allowSleep();
+              } catch {}
+
+              cleanupRemoteAudio();
+
+              if (roomRef.current) {
+                roomRef.current.disconnect();
+                roomRef.current = null;
+              }
+
+              setRoom(null);
+              setRemoteVideos([]);
+              setIsLive(false);
+              setViewerCount(0);
+
+              await supabase
+                .from("streams")
+                .update({
+                  status: "offline",
+                  viewers: 0,
+                })
+                .eq("id", streamId);
+
+              await supabase
+                .from("stream_viewers")
+                .delete()
+                .eq("stream_id", streamId);
+
+              alert("Call was not answered.");
+              router.replace("/calls");
+              return;
             }
           },
         )
@@ -2680,7 +2712,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
         <div className="text-center">
-          <div className="mb-4 text-5xl">Ã°Å¸Å½Â¥</div>
+          <div className="mb-4 text-5xl">ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¥</div>
           <p className="text-gray-400">{statusText}</p>
         </div>
       </div>
@@ -2691,7 +2723,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white sm:px-6">
         <div className="w-full max-w-md rounded-3xl border border-gray-800 bg-gray-900 p-6 text-center sm:p-8">
-          <div className="mb-5 text-5xl">Ã°Å¸â€â€™</div>
+          <div className="mb-5 text-5xl">ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬â„¢</div>
           <h1 className="mb-3 text-3xl font-black">Access Denied</h1>
           <p className="mb-8 text-gray-400">{statusText}</p>
 
@@ -2710,7 +2742,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white sm:px-6">
         <div className="w-full max-w-lg rounded-3xl border border-gray-800 bg-gray-900 p-6 text-center sm:p-8">
-          <div className="mb-5 text-5xl">Ã°Å¸Å½â„¢Ã¯Â¸Â</div>
+          <div className="mb-5 text-5xl">ÃƒÂ°Ã…Â¸Ã…Â½Ã¢â€žÂ¢ÃƒÂ¯Ã‚Â¸Ã‚Â</div>
           <h1 className="mb-3 text-3xl font-black">Guest Stream Invite</h1>
           <p className="mb-8 text-gray-400">
             You have been invited to join this stream as a guest streamer.
@@ -2802,7 +2834,7 @@ export default function LiveRoomPage() {
                     title="Decline request"
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-black/45 text-lg font-black leading-none text-white/80 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Ãƒâ€”
+                    ÃƒÆ’Ã¢â‚¬â€
                   </button>
                 </div>
               </div>
@@ -2874,7 +2906,7 @@ export default function LiveRoomPage() {
                 ) : (
                   <div className="flex h-full items-center justify-center bg-black text-center text-gray-400">
                     <div>
-                      <p className="mb-3 text-5xl">Ã°Å¸â€œÅ¾</p>
+                      <p className="mb-3 text-5xl">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â¾</p>
                       <p>Waiting for the other person...</p>
                     </div>
                   </div>
@@ -2990,11 +3022,11 @@ export default function LiveRoomPage() {
               </h1>
 
               <p className="text-sm text-gray-400 sm:text-base lg:text-lg">
-                {stream.category} Ã¢â‚¬Â¢{" "}
+                {stream.category} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢{" "}
                 <span className={isLive ? "text-green-500" : "text-gray-500"}>
                   {isLive ? "Live Now" : "Offline"}
                 </span>{" "}
-                Ã¢â‚¬Â¢{" "}
+                ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢{" "}
                 <span
                   className={
                     isPrivate
@@ -3178,7 +3210,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "Ã¢â‚¬Â¢ Host" : "Ã¢â‚¬Â¢ Guest"}
+                            You {role === "host" ? "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Host" : "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Guest"}
                           </div>
                         </div>
 
@@ -3218,7 +3250,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "Ã¢â‚¬Â¢ Host" : "Ã¢â‚¬Â¢ Guest"}
+                            You {role === "host" ? "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Host" : "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Guest"}
                           </div>
                         </div>
 
@@ -3255,7 +3287,7 @@ export default function LiveRoomPage() {
                         ) : (
                           <div className="flex h-full items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
                             <div>
-                              <p className="mb-2 text-4xl">Ã°Å¸â€œÅ¾</p>
+                              <p className="mb-2 text-4xl">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â¾</p>
                               <p className="text-sm">
                                 Waiting for the other person...
                               </p>
@@ -3369,7 +3401,7 @@ export default function LiveRoomPage() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
                       <div className="max-w-md text-center">
                         <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                          {isPrivate ? "Ã°Å¸â€â€™" : isSubscribersOnly ? "Ã¢Â­Â" : "Ã°Å¸Å½Â¥"}
+                          {isPrivate ? "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬â„¢" : isSubscribersOnly ? "ÃƒÂ¢Ã‚Â­Ã‚Â" : "ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¥"}
                         </div>
 
                         <h2 className="mb-3 text-3xl font-black sm:text-4xl">
@@ -3761,7 +3793,7 @@ export default function LiveRoomPage() {
                 {chatMessages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-gray-400">
                     <div>
-                      <p className="mb-3 text-4xl">Ã°Å¸â€™Â¬</p>
+                      <p className="mb-3 text-4xl">ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â¬</p>
                       <p>No chat messages yet.</p>
                     </div>
                   </div>
@@ -3782,7 +3814,7 @@ export default function LiveRoomPage() {
                         {paid && (
                           <div className="mb-2 flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-yellow-400 px-3 py-1 text-[11px] font-black text-black">
-                              Ã°Å¸â€™Å½ PAID MESSAGE
+                              ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã…Â½ PAID MESSAGE
                             </span>
                             {paidAmount > 0 && (
                               <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-bold text-yellow-200">
