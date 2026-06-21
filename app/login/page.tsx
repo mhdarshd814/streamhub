@@ -3,7 +3,7 @@
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
@@ -12,6 +12,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    async function checkExistingSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user?.id) {
+        const nextRoute = await getNextRoute(session.user.id);
+        window.location.replace(nextRoute);
+        return;
+      }
+
+      setCheckingSession(false);
+    }
+
+    checkExistingSession();
+  }, []);
 
   function safeNextRoute(value: string | null) {
     if (value && value.startsWith("/") && !value.startsWith("//")) {
