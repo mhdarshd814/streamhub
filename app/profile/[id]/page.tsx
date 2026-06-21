@@ -613,14 +613,14 @@ export default function PublicProfilePage() {
 
         <div className="overflow-hidden rounded-3xl border border-red-900/30 bg-gray-950 shadow-2xl shadow-red-950/20">
           <div
-            className="relative h-40 overflow-hidden bg-gradient-to-r from-black via-red-950/60 to-black bg-cover bg-center sm:h-52 lg:h-56"
+            className="relative h-56 overflow-hidden bg-gradient-to-r from-black via-red-950/60 to-black bg-cover bg-center sm:h-64 lg:h-72"
             style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.25), rgba(17,24,39,0.85)), url('/profile-banner.png')" }}
           />
 
-          <div className="border-t border-red-900/20 bg-gradient-to-b from-gray-950 via-gray-950 to-black p-5 sm:p-8">
-            <div className="flex flex-col gap-6 pt-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative -mt-20 border-t border-red-900/20 bg-gradient-to-b from-gray-950/95 via-gray-950 to-black p-5 sm:-mt-24 sm:p-8">
+            <div className="relative z-20 flex flex-col gap-6 pt-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-red-700/70 bg-gray-800 shadow-2xl shadow-red-600/20 sm:h-28 sm:w-28">
+                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-red-700/70 bg-gray-800 shadow-2xl shadow-red-600/20 sm:h-36 sm:w-36">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -1052,6 +1052,7 @@ function ProfileAction({ label, href }: { label: string; href: string }) {
     </button>
   );
 }
+
 
 
 
