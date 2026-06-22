@@ -336,12 +336,13 @@ export default function LiveRoomPage() {
 
   function getMediaAudioConstraints(): MediaTrackConstraints {
     const mobile = isMobileDevice();
+    const privateCall = stream?.visibility === "private";
 
     return {
       echoCancellation: true,
       noiseSuppression: true,
-      autoGainControl: true,
-      channelCount: mobile ? 1 : 1,
+      autoGainControl: !privateCall,
+      channelCount: 1,
       sampleRate: 48000,
       sampleSize: 16,
     };
