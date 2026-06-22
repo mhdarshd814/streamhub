@@ -443,7 +443,7 @@ export default function AdminBroadcastStudioPage() {
               {stream.title}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              {stream.category} â€¢ {isLive ? "Live" : "Offline"} â€¢ Public admin
+              {stream.category} | {isLive ? "Live" : "Offline"} | Public admin
               broadcast
             </p>
             <p className="mt-2 text-sm text-gray-500">{statusText}</p>
@@ -521,19 +521,20 @@ export default function AdminBroadcastStudioPage() {
                   playsInline
                   className="h-full w-full object-contain"
                 />
-
-                {!screenOn && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-5 text-center">
                     <div>
-                      <div className="mb-4 text-6xl">ðŸ“¡</div>
-                      <h2 className="mb-3 text-3xl font-black">
+                      <div className="mb-5 inline-flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_40px_rgba(239,68,68,0.25)]">
+                        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                          <rect x="3" y="4" width="18" height="14" rx="2" />
+                          <path d="M8 21h8" />
+                          <path d="M12 18v3" />
+                        </svg>
+                      </div>
+                      <h2 className="mb-3 text-3xl font-black sm:text-4xl">
                         Ready to Share Screen?
                       </h2>
                       <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-gray-400">
-                        Click Start Broadcast, then choose the screen, app, or
-                        browser tab you want to stream. If you need system
-                        sound, choose a tab/screen option that supports audio
-                        and tick Share audio.
+                        Click Start Broadcast, then choose the screen, app, or browser tab you want to stream. If you need system sound, choose a tab or screen option that supports audio and tick Share audio.
                       </p>
                       <button
                         onClick={connectRoom}
@@ -544,7 +545,6 @@ export default function AdminBroadcastStudioPage() {
                       </button>
                     </div>
                   </div>
-                )}
 
                 {cameraOn && (
                   <div className="absolute bottom-4 right-4 h-32 w-44 overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl sm:h-40 sm:w-56">
