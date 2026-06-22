@@ -189,7 +189,7 @@ export default function AdminBroadcastStudioPage() {
     }
   }
 
-  async function startScreenShare(targetRoom?: Room) {
+  async function startScreenShare(targetRoom?: Room, audioEnabled?: boolean) {
     const activeRoom = targetRoom || roomRef.current;
     if (!activeRoom) return;
 
@@ -300,23 +300,37 @@ export default function AdminBroadcastStudioPage() {
 
   function attachLocalTracks(targetRoom: Room) {
     const publications = Array.from(
-      ((targetRoom.localParticipant as any).trackPublications?.values?.() ||
-        []) as any[],
+      ((targetRoom.localParticipant as any).trackPublications?.values?.() || []) as any[],
     );
 
     publications.forEach((publication: any) => {
       const track = publication.track;
-      if (!track || track.kind !== Track.Kind.Video) return;
+      if (!track) return;
 
       const source = publication.source || track.source;
 
       try {
-        if (source === Track.Source.ScreenShare && screenVideoRef.current) {
+        if (
+          track.kind === Track.Kind.Video &&
+          source === Track.Source.ScreenShare &&
+          screenVideoRef.current
+        ) {
           track.attach(screenVideoRef.current);
         }
 
-        if (source === Track.Source.Camera && cameraVideoRef.current) {
+        if (
+          track.kind === Track.Kind.Video &&
+          source === Track.Source.Camera &&
+          cameraVideoRef.current
+        ) {
           track.attach(cameraVideoRef.current);
+        }
+
+        if (
+          track.kind === Track.Kind.Audio &&
+          source === Track.Source.ScreenShareAudio
+        ) {
+          publication.setMuted(false);
         }
       } catch (error) {
         console.error("Attach local broadcast track error:", error);
@@ -429,7 +443,7 @@ export default function AdminBroadcastStudioPage() {
               {stream.title}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-              {stream.category} • {isLive ? "Live" : "Offline"} • Public admin
+              {stream.category} â€¢ {isLive ? "Live" : "Offline"} â€¢ Public admin
               broadcast
             </p>
             <p className="mt-2 text-sm text-gray-500">{statusText}</p>
@@ -511,7 +525,7 @@ export default function AdminBroadcastStudioPage() {
                 {!screenOn && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-5 text-center">
                     <div>
-                      <div className="mb-4 text-6xl">📡</div>
+                      <div className="mb-4 text-6xl">ðŸ“¡</div>
                       <h2 className="mb-3 text-3xl font-black">
                         Ready to Share Screen?
                       </h2>
