@@ -2990,11 +2990,11 @@ export default function LiveRoomPage() {
               </h1>
 
               <p className="text-sm text-gray-400 sm:text-base lg:text-lg">
-                {stream.category} •{" "}
+                {stream.category} â€¢{" "}
                 <span className={isLive ? "text-green-500" : "text-gray-500"}>
                   {isLive ? "Live Now" : "Offline"}
                 </span>{" "}
-                •{" "}
+                â€¢{" "}
                 <span
                   className={
                     isPrivate
@@ -3178,7 +3178,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "• Host" : "• Guest"}
+                            You {role === "host" ? "â€¢ Host" : "â€¢ Guest"}
                           </div>
                         </div>
 
@@ -3218,7 +3218,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "• Host" : "• Guest"}
+                            You {role === "host" ? "â€¢ Host" : "â€¢ Guest"}
                           </div>
                         </div>
 
@@ -3369,7 +3369,7 @@ export default function LiveRoomPage() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
                       <div className="max-w-md text-center">
                         <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                          {isPrivate ? "PRIVATE" : isSubscribersOnly ? "SUB" : "VIDEO"}
+                          {isPrivate ? "☎" : isSubscribersOnly ? "★" : "▶"}
                         </div>
 
                         <h2 className="mb-3 text-3xl font-black sm:text-4xl">
@@ -3761,7 +3761,7 @@ export default function LiveRoomPage() {
                 {chatMessages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-gray-400">
                     <div>
-                      <p className="mb-3 text-4xl">CHAT</p>
+                      <p className="mb-3 text-4xl">💬</p>
                       <p>No chat messages yet.</p>
                     </div>
                   </div>
