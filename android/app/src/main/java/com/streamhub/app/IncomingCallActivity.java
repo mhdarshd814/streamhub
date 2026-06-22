@@ -29,6 +29,11 @@ public class IncomingCallActivity extends Activity {
         wakeAndShowOnLockScreen();
         readIntentData();
         buildUi();
+
+        String incomingAction = getIntent().getStringExtra("action");
+        if ("accept".equals(incomingAction)) {
+            acceptCall();
+        }
     }
 
     private void wakeAndShowOnLockScreen() {
@@ -141,7 +146,7 @@ public class IncomingCallActivity extends Activity {
     }
 
     private void acceptCall() {
-        clearNotification();
+        clearNotification(); stopService(new Intent(this, IncomingCallService.class));
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("streamhub_url", targetUrl);
@@ -152,7 +157,7 @@ public class IncomingCallActivity extends Activity {
     }
 
     private void declineCall() {
-        clearNotification();
+        clearNotification(); stopService(new Intent(this, IncomingCallService.class));
         finish();
     }
 
