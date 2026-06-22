@@ -110,6 +110,7 @@ export default function WatchPage() {
   const [isViewerFullscreen, setIsViewerFullscreen] = useState(false);
   const [fullscreenChatOpen, setFullscreenChatOpen] = useState(false);
   const [videoTrackVersion, setVideoTrackVersion] = useState(0);
+  const [videoFitMode, setVideoFitMode] = useState<"cover" | "contain">("cover");
 
   const videoContainerRef = useRef<HTMLDivElement | null>(null);
   const fullscreenVideoContainerRef = useRef<HTMLDivElement | null>(null);
@@ -258,7 +259,7 @@ export default function WatchPage() {
     element.playsInline = true;
     element.style.width = "100%";
     element.style.height = "100%";
-    element.style.objectFit = "cover";
+    element.style.objectFit = videoFitMode;
     element.style.borderRadius = borderRadius;
     element.style.backgroundColor = "#000000";
 
@@ -1180,7 +1181,7 @@ export default function WatchPage() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [isViewerFullscreen, connected, streamStatus, videoTrackVersion]);
+  }, [isViewerFullscreen, connected, streamStatus, videoTrackVersion, videoFitMode]);
 
 
   useEffect(() => {
@@ -1537,7 +1538,7 @@ export default function WatchPage() {
       {
         id: `tip-${Date.now()}`,
         username: "StreamHub",
-        message: `💰 ${tipperName} sent USD ${amount} tip!`,
+        message: `ðŸ’° ${tipperName} sent USD ${amount} tip!`,
         created_at: new Date().toISOString(),
       },
     ]);
@@ -1731,7 +1732,7 @@ export default function WatchPage() {
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
           <div className="w-full max-w-xl rounded-[28px] border border-red-500/20 bg-red-950/20 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
-              ⛔
+              â›”
             </div>
 
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-red-400 sm:text-sm">
@@ -1764,7 +1765,7 @@ export default function WatchPage() {
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
           <div className="w-full max-w-xl rounded-[28px] border border-yellow-500/20 bg-yellow-950/10 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-yellow-500/20 bg-yellow-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
-              ⭐
+              â­
             </div>
 
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-yellow-300 sm:text-sm">
@@ -1806,7 +1807,7 @@ export default function WatchPage() {
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
           <div className="w-full max-w-xl rounded-[28px] border border-purple-500/20 bg-purple-950/10 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
-              🔒
+              ðŸ”’
             </div>
 
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-purple-400 sm:text-sm">
@@ -1890,7 +1891,7 @@ export default function WatchPage() {
                     {stream?.title || "Live Stream"}
                   </h2>
                   <p className="truncate text-xs text-white/55">
-                    {hostName} • {connected ? "Connected" : "Reconnecting"}
+                    {hostName} â€¢ {connected ? "Connected" : "Reconnecting"}
                   </p>
                 </div>
 
@@ -1995,7 +1996,7 @@ export default function WatchPage() {
                       : "bg-red-600 text-white hover:bg-red-500"
                   } disabled:bg-white/10 disabled:text-white/35`}
                 >
-                  {liked ? "Liked ❤️" : "Like ❤️"}
+                  {liked ? "Liked â¤ï¸" : "Like â¤ï¸"}
                 </button>
 
                 <button
@@ -2010,12 +2011,12 @@ export default function WatchPage() {
                     onClick={enableAudioManually}
                     className="rounded-full bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500"
                   >
-                    Audio 🔊
+                    Audio ðŸ”Š
                   </button>
                 )}
 
                 <div className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
-                  👁 {viewerCount}
+                  ðŸ‘ {viewerCount}
                 </div>
 
 
@@ -2048,7 +2049,7 @@ export default function WatchPage() {
                   onClick={() => setTipOpen(false)}
                   className="rounded-xl bg-white/10 px-3 py-2 font-bold text-white/70 hover:bg-white/20"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
 
@@ -2176,7 +2177,7 @@ export default function WatchPage() {
                       </p>
                       {host?.is_verified && (
                         <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-black">
-                          ✓
+                          âœ“
                         </span>
                       )}
                     </div>
@@ -2200,7 +2201,7 @@ export default function WatchPage() {
                       {followLoading
                         ? "Wait..."
                         : isFollowingHost
-                        ? "Following ✓"
+                        ? "Following âœ“"
                         : "Follow +"}
                     </button>
                   )}
@@ -2220,7 +2221,7 @@ export default function WatchPage() {
                       onClick={enableAudioManually}
                       className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-500 sm:px-6"
                     >
-                      Enable Audio 🔊
+                      Enable Audio ðŸ”Š
                     </button>
                   )}
 
@@ -2229,7 +2230,7 @@ export default function WatchPage() {
                     disabled={streamStatus !== "live" || !connected || blockedAccess}
                     className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:text-white/35 sm:px-6"
                   >
-                    Fullscreen ⛶
+                    Fullscreen â›¶
                   </button>
 
                   {showJoinRequestButton && (
@@ -2242,7 +2243,7 @@ export default function WatchPage() {
                       }
                       className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-6"
                     >
-                      {joinRequestButtonLabel} 🎙️
+                      {joinRequestButtonLabel} ðŸŽ™ï¸
                     </button>
                   )}
 
@@ -2257,7 +2258,7 @@ export default function WatchPage() {
                         : "cursor-not-allowed bg-white/10 text-white/35"
                     }`}
                   >
-                    {liked ? "Liked ❤️" : "Like ❤️"}
+                    {liked ? "Liked â¤ï¸" : "Like â¤ï¸"}
                   </button>
 
                   {stream?.user_id &&
@@ -2278,7 +2279,7 @@ export default function WatchPage() {
                             : "cursor-not-allowed bg-white/10 text-white/35"
                         }`}
                       >
-                        Tip 💰
+                        Tip ðŸ’°
                       </button>
                     )}
 
