@@ -988,7 +988,7 @@ function CallCard({
 
             {call.stream && (
               <p className="mt-2 text-sm font-bold text-purple-300">
-                {call.stream.title} â€¢ {price > 0 ? `$${price.toFixed(2)}` : "Free"}
+                {call.stream.title} - {price > 0 ? `$${price.toFixed(2)}` : "Free"}
               </p>
             )}
           </div>
@@ -1136,7 +1136,6 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
-
 
 
 
