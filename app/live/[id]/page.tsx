@@ -2680,7 +2680,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
         <div className="text-center">
-          <div className="mb-4 text-5xl">VIDEO</div>
+          <div className="mb-4 flex justify-center text-red-500"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></div>
           <p className="text-gray-400">{statusText}</p>
         </div>
       </div>
@@ -2990,11 +2990,11 @@ export default function LiveRoomPage() {
               </h1>
 
               <p className="text-sm text-gray-400 sm:text-base lg:text-lg">
-                {stream.category} â€¢{" "}
+                {stream.category} {" | "}
                 <span className={isLive ? "text-green-500" : "text-gray-500"}>
                   {isLive ? "Live Now" : "Offline"}
                 </span>{" "}
-                â€¢{" "}
+                {" | "}
                 <span
                   className={
                     isPrivate
@@ -3178,7 +3178,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "â€¢ Host" : "â€¢ Guest"}
+                            You {role === "host" ? "Host" : "Guest"}
                           </div>
                         </div>
 
@@ -3218,7 +3218,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "â€¢ Host" : "â€¢ Guest"}
+                            You {role === "host" ? "Host" : "Guest"}
                           </div>
                         </div>
 
@@ -3369,7 +3369,7 @@ export default function LiveRoomPage() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
                       <div className="max-w-md text-center">
                         <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                          {isPrivate ? "☎" : isSubscribersOnly ? "★" : "▶"}
+                          <span className="inline-flex h-20 w-20 items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 text-xl font-black text-red-400">{isPrivate ? "CALL" : isSubscribersOnly ? "SUB" : "LIVE"}</span>
                         </div>
 
                         <h2 className="mb-3 text-3xl font-black sm:text-4xl">
@@ -3761,7 +3761,7 @@ export default function LiveRoomPage() {
                 {chatMessages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-gray-400">
                     <div>
-                      <p className="mb-3 text-4xl">💬</p>
+                      <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-purple-500/20 text-red-300"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3 1.5-5A8 8 0 1 1 21 12z"/></svg></div>
                       <p>No chat messages yet.</p>
                     </div>
                   </div>
