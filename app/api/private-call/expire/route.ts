@@ -49,11 +49,18 @@ export async function POST(req: Request) {
     const calls = expiredCalls || [];
 
     if (calls.length === 0) {
-      return NextResponse.json({ success: true, expired: 0 });
+      return NextResponse.json({
+        success: true,
+        expired: 0,
+        streamIds: [],
+        closedStreamIds: [],
+      });
     }
 
     const ids = calls.map((item: any) => item.id).filter(Boolean);
-    const streamIds = calls.map((item: any) => item.stream_id).filter(Boolean);
+    const streamIds = Array.from(
+      new Set(calls.map((item: any) => item.stream_id).filter(Boolean))
+    );
 
     await supabase
       .from("private_call_requests")
@@ -65,24 +72,45 @@ export async function POST(req: Request) {
       .in("id", ids)
       .eq("status", "pending");
 
-    if (streamIds.length > 0) {
+    const closedStreamIds: string[] = [];
+
+    for (const streamId of streamIds) {
+      const { count: acceptedCount, error: acceptedError } = await supabase
+        .from("private_call_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("stream_id", streamId)
+        .eq("status", "accepted");
+
+      if (acceptedError) {
+        console.warn("Accepted private call check failed:", acceptedError.message);
+        continue;
+      }
+
+      if ((acceptedCount || 0) > 0) {
+        continue;
+      }
+
+      closedStreamIds.push(streamId);
+    }
+
+    if (closedStreamIds.length > 0) {
       await supabase
         .from("streams")
         .update({
           status: "offline",
           viewers: 0,
         })
-        .in("id", streamIds);
+        .in("id", closedStreamIds);
 
       await supabase
         .from("stream_viewers")
         .delete()
-        .in("stream_id", streamIds);
+        .in("stream_id", closedStreamIds);
 
       await supabase
         .from("stream_guests")
         .update({ status: "declined" })
-        .in("stream_id", streamIds)
+        .in("stream_id", closedStreamIds)
         .eq("status", "pending");
     }
 
@@ -90,6 +118,7 @@ export async function POST(req: Request) {
       success: true,
       expired: calls.length,
       streamIds,
+      closedStreamIds,
     });
   } catch (error: any) {
     return NextResponse.json(
