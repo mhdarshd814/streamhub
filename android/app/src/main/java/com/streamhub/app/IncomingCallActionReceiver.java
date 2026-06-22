@@ -26,6 +26,9 @@ public class IncomingCallActionReceiver extends BroadcastReceiver {
             manager.cancel(notificationId);
         }
 
+        CallRingtoneManager.stop();
+        context.stopService(new Intent(context, IncomingCallService.class));
+
         if (ACTION_ACCEPT_CALL.equals(action)) {
             if (targetUrl == null || targetUrl.isEmpty()) {
                 targetUrl = callId == null || callId.isEmpty()
