@@ -2680,7 +2680,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
         <div className="text-center">
-          <div className="mb-4 flex justify-center text-red-500"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></div>
+          <div className="mb-4 flex justify-center text-red-500"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></div>
           <p className="text-gray-400">{statusText}</p>
         </div>
       </div>
@@ -2691,7 +2691,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white sm:px-6">
         <div className="w-full max-w-md rounded-3xl border border-gray-800 bg-gray-900 p-6 text-center sm:p-8">
-          <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-3xl border border-red-500/30 bg-red-500/10 text-red-400"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M9 15c2.5 3 4.5 3 6 0"/></svg></div>
+          <div className="mb-5 flex justify-center text-red-400"><svg width="82" height="82" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M9 15c2.5 3 4.5 3 6 0"/></svg></div>
           <h1 className="mb-3 text-3xl font-black">Access Denied</h1>
           <p className="mb-8 text-gray-400">{statusText}</p>
 
@@ -2710,7 +2710,7 @@ export default function LiveRoomPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white sm:px-6">
         <div className="w-full max-w-lg rounded-3xl border border-gray-800 bg-gray-900 p-6 text-center sm:p-8">
-          <div className="mb-5 text-5xl">MIC</div>
+          <div className="mb-5 flex justify-center text-red-400"><svg width="82" height="82" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/><path d="M8 21h8"/></svg></div>
           <h1 className="mb-3 text-3xl font-black">Guest Stream Invite</h1>
           <p className="mb-8 text-gray-400">
             You have been invited to join this stream as a guest streamer.
@@ -2874,7 +2874,7 @@ export default function LiveRoomPage() {
                 ) : (
                   <div className="flex h-full items-center justify-center bg-black text-center text-gray-400">
                     <div>
-                      <p className="mb-3 text-5xl">CALL</p>
+                      <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_35px_rgba(239,68,68,0.25)]"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z"/></svg></div>
                       <p>Waiting for the other person...</p>
                     </div>
                   </div>
@@ -3178,7 +3178,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "Host" : "Guest"}
+                            You {role === "host" ? "• Host" : "• Guest"}
                           </div>
                         </div>
 
@@ -3218,7 +3218,7 @@ export default function LiveRoomPage() {
                           />
 
                           <div className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-bold">
-                            You {role === "host" ? "Host" : "Guest"}
+                            You {role === "host" ? "• Host" : "• Guest"}
                           </div>
                         </div>
 
@@ -3255,7 +3255,7 @@ export default function LiveRoomPage() {
                         ) : (
                           <div className="flex h-full items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
                             <div>
-                              <p className="mb-2 text-4xl">CALL</p>
+                              <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_30px_rgba(239,68,68,0.22)]"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z"/></svg></div>
                               <p className="text-sm">
                                 Waiting for the other person...
                               </p>
@@ -3369,7 +3369,7 @@ export default function LiveRoomPage() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
                       <div className="max-w-md text-center">
                         <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                          <span className="inline-flex h-20 w-20 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-purple-500/10 text-red-300 shadow-[0_0_40px_rgba(239,68,68,0.18)]"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z"/></svg></span>
+                          <span className="inline-flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z"/></svg></span>
                         </div>
 
                         <h2 className="mb-3 text-3xl font-black sm:text-4xl">
@@ -3761,7 +3761,7 @@ export default function LiveRoomPage() {
                 {chatMessages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-gray-400">
                     <div>
-                      <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 via-slate-900 to-purple-500/20 text-red-300 shadow-[0_0_35px_rgba(239,68,68,0.18)]"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H7l-4 2 1.3-4.2A8.5 8.5 0 1 1 21 11.5z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></div>
+                      <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 via-slate-900 to-purple-500/20 text-red-300 shadow-[0_0_40px_rgba(239,68,68,0.28)]"><svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H7l-4 2 1.3-4.2A8.5 8.5 0 1 1 21 11.5z"/><path d="M8 11h8"/><path d="M8 15h5"/></svg></div>
                       <p>No chat messages yet.</p>
                     </div>
                   </div>
