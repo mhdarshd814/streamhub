@@ -236,98 +236,86 @@ export default function CreatorAnalyticsPage() {
       setProfile(profileData || null);
     }
 
-    const { data: streamsData, error: streamsError } = await supabase
-      .from("streams")
-      .select(
-        "id, user_id, title, category, status, visibility, likes, viewers, total_views, peak_viewers, watch_minutes, thumbnail_url, created_at"
-      )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (streamsError) {
-      setError(streamsError.message);
-      setLoading(false);
-      return;
-    }
-
-    setStreams((streamsData || []) as Stream[]);
-
-    const dailyAnalytics = await safeSelect<AnalyticsRow>(
+    const [
+      streamsResult,
+      dailyAnalytics,
+      tipRows,
+      subscriptionRows,
+      walletRowsByCreator,
+      walletRowsByUser,
+      followRows,
+      privatePayments,
+    ] = await Promise.all([
       supabase
-        .from("stream_daily_analytics")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("analytics_date", { ascending: true }),
-      "analyticsAvailable"
-    );
+        .from("streams")
+        .select(
+          "id, user_id, title, category, status, visibility, likes, viewers, total_views, peak_viewers, watch_minutes, thumbnail_url, created_at"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
 
-    setAnalyticsRows(dailyAnalytics);
+      safeSelect<AnalyticsRow>(
+        supabase
+          .from("stream_daily_analytics")
+          .select("*")
+          .eq("creator_id", user.id)
+          .order("analytics_date", { ascending: true }),
+        "analyticsAvailable"
+      ),
 
-    const tipRows = await safeSelect<TipRow>(
-      supabase
-        .from("stream_tips")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(500),
-      "tipsAvailable"
-    );
+      safeSelect<TipRow>(
+        supabase
+          .from("stream_tips")
+          .select("*")
+          .eq("creator_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(500),
+        "tipsAvailable"
+      ),
 
-    setTips(tipRows);
+      safeSelect<SubscriptionRow>(
+        supabase
+          .from("creator_subscriptions")
+          .select("*")
+          .eq("creator_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(500),
+        "subscriptionsAvailable"
+      ),
 
-    const subscriptionRows = await safeSelect<SubscriptionRow>(
-      supabase
-        .from("creator_subscriptions")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(500),
-      "subscriptionsAvailable"
-    );
+      safeSelect<WalletRow>(
+        supabase
+          .from("creator_wallets")
+          .select("*")
+          .eq("creator_id", user.id)
+          .limit(1),
+        "walletAvailable"
+      ),
 
-    setSubscriptions(subscriptionRows);
-
-    const walletRowsByCreator = await safeSelect<WalletRow>(
-      supabase
-        .from("creator_wallets")
-        .select("*")
-        .eq("creator_id", user.id)
-        .limit(1),
-      "walletAvailable"
-    );
-
-    if (walletRowsByCreator[0]) {
-      setWallet(walletRowsByCreator[0]);
-    } else {
-      const walletRowsByUser = await safeSelect<WalletRow>(
+      safeSelect<WalletRow>(
         supabase
           .from("creator_wallets")
           .select("*")
           .eq("user_id", user.id)
           .limit(1),
         "walletAvailable"
-      );
+      ),
 
-      setWallet(walletRowsByUser[0] || null);
-    }
+      safeSelect<FollowRow>(
+        supabase
+          .from("follows")
+          .select("id, follower_id, following_id, created_at")
+          .eq("following_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(1000),
+        "followsAvailable"
+      ),
 
-    const followRows = await safeSelect<FollowRow>(
-      supabase
-        .from("follows")
-        .select("id, follower_id, following_id, created_at")
-        .eq("following_id", user.id)
-        .order("created_at", { ascending: true })
-        .limit(1000),
-      "followsAvailable"
-    );
-
-    setFollows(followRows);
-
-    const privatePayments = await safeSelect<PrivateCallPayment>(
-      supabase
-        .from("private_call_payments")
-        .select(
-          `
+      safeSelect<PrivateCallPayment>(
+        supabase
+          .from("private_call_payments")
+          .select(
+            `
           id,
           stream_id,
           caller_id,
@@ -342,13 +330,26 @@ export default function CreatorAnalyticsPage() {
             display_name
           )
         `
-        )
-        .eq("creator_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(500),
-      "privatePaymentsAvailable"
-    );
+          )
+          .eq("creator_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(500),
+        "privatePaymentsAvailable"
+      ),
+    ]);
 
+    if (streamsResult.error) {
+      setError(streamsResult.error.message);
+      setLoading(false);
+      return;
+    }
+
+    setStreams((streamsResult.data || []) as Stream[]);
+    setAnalyticsRows(dailyAnalytics);
+    setTips(tipRows);
+    setSubscriptions(subscriptionRows);
+    setWallet(walletRowsByCreator[0] || walletRowsByUser[0] || null);
+    setFollows(followRows);
     setPrivateCallPayments(privatePayments);
 
     setLoading(false);
