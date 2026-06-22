@@ -70,6 +70,15 @@
             android:exported="false" />
         <!-- Firebase Incoming Call Service -->
         <service
+            android:name=".IncomingCallConnectionService"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".IncomingCallService"
             android:foregroundServiceType="phoneCall"
             android:exported="false" />
