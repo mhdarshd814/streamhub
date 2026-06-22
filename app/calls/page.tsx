@@ -220,119 +220,33 @@ export default function CallsPage() {
   }
 
   async function expireStaleCalls() {
-    const now = new Date().toISOString();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user?.id) return;
-
-    const { data: expiredCalls, error } = await supabase
-      .from("private_call_requests")
-      .select("id, stream_id, caller_id, receiver_id")
-      .eq("status", "pending")
-      .lt("expires_at", now)
-      .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`);
-
-    if (error) {
-      console.warn("Call expiry check skipped:", error.message);
-      return;
-    }
-
-    if (!expiredCalls || expiredCalls.length === 0) return;
-
-    const expiredIds = expiredCalls.map((item: any) => item.id).filter(Boolean);
-
-    if (expiredIds.length === 0) return;
-
-    const { error: updateError } = await supabase
-      .from("private_call_requests")
-      .update({
-        status: "missed",
-        ring_status: "expired",
-      })
-      .in("id", expiredIds);
-
-    if (updateError) {
-      console.warn("Call expiry update skipped:", updateError.message);
-      return;
-    }
-
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
-    await Promise.all(
-      expiredCalls.map(async (item: any) => {
-        if (!item.stream_id || !item.receiver_id || !item.caller_id) return;
+    if (!session?.access_token) return;
 
-        await supabase
-          .from("stream_guests")
-          .update({ status: "declined" })
-          .eq("stream_id", item.stream_id)
-          .eq("guest_id", item.receiver_id)
-          .eq("status", "pending");
+    try {
+      const response = await fetch("/api/private-call/expire", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-        await supabase.from("notifications").insert([
-          {
-            user_id: item.caller_id,
-            type: "private_call_missed",
-            title: "Missed Call",
-            message: "Your private call was not answered.",
-            link: "/calls",
-            is_read: false,
-          },
-          {
-            user_id: item.receiver_id,
-            type: "private_call_missed",
-            title: "Missed Call",
-            message: "You missed a private call.",
-            link: "/calls",
-            is_read: false,
-          },
-        ]);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        console.warn("Private call expiry API failed:", data?.error || response.statusText);
+        return;
+      }
 
-        if (session?.access_token) {
-          await Promise.all([
-            fetch("/api/push/send", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                userId: item.caller_id,
-                title: "Missed Call",
-                message: "Your private call was not answered.",
-                url: "/calls",
-                notificationType: "private_call_missed",
-                streamId: item.stream_id,
-              }),
-            }).catch(() => {}),
-
-            fetch("/api/push/send", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                userId: item.receiver_id,
-                title: "Missed Call",
-                message: "You missed a private call.",
-                url: "/calls",
-                notificationType: "private_call_missed",
-                streamId: item.stream_id,
-              }),
-            }).catch(() => {}),
-          ]);
-        }
-      })
-    );
-
-    await loadCalls();
+      await loadCalls();
+    } catch (error) {
+      console.warn("Private call expiry API skipped:", error);
+    }
   }
+
   async function loadFollowingIds(currentUserId: string) {
     const { data } = await supabase
       .from("follows")
@@ -1074,7 +988,7 @@ function CallCard({
 
             {call.stream && (
               <p className="mt-2 text-sm font-bold text-purple-300">
-                {call.stream.title} � {price > 0 ? `$${price.toFixed(2)}` : "Free"}
+                {call.stream.title} ï¿½ {price > 0 ? `$${price.toFixed(2)}` : "Free"}
               </p>
             )}
           </div>
