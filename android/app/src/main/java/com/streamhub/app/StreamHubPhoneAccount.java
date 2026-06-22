@@ -30,7 +30,9 @@ public class StreamHubPhoneAccount {
             PhoneAccountHandle handle = getHandle(context);
 
             PhoneAccount.Builder builder = PhoneAccount.builder(handle, "StreamHub Calls")
-                    .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED);
+                    .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED)
+                    .addSupportedUriScheme(PhoneAccount.SCHEME_TEL)
+                    .addSupportedUriScheme("streamhub");
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 builder.setIcon(Icon.createWithResource(context, context.getApplicationInfo().icon));
