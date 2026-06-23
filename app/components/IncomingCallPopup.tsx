@@ -173,14 +173,7 @@ export default function IncomingCallPopup() {
       return;
     }
 
-    if (!data?.id) {
-      activeCallIdRef.current = null;
-      stopRing();
-      setLoadingAction(false);
-      setSoundBlocked(false);
-      setCall(null);
-      return;
-    }
+    if (!data?.id) return;
     if (activeCallIdRef.current === data.id) return;
 
     await loadSingleCall(data.id, shouldRing);
@@ -351,7 +344,6 @@ export default function IncomingCallPopup() {
     ]);
 
     stopRing();
-    setCall(null);
     activeCallIdRef.current = null;
     window.location.href = `/live/${call.stream_id}`;
   }
@@ -380,7 +372,6 @@ export default function IncomingCallPopup() {
     activeCallIdRef.current = null;
     setCall(null);
     setLoadingAction(false);
-    setSoundBlocked(false);
   }
 
   const audioElement = (
