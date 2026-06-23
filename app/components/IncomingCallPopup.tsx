@@ -304,6 +304,7 @@ export default function IncomingCallPopup() {
     if (!userId || !call || !call.stream_id || call.receiver_id !== userId) return;
 
     setLoadingAction(true);
+    stopRing();
     const price = Number(call.stream?.private_call_price || 0);
 
     if (price > 0) {
