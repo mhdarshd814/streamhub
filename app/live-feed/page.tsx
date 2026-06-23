@@ -227,11 +227,17 @@ export default function LiveFeedPage() {
     );
 
     setStreams(withProfiles as Stream[]);
+
+   if (withProfiles.length > 0) {
+      window.location.href = `/watch/${withProfiles[0].id}`;
+      return;
+  }
+
     setActiveIndex((current) => {
       if (withProfiles.length === 0) return 0;
       if (current >= withProfiles.length) return 0;
       return current;
-    });
+  });
 
     setLoading(false);
 
@@ -410,19 +416,29 @@ export default function LiveFeedPage() {
     roomRef.current = room;
 
     room.on(
-      RoomEvent.TrackSubscribed,
-      (track: RemoteTrack, publication: RemoteTrackPublication) => {
-        try {
-          publication.setVideoQuality?.(2);
-        } catch {}
+        RoomEvent.TrackSubscribed,
+        (track: RemoteTrack, publication: RemoteTrackPublication) => {
+       try {
+        publication.setVideoQuality?.(2);
+       } catch {}
 
-        attachTrack(track);
+       attachTrack(track);
       }
     );
 
-    room.on(RoomEvent.Disconnected, () => {
-      handleStreamEnded();
-    });
+    (room as any).on(
+    (RoomEvent as any).TrackPublished,
+    (publication: any) => {
+     try {
+      publication.setSubscribed?.(true);
+      publication.setVideoQuality?.(2);
+     } catch {}
+   }
+  );
+
+room.on(RoomEvent.Disconnected, () => {
+  handleStreamEnded();
+});
 
     try {
       await room.connect(livekitUrl, tokenData.token, {
