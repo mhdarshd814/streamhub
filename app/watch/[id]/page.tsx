@@ -1538,7 +1538,7 @@ export default function WatchPage() {
       {
         id: `tip-${Date.now()}`,
         username: "StreamHub",
-        message: `ðŸ’° ${tipperName} sent USD ${amount} tip!`,
+        message: `${tipperName} sent USD ${amount} tip!`,
         created_at: new Date().toISOString(),
       },
     ]);
@@ -2177,7 +2177,7 @@ export default function WatchPage() {
                       </p>
                       {host?.is_verified && (
                         <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-black">
-                          âœ“
+                        ✓
                         </span>
                       )}
                     </div>
@@ -2201,7 +2201,7 @@ export default function WatchPage() {
                       {followLoading
                         ? "Wait..."
                         : isFollowingHost
-                        ? "Following âœ“"
+                        ? "Following ✓"
                         : "Follow +"}
                     </button>
                   )}
@@ -2279,7 +2279,7 @@ export default function WatchPage() {
                             : "cursor-not-allowed bg-white/10 text-white/35"
                         }`}
                       >
-                        Tip ðŸ’°
+                        Tip 💰
                       </button>
                     )}
 
