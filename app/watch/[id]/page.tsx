@@ -228,6 +228,11 @@ export default function WatchPage() {
   }
 
   if (track.kind === Track.Kind.Audio) {
+    if (!remoteVideoTrackRef.current) {
+      console.warn("Audio blocked until video track attaches.");
+      return;
+    }
+
     const element = track.attach();
     const audioElement = element as HTMLAudioElement;
     audioElement.autoplay = true;
@@ -976,20 +981,25 @@ export default function WatchPage() {
       }
 
       if (track.kind === Track.Kind.Audio) {
-        const element = track.attach();
-        const audioElement = element as HTMLAudioElement;
-        audioElement.autoplay = true;
-        audioElement.controls = false;
-        audioElement.style.display = "none";
+    if (!remoteVideoTrackRef.current) {
+      console.warn("Audio blocked until video track attaches.");
+      return;
+    }
 
-        document.body.appendChild(audioElement);
-        audioElementsRef.current.push(audioElement);
+    const element = track.attach();
+    const audioElement = element as HTMLAudioElement;
+    audioElement.autoplay = true;
+    audioElement.controls = false;
+    audioElement.style.display = "none";
 
-        audioElement.play().catch(() => {
-          setAudioBlocked(true);
-          console.warn("Audio autoplay blocked. User must enable audio manually.");
-        });
-      }
+    document.body.appendChild(audioElement);
+    audioElementsRef.current.push(audioElement);
+
+    audioElement.play().catch(() => {
+      setAudioBlocked(true);
+      console.warn("Audio autoplay blocked. User must enable audio manually.");
+    });
+  }
     }
 
     async function joinRoom() {
@@ -1132,6 +1142,19 @@ export default function WatchPage() {
           getViewerConnectOptions() as any
         );
 
+        room.remoteParticipants.forEach((participant: any) => {
+          participant.trackPublications.forEach((publication: any) => {
+            try {
+              publication.setSubscribed?.(true);
+              publication.setVideoQuality?.(2);
+            } catch {}
+
+            if (publication.track) {
+              attachTrack(publication.track as RemoteTrack);
+            }
+          });
+        });
+
         await createViewerRecord();
 
         setConnected(true);
@@ -1147,6 +1170,12 @@ export default function WatchPage() {
         setTimeout(() => syncViewerRemoteQuality(room), 1500);
         setTimeout(() => syncViewerRemoteQuality(room), 3000);
         setTimeout(() => syncViewerRemoteQuality(room), 5000);
+        setTimeout(() => {
+          if (!remoteVideoTrackRef.current) {
+            setStatus("Video track not attached. Please reopen the stream.");
+            console.warn("Viewer connected but no remote video track attached after retries.");
+          }
+        }, 6500);
 
         setLoading(false);
       } catch (error: any) {
