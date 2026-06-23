@@ -349,8 +349,9 @@ export default function LiveFeedPage() {
 
     noVideoTimerRef.current = setTimeout(() => {
       if (!videoAttachedRef.current) {
-        setStatus("This stream has no active camera. Looking for another live...");
-        removeUnavailableStream(stream.id);
+        setConnected(true);
+        setReadyToShowLive(true);
+        setStatus("Live preview is loading. Tap Watch to open the stream.");
       }
     }, 8000);
 
