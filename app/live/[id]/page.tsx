@@ -120,6 +120,7 @@ export default function LiveRoomPage() {
   const [isCompactStudio, setIsCompactStudio] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
+  const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -497,6 +498,7 @@ export default function LiveRoomPage() {
     let viewerChannel: any;
     let privateCallChannel: any;
     let joinRequestChannel: any;
+    let busyCallChannel: any;
     let callExpiryTimer: ReturnType<typeof setInterval> | null = null;
 
     async function getRealViewerCount() {
@@ -758,6 +760,66 @@ export default function LiveRoomPage() {
         )
         .subscribe();
 
+      // Busy call detection — fires when someone tries to call while user is on a call
+      busyCallChannel = supabase
+        .channel("busy-call-" + channelKey)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "private_call_requests",
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            // Only intercept if currently in an active room
+            if (!roomRef.current) return;
+
+            const newCall = payload.new as PrivateCallRequest;
+            if (newCall.status !== "pending") return;
+
+            // Fetch caller name to show in the toast
+            const { data: callerProfile } = await supabase
+              .from("profiles")
+              .select("display_name, username")
+              .eq("id", newCall.caller_id)
+              .maybeSingle();
+
+            const callerName =
+              callerProfile?.display_name ||
+              callerProfile?.username ||
+              "Someone";
+
+            // Auto-decline with busy ring_status
+            await supabase
+              .from("private_call_requests")
+              .update({
+                status: "declined",
+                ring_status: "busy",
+                declined_at: new Date().toISOString(),
+              })
+              .eq("id", newCall.id)
+              .eq("status", "pending");
+
+            // Notify the caller that the line is busy
+            await supabase.from("notifications").insert([
+              {
+                user_id: newCall.caller_id,
+                type: "call_busy",
+                title: "Line Busy",
+                message: `The person you tried to call is on another call. Try again later.`,
+                link: "/calls",
+                is_read: false,
+              },
+            ]);
+
+            // Show toast on the busy user's screen
+            setBusyCallerName(callerName);
+            setTimeout(() => setBusyCallerName(null), 6000);
+          },
+        )
+        .subscribe();
+
       callExpiryTimer = setInterval(async () => {
         await expireStalePrivateCalls();
       }, 10000);
@@ -779,6 +841,7 @@ export default function LiveRoomPage() {
       if (viewerChannel) supabase.removeChannel(viewerChannel);
       if (privateCallChannel) supabase.removeChannel(privateCallChannel);
       if (joinRequestChannel) supabase.removeChannel(joinRequestChannel);
+      if (busyCallChannel) supabase.removeChannel(busyCallChannel);
       if (callExpiryTimer) clearInterval(callExpiryTimer);
 
       cleanupRemoteAudio();
@@ -861,7 +924,11 @@ export default function LiveRoomPage() {
 
       const data = await response.json().catch(() => null);
 
-      if (data?.expired > 0 && Array.isArray(data?.streamIds) && data.streamIds.includes(streamId)) {
+      if (
+         data?.expired > 0 &&
+         Array.isArray(data?.closedStreamIds) &&
+        data.closedStreamIds.includes(streamId)
+        ) {
         try {
           await KeepAwake.allowSleep();
         } catch {}
@@ -2815,6 +2882,22 @@ export default function LiveRoomPage() {
 
   return (
     <>
+      {/* Busy call toast — shows when someone tries to call while user is on a call */}
+      {busyCallerName && (
+        <div className="fixed right-4 top-4 z-[9999] flex items-start gap-3 rounded-2xl border border-yellow-500/30 bg-gray-900 p-4 shadow-2xl">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-500/20 text-yellow-300">
+            📞
+          </div>
+          <div>
+            <p className="font-black text-yellow-300">Incoming Call Attempt</p>
+            <p className="text-sm text-white">
+              <span className="font-bold">{busyCallerName}</span> tried to call you
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">They have been notified you are on another call</p>
+          </div>
+        </div>
+      )}
+
       {!isTheaterMode && hostJoinRequestVideoOverlay}
 
       {room && isTheaterMode && (
