@@ -426,21 +426,11 @@ export default function LiveFeedPage() {
 
     try {
       await room.connect(livekitUrl, tokenData.token, {
-        autoSubscribe: false,
+        autoSubscribe: true,
       } as any);
 
-      room.remoteParticipants.forEach((participant) => {
-        participant.trackPublications.forEach((publication: any) => {
-          try {
-            publication.setSubscribed?.(true);
-            publication.setVideoQuality?.(2);
-          } catch {}
-
-          if (publication.track) {
-            attachTrack(publication.track);
-          }
-        });
-      });
+          setStatus("Waiting for creator camera...");
+          await KeepAwake.keepAwake().catch(() => {});
 
       setStatus("Waiting for creator camera...");
       await KeepAwake.keepAwake().catch(() => {});
