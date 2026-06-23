@@ -431,9 +431,7 @@ export default function LiveFeedPage() {
 
           setStatus("Waiting for creator camera...");
           await KeepAwake.keepAwake().catch(() => {});
-
-      setStatus("Waiting for creator camera...");
-      await KeepAwake.keepAwake().catch(() => {});
+     
     } catch {
       setStatus("Unable to connect. Looking for another stream...");
       removeUnavailableStream(stream.id);
