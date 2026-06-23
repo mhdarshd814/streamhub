@@ -226,13 +226,7 @@ export default function LiveFeedPage() {
       })
     );
 
-    setStreams(withProfiles as Stream[]);
-
-   if (withProfiles.length > 0) {
-      window.location.href = `/watch/${withProfiles[0].id}`;
-      return;
-  }
-
+    setStreams(withProfiles as Stream[]);   
     setActiveIndex((current) => {
       if (withProfiles.length === 0) return 0;
       if (current >= withProfiles.length) return 0;
@@ -810,7 +804,7 @@ room.on(RoomEvent.Disconnected, () => {
       onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      onClick={handleVideoTap}
+      onClick={openFullRoom}
       className="relative h-screen w-full overflow-hidden bg-black text-white"
     >
       <div ref={videoRef} className="absolute inset-0 bg-black" />
