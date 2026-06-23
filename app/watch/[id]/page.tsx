@@ -1891,7 +1891,7 @@ export default function WatchPage() {
                     {stream?.title || "Live Stream"}
                   </h2>
                   <p className="truncate text-xs text-white/55">
-                    {hostName} â€¢ {connected ? "Connected" : "Reconnecting"}
+                    {hostName} . {connected ? "Connected" : "Reconnecting"}
                   </p>
                 </div>
 
@@ -2177,7 +2177,7 @@ export default function WatchPage() {
                       </p>
                       {host?.is_verified && (
                         <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-black">
-                        ✓
+                          ✓
                         </span>
                       )}
                     </div>
