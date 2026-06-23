@@ -431,10 +431,8 @@ export default function LiveFeedPage() {
       room.remoteParticipants.forEach((participant) => {
         participant.trackPublications.forEach((publication: any) => {
           try {
-            if (publication.kind === Track.Kind.Video) {
-              publication.setSubscribed?.(true);
-              publication.setVideoQuality?.(2);
-            }
+            publication.setSubscribed?.(true);
+            publication.setVideoQuality?.(2);
           } catch {}
 
           if (publication.track) {
