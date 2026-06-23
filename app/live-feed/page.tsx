@@ -425,14 +425,16 @@ export default function LiveFeedPage() {
 
     try {
       await room.connect(livekitUrl, tokenData.token, {
-        autoSubscribe: true,
+        autoSubscribe: false,
       } as any);
 
       room.remoteParticipants.forEach((participant) => {
         participant.trackPublications.forEach((publication: any) => {
           try {
-            publication.setSubscribed?.(true);
-            publication.setVideoQuality?.(2);
+            if (publication.kind === Track.Kind.Video) {
+              publication.setSubscribed?.(true);
+              publication.setVideoQuality?.(2);
+            }
           } catch {}
 
           if (publication.track) {
@@ -480,15 +482,10 @@ export default function LiveFeedPage() {
     }
 
     if (track.kind === Track.Kind.Audio) {
-      const audio = track.attach() as HTMLAudioElement;
-      audio.autoplay = true;
-      audio.controls = false;
-      audio.style.display = "none";
-      document.body.appendChild(audio);
-      audioElementsRef.current.push(audio);
-      audio.play().catch(() => {});
+      track.detach().forEach((element) => element.remove());
+      return;
     }
-  }
+    }
 
   function goNext() {
     clearStreamEndTimer();
