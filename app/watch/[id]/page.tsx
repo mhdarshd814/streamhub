@@ -155,8 +155,8 @@ export default function WatchPage() {
       // Keep adaptive stream enabled, but ask for stronger receive quality by
       // attaching the video at full container size and requesting HIGH quality
       // from remote publications where LiveKit exposes that method.
-      adaptiveStream: true,
-      dynacast: true,
+      adaptiveStream: false,
+      dynacast: false,
       stopLocalTrackOnUnpublish: true,
       videoCaptureDefaults: {
         resolution: {
@@ -254,19 +254,47 @@ export default function WatchPage() {
   ) {
     if (!track || !container) return;
 
+    try {
+      track.detach().forEach((element) => {
+        try {
+          element.remove();
+        } catch {}
+      });
+    } catch {}
+
     const element = track.attach() as HTMLVideoElement;
+
     element.autoplay = true;
+    element.muted = true;
     element.playsInline = true;
+    element.controls = false;
+
+    element.style.position = "absolute";
+    element.style.inset = "0";
     element.style.width = "100%";
     element.style.height = "100%";
     element.style.objectFit = videoFitMode;
     element.style.borderRadius = borderRadius;
     element.style.backgroundColor = "#000000";
+    element.style.zIndex = "5";
 
     container.innerHTML = "";
+    container.style.position = "relative";
+    container.style.overflow = "hidden";
     container.appendChild(element);
 
-    element.play().catch(() => {});
+    requestAnimationFrame(() => {
+      element.play().catch((error) => {
+        console.warn("Viewer video play retry needed:", error);
+        setTimeout(() => {
+          element.play().catch((retryError) => {
+            console.warn("Viewer video play retry failed:", retryError);
+          });
+        }, 500);
+      });
+    });
+
+    setStatus("Live stream connected");
   }
 
   function openViewerFullscreen() {
@@ -1114,8 +1142,11 @@ export default function WatchPage() {
         });
 
         syncViewerRemoteQuality(room);
+        setTimeout(() => syncViewerRemoteQuality(room), 300);
         setTimeout(() => syncViewerRemoteQuality(room), 700);
         setTimeout(() => syncViewerRemoteQuality(room), 1500);
+        setTimeout(() => syncViewerRemoteQuality(room), 3000);
+        setTimeout(() => syncViewerRemoteQuality(room), 5000);
 
         setLoading(false);
       } catch (error: any) {
