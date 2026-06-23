@@ -501,9 +501,33 @@ export default function IncomingCallPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
         <p className="text-gray-400">Opening incoming call...</p>
-      </main>
-    );
-  }
+            <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+          <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </main>
+  );
+}
 
   if (!call) {
     return (
@@ -522,9 +546,33 @@ export default function IncomingCallPage() {
             Open Calls
           </button>
         </div>
-      </main>
-    );
-  }
+            <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+          <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </main>
+  );
+}
 
   if (expired || call.status === "missed") {
     return (
@@ -546,9 +594,33 @@ export default function IncomingCallPage() {
             Open Calls
           </button>
         </div>
-      </main>
-    );
-  }
+            <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+          <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </main>
+  );
+}
 
   if (call.status !== "pending") {
     return (
@@ -570,31 +642,67 @@ export default function IncomingCallPage() {
             Open Calls
           </button>
         </div>
-      </main>
-    );
-  }
+            <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+          <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </main>
+  );
+}
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-6 text-white">
       <audio ref={audioRef} src="/sounds/ringtone.mp3" loop preload="auto" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.28),transparent_34rem)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.38),transparent_36rem)]" />
 
       <div className="slide-up relative z-10 w-full max-w-sm text-center">
         <p className="mb-5 text-xs font-black uppercase tracking-[0.35em] text-red-400">
           Incoming Call
         </p>
 
-        <div className="mx-auto mb-6 flex h-32 w-32 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-red-600 bg-gray-800 shadow-2xl shadow-red-600/30">
-          {call.caller?.avatar_url ? (
-            <img
-              src={call.caller.avatar_url}
-              alt={callerName}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span className="text-6xl">👤</span>
-          )}
+        <div className="relative mx-auto mb-6 flex h-36 w-36 items-center justify-center overflow-visible rounded-full bg-transparent">
+          <>
+            <div className="absolute h-36 w-36 animate-ping rounded-full bg-red-500/20" />
+            <div className="absolute h-28 w-28 animate-pulse rounded-full bg-red-500/25 blur-md" />
+            <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-red-500 bg-gray-800 shadow-2xl shadow-red-600/40">
+              <>
+            <div className="absolute h-36 w-36 animate-ping rounded-full bg-red-500/20" />
+            <div className="absolute h-28 w-28 animate-pulse rounded-full bg-red-500/25 blur-md" />
+            <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-red-500 bg-gray-800 shadow-2xl shadow-red-600/40">
+              {call.caller?.avatar_url ? (
+                <img
+                  src={call.caller.avatar_url}
+                  alt={callerName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-6xl">👤</span>
+              )}
+            </div>
+          </>
+            </div>
+          </>
         </div>
 
         <h1 className="text-4xl font-black">{callerName}</h1>
@@ -608,6 +716,32 @@ export default function IncomingCallPage() {
         <p className="mt-5 text-sm text-gray-400">
           {call.stream?.title || "Private video call"}
         </p>
+
+        <div className="mx-auto mt-7 flex items-end justify-center gap-1.5">
+          {[18, 34, 24, 46, 30, 40, 22].map((height, index) => (
+            <span
+              key={index}
+              className="w-1.5 rounded-full bg-red-400"
+              style={{
+                height,
+                animation: `wave 0.9s ease-in-out ${index * 0.08}s infinite alternate`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="mx-auto mt-7 flex items-end justify-center gap-1.5">
+          {[18, 34, 24, 46, 30, 40, 22].map((height, index) => (
+            <span
+              key={index}
+              className="w-1.5 rounded-full bg-red-400"
+              style={{
+                height,
+                animation: `wave 0.9s ease-in-out ${index * 0.08}s infinite alternate`,
+              }}
+            />
+          ))}
+        </div>
 
         <div className="mx-auto mt-7 flex h-16 w-16 items-center justify-center rounded-full border border-red-600/50 bg-red-600/10 text-2xl font-black text-red-400">
           {secondsLeft}
@@ -651,6 +785,30 @@ export default function IncomingCallPage() {
           View call history
         </button>
       </div>
+          <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+          <style jsx>{`
+        @keyframes wave {
+          from {
+            transform: scaleY(0.45);
+            opacity: 0.45;
+          }
+          to {
+            transform: scaleY(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </main>
   );
 }
