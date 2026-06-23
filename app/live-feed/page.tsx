@@ -100,7 +100,7 @@ export default function LiveFeedPage() {
     cleanupChatChannel();
 
     videoAttachedRef.current = false;
-    setReadyToShowLive(false);
+    setReadyToShowLive(true);
     setStreamEnded(false);
     setConnected(false);
     setLikes(Number(activeStream.likes || 0));
@@ -628,7 +628,7 @@ export default function LiveFeedPage() {
   }
 
   function openFullRoom() {
-    if (!activeStream || streamEnded || !readyToShowLive) return;
+    if (!activeStream || streamEnded) return;
     window.location.href = `/watch/${activeStream.id}`;
   }
 
