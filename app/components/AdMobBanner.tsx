@@ -58,7 +58,7 @@ export default function AdMobBanner() {
 
         if (!initializedRef.current) {
           await AdMob.initialize({
-            initializeForTesting: true,
+            initializeForTesting: false,
           });
           initializedRef.current = true;
         }
@@ -69,7 +69,7 @@ export default function AdMobBanner() {
             adSize: BannerAdSize.BANNER,
             position: BannerAdPosition.BOTTOM_CENTER,
             margin: 76,
-            isTesting: true,
+            isTesting: false,
           };
 
           await AdMob.showBanner(options);
