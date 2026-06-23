@@ -354,14 +354,14 @@ export default function LiveRoomPage() {
     const privateCall = stream?.visibility === "private";
 
     return {
-      adaptiveStream: true,
-      dynacast: !privateCall,
+      adaptiveStream: false,
+      dynacast: false,
       audioCaptureDefaults: getMediaAudioConstraints(),
       videoCaptureDefaults: getMediaVideoConstraints(
         usingFrontCamera ? "user" : "environment",
       ),
       publishDefaults: {
-        simulcast: !privateCall,
+        simulcast: false,
         videoCodec: "vp8",
         videoEncoding: {
           maxBitrate: privateCall
@@ -431,8 +431,30 @@ export default function LiveRoomPage() {
           true,
           options as any,
         );
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const videoPublications = Array.from(
+          targetRoom.localParticipant.videoTrackPublications.values(),
+        );
+
+        const hasPublishedVideo = videoPublications.some((publication: any) => {
+          return !!publication?.track && publication?.track?.kind === Track.Kind.Video;
+        });
+
+        if (!hasPublishedVideo) {
+          console.warn("Camera enabled but no published video track found. Trying fallback.");
+          try {
+            await targetRoom.localParticipant.setCameraEnabled(false);
+          } catch {}
+          continue;
+        }
+
         setTimeout(() => attachLocalVideoTrack(targetRoom), 150);
         setTimeout(() => attachLocalVideoTrack(targetRoom), 500);
+        setTimeout(() => attachLocalVideoTrack(targetRoom), 1200);
+
+        console.log("Camera video track published successfully.");
         return true;
       } catch (error) {
         console.warn("Camera enable attempt failed. Trying fallback.", error);
@@ -443,7 +465,7 @@ export default function LiveRoomPage() {
     }
 
     alert(
-      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.",
+      "Camera could not publish video. Please check camera permission, close other apps using the camera, then rejoin.",
     );
     return false;
   }
@@ -2103,6 +2125,14 @@ export default function LiveRoomPage() {
         newRoom,
         usingFrontCamera ? "user" : "environment",
       );
+
+      if (!cameraStarted) {
+        await newRoom.disconnect();
+        setStatusText("Camera video failed. Stream was not started.");
+        alert("Camera video failed. Stream was not started. Audio-only live streams are blocked.");
+        return;
+      }
+
       const micStarted = await enableMicrophoneSafely(newRoom);
 
       syncRemoteParticipantTracks(newRoom);
@@ -2110,7 +2140,9 @@ export default function LiveRoomPage() {
       setTimeout(() => syncRemoteParticipantTracks(newRoom), 1500);
 
       attachLocalVideoTrack(newRoom);
-      setTimeout(() => attachLocalVideoTrack(newRoom), 500);
+      setTimeout(() => attachLocalVideoTrack(newRoom), 300);
+      setTimeout(() => attachLocalVideoTrack(newRoom), 700);
+      setTimeout(() => attachLocalVideoTrack(newRoom), 1500);
 
       roomRef.current = newRoom;
       setRoom(newRoom);
