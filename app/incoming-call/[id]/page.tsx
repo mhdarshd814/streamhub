@@ -116,6 +116,8 @@ export default function IncomingCallPage() {
       .subscribe();
 
     return () => {
+      stopRing();
+      clearCountdown();
       supabase.removeChannel(channel);
     };
   }, [call?.id]);
