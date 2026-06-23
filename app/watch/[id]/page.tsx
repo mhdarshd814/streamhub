@@ -1996,7 +1996,7 @@ export default function WatchPage() {
                       : "bg-red-600 text-white hover:bg-red-500"
                   } disabled:bg-white/10 disabled:text-white/35`}
                 >
-                  {liked ? "Liked â¤ï¸" : "Like â¤ï¸"}
+                  {liked ? "Liked" : "Like"}
                 </button>
 
                 <button
@@ -2011,7 +2011,7 @@ export default function WatchPage() {
                     onClick={enableAudioManually}
                     className="rounded-full bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500"
                   >
-                    Audio ðŸ”Š
+                    Audio
                   </button>
                 )}
 
@@ -2221,7 +2221,7 @@ export default function WatchPage() {
                       onClick={enableAudioManually}
                       className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-500 sm:px-6"
                     >
-                      Enable Audio ðŸ”Š
+                      Enable Audio
                     </button>
                   )}
 
@@ -2230,7 +2230,7 @@ export default function WatchPage() {
                     disabled={streamStatus !== "live" || !connected || blockedAccess}
                     className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:text-white/35 sm:px-6"
                   >
-                    Fullscreen â›¶
+                    Fullscreen
                   </button>
 
                   {showJoinRequestButton && (
@@ -2243,7 +2243,7 @@ export default function WatchPage() {
                       }
                       className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-6"
                     >
-                      {joinRequestButtonLabel} ðŸŽ™ï¸
+                      {joinRequestButtonLabel}
                     </button>
                   )}
 
@@ -2258,7 +2258,7 @@ export default function WatchPage() {
                         : "cursor-not-allowed bg-white/10 text-white/35"
                     }`}
                   >
-                    {liked ? "Liked â¤ï¸" : "Like â¤ï¸"}
+                    {liked ? "Liked" : "Like"}
                   </button>
 
                   {stream?.user_id &&
