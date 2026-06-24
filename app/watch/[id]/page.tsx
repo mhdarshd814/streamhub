@@ -2016,7 +2016,7 @@ export default function WatchPage() {
                 )}
 
                 <div className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
-                  ðŸ‘ {viewerCount}
+                  Viewers {viewerCount}
                 </div>
 
 
@@ -2049,7 +2049,7 @@ export default function WatchPage() {
                   onClick={() => setTipOpen(false)}
                   className="rounded-xl bg-white/10 px-3 py-2 font-bold text-white/70 hover:bg-white/20"
                 >
-                  âœ•
+                  Close
                 </button>
               </div>
 
