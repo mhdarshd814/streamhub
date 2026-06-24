@@ -102,7 +102,7 @@ export default function LiveRoomPage() {
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [role, setRole] = useState<"host" | "guest" | "blocked">("blocked");
+  const [role, setRole] = useState<"host" | "guest" | "blocked" | "loading">("loading");
   const [pendingInvite, setPendingInvite] = useState<StreamGuest | null>(null);
 
   const [isGlobalMuted, setIsGlobalMuted] = useState(false);
@@ -2764,7 +2764,7 @@ export default function LiveRoomPage() {
     await loadGuestInvites();
   }
 
-  if (!stream) {
+  if (!stream || role === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
         <div className="text-center">
