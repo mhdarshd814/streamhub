@@ -3,7 +3,7 @@
 import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
@@ -27,6 +27,15 @@ type Notification = {
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const hideNavbar =
+  pathname.startsWith("/live/") ||
+  pathname.startsWith("/watch/") ||
+  pathname.startsWith("/incoming-call/") ||
+  pathname.startsWith("/admin/broadcast/");
+
+if (hideNavbar) return null;
 
   const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
