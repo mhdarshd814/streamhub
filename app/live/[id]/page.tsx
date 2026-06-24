@@ -2665,9 +2665,7 @@ export default function LiveRoomPage() {
         ring_status: "cancelled",
         declined_at: new Date().toISOString(),
       })
-      .eq("stream_id", stream.id)
-      .eq("caller_id", currentUserId)
-      .in("status", ["pending", "accepted"]);
+      .eq("stream_id", stream.id)            .in("status", ["pending", "accepted"]);
 
     if (error) {
       alert(error.message);
@@ -4063,4 +4061,5 @@ function RemoteVideoTile({
     </div>
   );
 }
+
 
