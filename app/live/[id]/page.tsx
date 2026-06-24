@@ -2913,10 +2913,7 @@ export default function LiveRoomPage() {
 
   return (
     <>
-           <div className="fixed left-2 top-20 z-[2147483647] max-w-[92vw] rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black shadow-2xl">
-        DEBUG live | role={role} | status={statusText} | room={room ? "yes" : "no"} | theater={isTheaterMode ? "yes" : "no"} | remoteVideos={remoteVideos.length} | starting={starting ? "yes" : "no"}
-      </div>
-
+           
       {/* Busy call toast — shows when someone tries to call while user is on a call */}
       {busyCallerName && (
         <div className="fixed right-4 top-4 z-[9999] flex items-start gap-3 rounded-2xl border border-yellow-500/30 bg-gray-900 p-4 shadow-2xl">
