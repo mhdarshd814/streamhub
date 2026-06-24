@@ -2667,7 +2667,7 @@ export default function LiveRoomPage() {
       })
       .eq("stream_id", stream.id)
       .eq("caller_id", currentUserId)
-      .eq("status", "pending");
+      .in("status", ["pending", "accepted"]);
 
     if (error) {
       alert(error.message);
