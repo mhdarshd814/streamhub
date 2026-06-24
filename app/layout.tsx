@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-import AppShell from "./components/AppShell";
+import Navbar from "./components/Navbar";
 import PushNotificationManager from "./components/PushNotificationManager";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import IncomingCallPopup from "./components/IncomingCallPopup";
@@ -100,12 +100,14 @@ export default function RootLayout({
             `,
           }}
         />
-       
-        <AppShell>
-         <AuthRouteGuard>
-          <div className="page-enter">{children}</div>
-         </AuthRouteGuard>
-       </AppShell>
+
+        <Navbar />
+
+        <main className="app-shell min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-0">
+          <AuthRouteGuard>
+            <div className="page-enter">{children}</div>
+          </AuthRouteGuard>
+        </main>
       </body>
     </html>
   );
