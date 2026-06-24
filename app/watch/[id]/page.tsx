@@ -2111,7 +2111,7 @@ export default function WatchPage() {
           </div>
         )}
 
-        <section className="grid gap-4 lg:grid-cols-[1fr_380px] lg:gap-6">
+        <section className="relative">
           <div className="min-w-0">
             <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black shadow-2xl sm:rounded-[28px]">
               <div
