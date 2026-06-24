@@ -345,7 +345,7 @@ export default function IncomingCallPopup() {
 
     stopRing();
     activeCallIdRef.current = null;
-    window.location.href = `/live/${call.stream_id}`;
+    window.location.replace(`/live/${call.stream_id}?autojoin=1`);
   }
 
   async function declineCall() {
