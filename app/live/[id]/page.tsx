@@ -57,8 +57,14 @@ type PrivateCallRequest = {
   caller_id: string;
   receiver_id: string;
   stream_id: string | null;
-  status: "pending" | "accepted" | "declined" | "missed";
-  ring_status?: "ringing" | "answered" | "declined" | "expired" | null;
+  status: "pending" | "accepted" | "declined" | "missed" | "cancelled";
+  ring_status?: "ringing"
+   | "ringing"
+   | "answered"
+   | "declined"
+   | "expired"
+   | "cancelled"
+   | null;
   expires_at?: string | null;
   created_at: string;
 };
@@ -499,6 +505,7 @@ export default function LiveRoomPage() {
     let privateCallChannel: any;
     let joinRequestChannel: any;
     let busyCallChannel: any;
+let receiverPrivateCallChannel: any;
     let callExpiryTimer: ReturnType<typeof setInterval> | null = null;
 
     async function getRealViewerCount() {
@@ -763,6 +770,48 @@ export default function LiveRoomPage() {
         )
         .subscribe();
 
+
+      receiverPrivateCallChannel = supabase
+        .channel("receiver-private-calls-" + channelKey)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "private_call_requests",
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            const updatedCall = payload.new as PrivateCallRequest;
+
+            if (updatedCall.stream_id !== streamId) return;
+
+            const ended =
+              updatedCall.status === "cancelled" ||
+              updatedCall.status === "declined" ||
+              updatedCall.status === "missed" ||
+              updatedCall.ring_status === "cancelled" ||
+              updatedCall.ring_status === "expired";
+
+            if (!ended) return;
+
+            cleanupRemoteAudio();
+
+            if (roomRef.current) {
+              roomRef.current.disconnect();
+              roomRef.current = null;
+            }
+
+            setRoom(null);
+            setRemoteVideos([]);
+            setIsLive(false);
+            setViewerCount(0);
+            setStatusText("Private call ended.");
+
+            router.replace("/calls");
+          },
+        )
+        .subscribe();
 
       joinRequestChannel = supabase
         .channel("studio-join-requests-" + channelKey)
@@ -4061,6 +4110,9 @@ function RemoteVideoTile({
     </div>
   );
 }
+
+
+
 
 
 
