@@ -3,7 +3,7 @@
 import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
@@ -27,7 +27,6 @@ type Notification = {
 
 export default function Navbar() {
   const router = useRouter();
-  const pathname = usePathname(); 
   const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -302,15 +301,7 @@ export default function Navbar() {
       toast.error("Failed to logout");
     }
   }
-  const hideNavbar =
-    pathname.startsWith("/live/") ||
-    pathname.startsWith("/watch/") ||
-    pathname.startsWith("/incoming-call/") ||
-    pathname.startsWith("/admin/broadcast/");
-
-  if (hideNavbar) {
-    return null;
-  }
+  
   return (
     <>
       <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950/95 shadow-lg shadow-red-950/20 backdrop-blur-xl xl:block">
