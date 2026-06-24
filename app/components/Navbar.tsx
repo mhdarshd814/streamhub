@@ -27,6 +27,10 @@ type Notification = {
 
 export default function Navbar() {
   const router = useRouter();
+
+  const isWatchRoute =
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/watch/");
   const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -544,8 +548,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {authReady && loggedIn && (
-        <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
+      {authReady && loggedIn && !isWatchRoute && (
+  <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
           <div
             className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
             style={{
