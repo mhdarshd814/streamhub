@@ -173,7 +173,14 @@ export default function IncomingCallPopup() {
       return;
     }
 
-    if (!data?.id) return;
+        if (!data?.id) {
+      activeCallIdRef.current = null;
+      stopRing();
+      setLoadingAction(false);
+      setCall(null);
+      return;
+    }
+
     if (activeCallIdRef.current === data.id) return;
 
     await loadSingleCall(data.id, shouldRing);
