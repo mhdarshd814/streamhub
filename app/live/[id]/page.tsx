@@ -2048,10 +2048,12 @@ export default function LiveRoomPage() {
 
       const newRoom = new Room(getOptimizedRoomOptions() as any);
 
-      newRoom.on(RoomEvent.ParticipantConnected, () => {
+      newRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+        console.log("[PARTICIPANT CONNECTED]", participant.identity);
+
         setTimeout(() => syncRemoteParticipantTracks(newRoom), 250);
         setTimeout(() => syncRemoteParticipantTracks(newRoom), 1000);
-      });
+     });
 
       (newRoom as any).on(
         (RoomEvent as any).TrackPublished,
@@ -2069,15 +2071,24 @@ export default function LiveRoomPage() {
       newRoom.on(
         RoomEvent.TrackSubscribed,
         (track, _publication, participant) => {
-          if (track.kind === Track.Kind.Audio) {
-            attachRemoteAudio(track);
-          }
+          console.log(
+            "[TRACK SUBSCRIBED]",
+             track.kind,
+             participant.identity,
+             participant.name
+    );
 
-          if (track.kind === Track.Kind.Video) {
-            addRemoteVideo(track, participant.name || participant.identity);
-          }
-        },
-      );
+     if (track.kind === Track.Kind.Audio) {
+      attachRemoteAudio(track);
+     }
+
+      if (track.kind === Track.Kind.Video) {
+         console.log("[REMOTE VIDEO ADDED]", participant.identity);
+         addRemoteVideo(track, participant.name || participant.identity);
+     }
+     },
+     );
+         
 
       newRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
         try {
