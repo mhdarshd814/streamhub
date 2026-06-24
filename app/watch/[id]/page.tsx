@@ -2116,7 +2116,7 @@ export default function WatchPage() {
             <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black shadow-2xl sm:rounded-[28px]">
               <div
                 ref={videoContainerRef}
-                className="relative flex h-[230px] items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black sm:h-[360px] md:h-[520px] lg:h-[620px]"
+                className="relative flex h-[100dvh] items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black"
               >
                 <div className="relative px-5 text-center">
                   <p className="text-base font-semibold text-white/80 sm:text-lg">
