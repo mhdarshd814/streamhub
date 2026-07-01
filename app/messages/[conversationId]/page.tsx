@@ -172,7 +172,7 @@ export default function MessageThreadPage() {
   const name = displayNameFor(otherProfile);
 
   return (
-    <div className="min-h-screen bg-black text-[#ededed] flex flex-col">
+    <div className="flex h-[calc(100dvh-env(safe-area-inset-top)-4rem)] flex-col bg-black text-[#ededed]">
       <div className="sticky top-[calc(64px+var(--app-status-top,0px))] z-30 flex items-center gap-3 border-b border-white/10 bg-black/95 px-4 py-3 backdrop-blur xl:top-0">
         <button
           type="button"
