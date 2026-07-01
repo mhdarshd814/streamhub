@@ -76,14 +76,6 @@ export default function RootLayout({
                 background: #000 !important;
               }
 
-              body.streamhub-theater-mode nav,
-              body.streamhub-theater-mode .mobile-top-nav,
-              body.streamhub-theater-mode .mobile-bottom-nav {
-                display: none !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-              }
-
               body.streamhub-theater-mode .app-shell {
                 padding: 0 !important;
                 margin: 0 !important;

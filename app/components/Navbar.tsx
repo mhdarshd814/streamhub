@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
@@ -29,10 +29,6 @@ type Notification = {
 export default function Navbar() {
   const router = useRouter();
   const { unreadCount: unreadMessages } = useUnreadMessages();
-
-  const isWatchRoute =
-    typeof window !== "undefined" &&
-    window.location.pathname.startsWith("/watch/");
   const [authReady, setAuthReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -359,7 +355,14 @@ export default function Navbar() {
                     }}
                     className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-xl hover:border-red-600"
                   >
-                    {"🔔"}
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="h-6 w-6"
+                        >
+                        <path d="M12 2a6 6 0 00-6 6v3.59L4.29 14.3A1 1 0 005 16h14a1 1 0 00.71-1.7L18 11.59V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
+                        </svg>
                     {unreadNotifications > 0 && (
                       <span className="absolute -right-2 -top-2 min-w-[22px] animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
                         {unreadNotifications}
@@ -530,7 +533,15 @@ export default function Navbar() {
               onClick={() => goTo("/notifications")}
               className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl"
             >
-              {"🔔"}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-6 w-6"
+             >
+                <path d="M12 2a6 6 0 00-6 6v3.59L4.29 14.3A1 1 0 005 16h14a1 1 0 00.71-1.7L18 11.59V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
+              </svg>
+
               {unreadNotifications > 0 && (
                 <span className="absolute -right-1 -top-1 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
                   {unreadNotifications}
@@ -549,7 +560,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {authReady && loggedIn && !isWatchRoute && (
+      {authReady && loggedIn && (
   <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
           <div
             className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
@@ -574,7 +585,7 @@ export default function Navbar() {
 
             <div className="pointer-events-none" />
 
-            <MobileItem icon="Call" label="Calls" href="/calls" goTo={goTo} />
+            <MobileItem icon="Msg" label="Messages" href="/messages" goTo={goTo} badge={unreadMessages} />
 
             <button
               type="button"
@@ -608,7 +619,7 @@ export default function Navbar() {
           onClick={closeMobileMenu}
         >
           <div
-            className="slide-up absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
+            className="slide-up absolute bottom-0 left-0 right-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
             style={{ paddingBottom: "calc(20px + env(safe-area-inset-bottom))" }}
             onClick={(event) => event.stopPropagation()}
           >
@@ -640,6 +651,7 @@ export default function Navbar() {
             <div className="mb-3 grid grid-cols-2 gap-3">
               <MobileSheetItem label="Go Live" href="/go-live" goTo={goTo} strong />
               <MobileSheetItem label="Calls" href="/calls" goTo={goTo} strong />
+              <MobileSheetItem label="Messages" href="/messages" goTo={goTo} badge={unreadMessages} />
               <MobileSheetItem label="Profile" href={profilePath()} goTo={goTo} />
               <MobileSheetItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
               <MobileSheetItem label="Wallet" href="/wallet" goTo={goTo} />
@@ -786,5 +798,3 @@ function MobileSheetItem({
     </button>
   );
 }
-
-
