@@ -140,9 +140,8 @@ public class IncomingCallService extends Service {
                 .setContentTitle(title)
                 .setContentText(message)
                 .setContentIntent(fullScreenPendingIntent)
-                .setFullScreenIntent(fullScreenPendingIntent, true)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOngoing(true)
                 .setAutoCancel(false)
@@ -165,7 +164,7 @@ public class IncomingCallService extends Service {
         NotificationChannel channel = new NotificationChannel(
                 CALL_CHANNEL_ID,
                 "StreamHub Call Alerts",
-                NotificationManager.IMPORTANCE_HIGH
+                NotificationManager.IMPORTANCE_DEFAULT
         );
 
         channel.setDescription("Incoming StreamHub private call alerts");
