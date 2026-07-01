@@ -334,9 +334,8 @@ export default function Navbar() {
             <DesktopLink label="Live Feed" href="/live-feed" goTo={goTo} />
             <DesktopLink label="Discover" href="/explore" goTo={goTo} />
             <DesktopLink label="Dashboard" href="/dashboard" goTo={goTo} />
-            <DesktopLink label="Wallet" href="/wallet" goTo={goTo} />
-            <DesktopLink label={`Invites${pendingInvites > 0 ? ` (${pendingInvites})` : ""}`} href="/invites" goTo={goTo} />
-
+            <DesktopLink label="Messages" href="/messages" goTo={goTo} />
+            
             {loggedIn ? (
               <>
                 <button
@@ -454,9 +453,9 @@ export default function Navbar() {
 
                   {menuOpen && (
                     <div className="scale-in absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
-                      <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />
-                      <MenuItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
-                      <MenuItem label="Notifications" href="/notifications" goTo={goTo} />
+                      <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />                                            
+                      <MenuItem label="Wallet" href="/wallet" goTo={goTo} />
+                      <MenuItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
                       <MenuItem label="Privacy Policy" href="/privacy" goTo={goTo} />
                       <MenuItem label="Terms of Service" href="/terms" goTo={goTo} />
                       <MenuItem label="Delete Account" href="/delete-account" goTo={goTo} />
