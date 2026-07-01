@@ -16,7 +16,6 @@ import android.os.Looper;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.Person;
 
 public class IncomingCallService extends Service {
     private static final String CALL_CHANNEL_ID = "incoming_calls_callstyle_v1";
@@ -92,11 +91,6 @@ public class IncomingCallService extends Service {
             String targetUrl,
             int notificationId
     ) {
-        Person caller = new Person.Builder()
-                .setName(title)
-                .setImportant(true)
-                .build();
-
         Intent fullScreenIntent = new Intent(this, IncomingCallActivity.class);
         fullScreenIntent.putExtra("streamhub_url", targetUrl);
         fullScreenIntent.putExtra("callId", callId);
@@ -147,17 +141,13 @@ public class IncomingCallService extends Service {
                 .setContentText(message)
                 .setContentIntent(fullScreenPendingIntent)
                 .setFullScreenIntent(fullScreenPendingIntent, true)
-                .setStyle(NotificationCompat.CallStyle.forIncomingCall(
-                        caller,
-                        declinePendingIntent,
-                        acceptPendingIntent
-                ))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOngoing(true)
                 .setAutoCancel(false)
-                .addPerson(caller)
+                .addAction(0, "Decline", declinePendingIntent)
+                .addAction(0, "Accept", acceptPendingIntent)
                 .build();
     }
 
