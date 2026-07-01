@@ -40,7 +40,12 @@ export default function MessageInput({
   }
 
   return (
-    <div className="flex items-end gap-2 border-t border-[rgba(127,29,29,0.35)] bg-black/80 p-3">
+    <div
+      className="flex items-end gap-2 border-t border-[rgba(127,29,29,0.35)] bg-black/90 px-3 pt-3"
+      style={{
+        paddingBottom: "max(8px, env(safe-area-inset-bottom))",
+      }}
+    >
       <textarea
         ref={textareaRef}
         value={value}
@@ -49,12 +54,12 @@ export default function MessageInput({
         rows={1}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1 resize-none rounded-2xl bg-[rgba(17,24,39,0.92)] border border-[rgba(127,29,29,0.35)] px-4 py-2 text-sm text-[#ededed] placeholder-white/40 outline-none focus:border-[#dc2626] max-h-32"
+        className="flex-1 resize-none rounded-2xl border border-[rgba(127,29,29,0.35)] bg-[rgba(17,24,39,0.92)] px-4 py-2 text-sm text-[#ededed] placeholder-white/40 outline-none max-h-32 focus:border-[#dc2626]"
       />
       <button
         onClick={handleSend}
         disabled={disabled || sending || !value.trim()}
-        className="shrink-0 rounded-full bg-[#dc2626] px-4 py-2 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed"
+        className="shrink-0 rounded-full bg-[#dc2626] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
       >
         Send
       </button>
