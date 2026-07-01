@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabase";
+import { startPrivateCallRequest } from "../../lib/privateCalls";
 
 type Profile = {
   id: string;
@@ -408,147 +409,26 @@ export default function CallsPage() {
   async function startQuickCall(target: Profile) {
     if (!userId || callingId) return;
 
-    const targetName =
-      target.display_name || target.username || "this user";
-
-
     setCallingId(target.id);
 
-    const canCall = await isMutualFollow(target.id);
-
-    if (!canCall) {
-      const { data: myProfile } = await supabase
-        .from("profiles")
-        .select("display_name, username")
-        .eq("id", userId)
-        .maybeSingle();
-
-      const callerName =
-        myProfile?.display_name || myProfile?.username || "A StreamHub user";
-
-      await supabase.from("notifications").insert([
-        {
-          user_id: target.id,
-          type: "follow_back_for_calls",
-          title: "Connection Request",
-          message: `${callerName} wants to connect with you. Follow back to enable private calls.`,
-          link: `/profile/${userId}`,
-          is_read: false,
-        },
-      ]);
-
-      setCallingId(null);
-      alert("You can only call mutual followers. A follow-back notification has been sent.");
-      return;
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      setCallingId(null);
-      window.location.href = "/login";
-      return;
-    }
-
-    const callTitle = `Private Call with ${targetName}`;
-    const expiresAt = new Date(Date.now() + 60_000).toISOString();
-
-    const { data: streamData, error: streamError } = await supabase
-      .from("streams")
-      .insert([
-        {
-          user_id: userId,
-          title: callTitle,
-          category: "One-on-One Call",
-          description: "Private one-on-one video call.",
-          tags: "private,call,one-on-one",
-          visibility: "private",
-          status: "offline",
-          thumbnail_url: null,
-          private_call_price: 0,
-        },
-      ])
-      .select()
-      .single();
-
-    if (streamError || !streamData) {
-      setCallingId(null);
-      alert(streamError?.message || "Failed to create private call.");
-      return;
-    }
-
-    const { error: guestError } = await supabase.from("stream_guests").insert([
-      {
-        stream_id: streamData.id,
-        host_id: userId,
-        guest_id: target.id,
-        status: "pending",
-      },
-    ]);
-
-    if (guestError) {
-      setCallingId(null);
-      alert(guestError.message);
-      return;
-    }
-
-    const { data: callData, error: callError } = await supabase
-      .from("private_call_requests")
-      .insert([
-        {
-          caller_id: userId,
-          receiver_id: target.id,
-          stream_id: streamData.id,
-          status: "pending",
-          ring_status: "ringing",
-          expires_at: expiresAt,
-        },
-      ])
-      .select()
-      .single();
-
-    if (callError || !callData) {
-      setCallingId(null);
-      alert(callError?.message || "Failed to create call request.");
-      return;
-    }
-
-    await supabase.from("notifications").insert([
-      {
-        user_id: target.id,
-        type: "private_call_request",
-        title: "Incoming Private Call",
-        message: "Someone is calling you on StreamHub.",
-        link: `/incoming-call/${callData.id}`,
-        is_read: false,
-      },
-    ]);
-
-    try {
-      await fetch("/api/push/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          userId: target.id,
-          title: "Incoming Private Call",
-          message: "Someone is calling you on StreamHub.",
-          url: `/incoming-call/${callData.id}`,
-          notificationType: "incoming_call",
-          streamId: streamData.id,
-          callId: callData.id,
-        }),
-      });
-    } catch (pushError) {
-      console.error("Incoming call push failed:", pushError);
-    }
+    const result = await startPrivateCallRequest({
+      callerId: userId,
+      target,
+    });
 
     setCallingId(null);
-    window.location.href = `/live/${streamData.id}`;
+
+    if (!result.ok) {
+      if (result.redirectTo) {
+        window.location.href = result.redirectTo;
+        return;
+      }
+
+      alert(result.message);
+      return;
+    }
+
+    window.location.href = `/live/${result.streamId}`;
   }
 
   async function callBack(call: CallRequest) {
@@ -1136,14 +1016,3 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
