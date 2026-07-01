@@ -30,6 +30,18 @@ export default function MessageThreadPage() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    const bottomNav = document.querySelector(".mobile-bottom-nav") as HTMLElement | null;
+    if (!bottomNav) return;
+
+    const previousDisplay = bottomNav.style.display;
+    bottomNav.style.display = "none";
+
+    return () => {
+      bottomNav.style.display = previousDisplay;
+    };
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -157,7 +169,7 @@ export default function MessageThreadPage() {
 
   return (
     <div className="min-h-screen bg-black text-[#ededed] flex flex-col">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 sticky top-0 bg-black/90 backdrop-blur z-10">
+      <div className="sticky top-[calc(64px+var(--app-status-top,0px))] z-30 flex items-center gap-3 border-b border-white/10 bg-black/95 px-4 py-3 backdrop-blur xl:top-0">
         <button
           type="button"
           onClick={() => router.push("/messages")}
