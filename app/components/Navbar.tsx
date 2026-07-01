@@ -651,7 +651,6 @@ export default function Navbar() {
             <div className="mb-3 grid grid-cols-2 gap-3">
               <MobileSheetItem label="Go Live" href="/go-live" goTo={goTo} strong />
               <MobileSheetItem label="Calls" href="/calls" goTo={goTo} strong />
-              <MobileSheetItem label="Messages" href="/messages" goTo={goTo} badge={unreadMessages} />
               <MobileSheetItem label="Profile" href={profilePath()} goTo={goTo} />
               <MobileSheetItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
               <MobileSheetItem label="Wallet" href="/wallet" goTo={goTo} />
@@ -753,7 +752,9 @@ function MobileItem({
       onClick={() => goTo(href)}
       className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
     >
-      <span className="flex h-7 items-center justify-center text-2xl">{icon}</span>
+      <span className="flex h-7 items-center justify-center">
+        {typeof icon === "string" ? <MobileNavIcon name={icon} /> : icon}
+      </span>
       <span className="text-[11px]">{label}</span>
 
       {!!badge && badge > 0 && (
@@ -765,6 +766,35 @@ function MobileItem({
   );
 }
 
+function MobileNavIcon({ name }: { name: string }) {
+  const className = "h-6 w-6";
+
+  if (name === "Live") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M4 7.5A3.5 3.5 0 017.5 4h9A3.5 3.5 0 0120 7.5v9A3.5 3.5 0 0116.5 20h-9A3.5 3.5 0 014 16.5v-9zm6 1.78v5.44c0 .62.68 1 1.2.66l4.08-2.72a.79.79 0 000-1.32L11.2 8.62A.79.79 0 0010 9.28z" />
+      </svg>
+    );
+  }
+
+  if (name === "Search") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path fillRule="evenodd" d="M10.5 4a6.5 6.5 0 104.1 11.55l3.43 3.42a1 1 0 001.41-1.41l-3.42-3.43A6.5 6.5 0 0010.5 4zm-4.5 6.5a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0z" clipRule="evenodd" />
+      </svg>
+    );
+  }
+
+  if (name === "Msg") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M4 5.5A3.5 3.5 0 017.5 2h9A3.5 3.5 0 0120 5.5v7A3.5 3.5 0 0116.5 16H9.2l-3.5 3.15A1 1 0 014 18.4V5.5z" />
+      </svg>
+    );
+  }
+
+  return <span className="text-[11px] font-black">{name}</span>;
+}
 function MobileSheetItem({
   label,
   href,
