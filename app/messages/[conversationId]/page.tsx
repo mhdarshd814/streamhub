@@ -32,13 +32,17 @@ export default function MessageThreadPage() {
 
   useEffect(() => {
     const bottomNav = document.querySelector(".mobile-bottom-nav") as HTMLElement | null;
-    if (!bottomNav) return;
+    const appShell = document.querySelector(".app-shell") as HTMLElement | null;
 
-    const previousDisplay = bottomNav.style.display;
-    bottomNav.style.display = "none";
+    const previousBottomNavDisplay = bottomNav?.style.display || "";
+    const previousAppShellPaddingBottom = appShell?.style.paddingBottom || "";
+
+    if (bottomNav) bottomNav.style.display = "none";
+    if (appShell) appShell.style.paddingBottom = "0px";
 
     return () => {
-      bottomNav.style.display = previousDisplay;
+      if (bottomNav) bottomNav.style.display = previousBottomNavDisplay;
+      if (appShell) appShell.style.paddingBottom = previousAppShellPaddingBottom;
     };
   }, []);
 
