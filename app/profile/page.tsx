@@ -73,7 +73,7 @@ export default function ProfilePage() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="text-4xl">👤</span>
+              <span className="text-sm font-black text-gray-300">Me</span>
             )}
           </div>
 
@@ -94,6 +94,16 @@ export default function ProfilePage() {
           <p>{profile.followers || 0} followers</p>
           <p>{profile.following || 0} following</p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "/profile/edit";
+          }}
+          className="mt-8 rounded-xl bg-red-600 px-6 py-3 font-black text-white hover:bg-red-700"
+        >
+          Edit Profile
+        </button>
       </div>
     </div>
   );

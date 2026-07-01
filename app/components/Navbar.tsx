@@ -652,13 +652,15 @@ export default function Navbar() {
               <MobileSheetItem label="Go Live" href="/go-live" goTo={goTo} strong />
               <MobileSheetItem label="Calls" href="/calls" goTo={goTo} strong />
               <MobileSheetItem label="Profile" href={profilePath()} goTo={goTo} />
-              <MobileSheetItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
               <MobileSheetItem label="Wallet" href="/wallet" goTo={goTo} />
               <MobileSheetItem label="Alerts" href="/notifications" goTo={goTo} badge={unreadNotifications} />
               <MobileSheetItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
               <MobileSheetItem label="Dashboard" href="/dashboard" goTo={goTo} />
               <MobileSheetItem label="Schedule" href="/schedule" goTo={goTo} />
               <MobileSheetItem label="Upcoming" href="/streams/upcoming" goTo={goTo} />
+              <MobileSheetItem label="Privacy Policy" href="/privacy" goTo={goTo} />
+              <MobileSheetItem label="Terms of Service" href="/terms" goTo={goTo} />
+              <MobileSheetItem label="Delete Account" href="/delete-account" goTo={goTo} />
 
               {profile?.is_admin && (
                 <MobileSheetItem label="Admin" href="/admin" goTo={goTo} strong />
