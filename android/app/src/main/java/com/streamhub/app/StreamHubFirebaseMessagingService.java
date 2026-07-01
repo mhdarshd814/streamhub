@@ -33,25 +33,14 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         if (targetUrl.isEmpty()) {
             targetUrl = callId.isEmpty() ? "/calls" : "/incoming-call/" + callId;
         }
+        Intent serviceIntent = new Intent(this, IncomingCallService.class);
+        serviceIntent.putExtra("title", title);
+        serviceIntent.putExtra("message", body);
+        serviceIntent.putExtra("callId", callId);
+        serviceIntent.putExtra("streamId", streamId);
+        serviceIntent.putExtra("streamhub_url", targetUrl);
 
-        boolean telecomStarted = tryStartTelecomIncomingCall(
-                title,
-                body,
-                callId,
-                streamId,
-                targetUrl
-        );
-
-        if (!telecomStarted) {
-            Intent serviceIntent = new Intent(this, IncomingCallService.class);
-            serviceIntent.putExtra("title", title);
-            serviceIntent.putExtra("message", body);
-            serviceIntent.putExtra("callId", callId);
-            serviceIntent.putExtra("streamId", streamId);
-            serviceIntent.putExtra("streamhub_url", targetUrl);
-
-            ContextCompat.startForegroundService(this, serviceIntent);
-        }
+        ContextCompat.startForegroundService(this, serviceIntent);
     }
 
     private boolean tryStartTelecomIncomingCall(
