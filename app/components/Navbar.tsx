@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
+import { useUnreadMessages } from "../../hooks/useUnreadMessages";
 
 type Profile = {
   username: string;
@@ -27,6 +28,7 @@ type Notification = {
 
 export default function Navbar() {
   const router = useRouter();
+  const { unreadCount: unreadMessages } = useUnreadMessages();
 
   const isWatchRoute =
     typeof window !== "undefined" &&
@@ -334,7 +336,7 @@ export default function Navbar() {
             <DesktopLink label="Live Feed" href="/live-feed" goTo={goTo} />
             <DesktopLink label="Discover" href="/explore" goTo={goTo} />
             <DesktopLink label="Dashboard" href="/dashboard" goTo={goTo} />
-            <DesktopLink label="Messages" href="/messages" goTo={goTo} />
+            <DesktopLink label="Messages" href="/messages" goTo={goTo} badge={unreadMessages} />
             
             {loggedIn ? (
               <>
@@ -357,7 +359,7 @@ export default function Navbar() {
                     }}
                     className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-xl hover:border-red-600"
                   >
-                    🔔
+                    {"🔔"}
                     {unreadNotifications > 0 && (
                       <span className="absolute -right-2 -top-2 min-w-[22px] animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
                         {unreadNotifications}
@@ -442,7 +444,7 @@ export default function Navbar() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        "👤"
+                        "Me"
                       )}
                     </div>
 
@@ -528,7 +530,7 @@ export default function Navbar() {
               onClick={() => goTo("/notifications")}
               className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl"
             >
-              🔔
+              {"🔔"}
               {unreadNotifications > 0 && (
                 <span className="absolute -right-1 -top-1 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
                   {unreadNotifications}
@@ -556,15 +558,15 @@ export default function Navbar() {
               paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
-            <MobileItem icon="📺" label="Live" href="/live-feed" goTo={goTo} />
-            <MobileItem icon="🔎" label="Discover" href="/explore" goTo={goTo} />
+            <MobileItem icon="Live" label="Live" href="/live-feed" goTo={goTo} />
+            <MobileItem icon="Search" label="Discover" href="/explore" goTo={goTo} />
 
             <button
               type="button"
               onClick={() => goTo("/go-live")}
               className="absolute left-1/2 top-0 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
             >
-              <span className="text-3xl font-black leading-none">＋</span>
+              <span className="text-3xl font-black leading-none">+</span>
               <span className="mt-[-2px] text-[10px] font-black uppercase tracking-wide">
                 Live
               </span>
@@ -572,7 +574,7 @@ export default function Navbar() {
 
             <div className="pointer-events-none" />
 
-            <MobileItem icon="📞" label="Calls" href="/calls" goTo={goTo} />
+            <MobileItem icon="Call" label="Calls" href="/calls" goTo={goTo} />
 
             <button
               type="button"
@@ -587,7 +589,7 @@ export default function Navbar() {
                     className="h-6 w-6 rounded-full object-cover"
                   />
                 ) : (
-                  "👤"
+                  "Me"
                 )}
               </span>
               <span className="text-[11px]">Me</span>
@@ -621,7 +623,7 @@ export default function Navbar() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-2xl">👤</span>
+                  <span className="text-2xl">Me</span>
                 )}
               </div>
 
@@ -636,19 +638,19 @@ export default function Navbar() {
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-3">
-              <MobileSheetItem label="🎥 Go Live" href="/go-live" goTo={goTo} strong />
-              <MobileSheetItem label="📞 Calls" href="/calls" goTo={goTo} strong />
-              <MobileSheetItem label="👤 Profile" href={profilePath()} goTo={goTo} />
-              <MobileSheetItem label="✏️ Edit Profile" href="/profile/edit" goTo={goTo} />
-              <MobileSheetItem label="💰 Wallet" href="/wallet" goTo={goTo} />
-              <MobileSheetItem label="🔔 Alerts" href="/notifications" goTo={goTo} badge={unreadNotifications} />
-              <MobileSheetItem label="🎙️ Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
-              <MobileSheetItem label="📊 Dashboard" href="/dashboard" goTo={goTo} />
-              <MobileSheetItem label="📅 Schedule" href="/schedule" goTo={goTo} />
-              <MobileSheetItem label="🗓️ Upcoming" href="/streams/upcoming" goTo={goTo} />
+              <MobileSheetItem label="Go Live" href="/go-live" goTo={goTo} strong />
+              <MobileSheetItem label="Calls" href="/calls" goTo={goTo} strong />
+              <MobileSheetItem label="Profile" href={profilePath()} goTo={goTo} />
+              <MobileSheetItem label="Edit Profile" href="/profile/edit" goTo={goTo} />
+              <MobileSheetItem label="Wallet" href="/wallet" goTo={goTo} />
+              <MobileSheetItem label="Alerts" href="/notifications" goTo={goTo} badge={unreadNotifications} />
+              <MobileSheetItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
+              <MobileSheetItem label="Dashboard" href="/dashboard" goTo={goTo} />
+              <MobileSheetItem label="Schedule" href="/schedule" goTo={goTo} />
+              <MobileSheetItem label="Upcoming" href="/streams/upcoming" goTo={goTo} />
 
               {profile?.is_admin && (
-                <MobileSheetItem label="🛡️ Admin" href="/admin" goTo={goTo} strong />
+                <MobileSheetItem label="Admin" href="/admin" goTo={goTo} strong />
               )}
 
               <button
@@ -656,7 +658,7 @@ export default function Navbar() {
                 onClick={logout}
                 className="rounded-2xl bg-red-600 px-4 py-4 text-left text-sm font-black text-white active:scale-95"
               >
-                🚪 Logout
+                Logout
               </button>
             </div>
           </div>
@@ -670,18 +672,25 @@ function DesktopLink({
   label,
   href,
   goTo,
+  badge,
 }: {
   label: string;
   href: string;
   goTo: (path: string) => void;
+  badge?: number;
 }) {
   return (
     <button
       type="button"
       onClick={() => goTo(href)}
-      className="font-bold text-gray-100 hover:text-red-400"
+      className="relative font-bold text-gray-100 hover:text-red-400"
     >
       {label}
+      {!!badge && badge > 0 && (
+        <span className="absolute -right-4 -top-3 min-w-[18px] rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -777,4 +786,5 @@ function MobileSheetItem({
     </button>
   );
 }
+
 

@@ -1,4 +1,4 @@
-// app/messages/[conversationId]/page.tsx
+﻿// app/messages/[conversationId]/page.tsx
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -155,10 +155,25 @@ export default function MessageThreadPage() {
   return (
     <div className="min-h-screen bg-black text-[#ededed] flex flex-col">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 sticky top-0 bg-black/90 backdrop-blur z-10">
-        <button onClick={() => router.push("/messages")} className="text-white/60 text-lg">
-          ←
+        <button
+          type="button"
+          onClick={() => router.push("/messages")}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Back to messages"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5"
+          >
+            <path d="M15 18L9 12L15 6" />
+          </svg>
         </button>
-
         {otherProfile?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -178,7 +193,7 @@ export default function MessageThreadPage() {
       <div className="flex-1 overflow-y-auto py-2">
         {messages.length === 0 && (
           <p className="text-white/40 text-sm text-center py-10">
-            Say hello to start the conversation 👋
+            Say hello to start the conversation
           </p>
         )}
 
@@ -196,3 +211,5 @@ export default function MessageThreadPage() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-// app/components/messaging/ConversationListItem.tsx
+﻿// app/components/messaging/ConversationListItem.tsx
 "use client";
 
 import type { ConversationListItem as ConversationListItemType } from "../../../lib/messaging";
@@ -29,7 +29,7 @@ export default function ConversationListItem({ item, onClick }: Props) {
     ? lastMessage.content
     : lastMessage?.message_type
     ? `[${lastMessage.message_type}]`
-    : "Say hello 👋";
+    : "Say hello";
 
   return (
     <button
@@ -76,3 +76,4 @@ export default function ConversationListItem({ item, onClick }: Props) {
     </button>
   );
 }
+
