@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -78,9 +78,18 @@ export function useUnreadMessages() {
         .subscribe();
     }
 
+    function handleUnreadChanged() {
+      if (userIdRef.current) {
+        void loadUnreadCount(userIdRef.current);
+      }
+    }
+
+    window.addEventListener("messages:unread-changed", handleUnreadChanged);
+
     void init();
 
     return () => {
+      window.removeEventListener("messages:unread-changed", handleUnreadChanged);
       mounted = false;
       userIdRef.current = null;
 

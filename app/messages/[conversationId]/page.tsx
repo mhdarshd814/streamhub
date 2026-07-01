@@ -1,4 +1,4 @@
-﻿// app/messages/[conversationId]/page.tsx
+// app/messages/[conversationId]/page.tsx
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -65,6 +65,7 @@ export default function MessageThreadPage() {
       setLoading(false);
 
       await markConversationRead(conversationId, user.id);
+      window.dispatchEvent(new CustomEvent("messages:unread-changed"));
     })();
   }, [conversationId, router]);
 
@@ -94,7 +95,9 @@ export default function MessageThreadPage() {
           // If the incoming message isn't ours, mark it read since the
           // thread is currently open and visible.
           if (newMessage.sender_id !== userId) {
-            markConversationRead(conversationId, userId);
+            void markConversationRead(conversationId, userId).then(() => {
+              window.dispatchEvent(new CustomEvent("messages:unread-changed"));
+            });
           }
         }
       )
