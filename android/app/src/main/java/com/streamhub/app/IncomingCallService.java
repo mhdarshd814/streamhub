@@ -18,7 +18,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 public class IncomingCallService extends Service {
-    private static final String CALL_CHANNEL_ID = "incoming_calls_callstyle_v1";
+    private static final String CALL_CHANNEL_ID = "incoming_calls_custom_v2";
     private static final int DEFAULT_NOTIFICATION_ID = 2001;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
