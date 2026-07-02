@@ -9,6 +9,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
   function cleanUsername(value: string) {
     return value
@@ -33,6 +34,11 @@ export default function SignupPage() {
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (!acceptedPolicies) {
+      toast.error("Please accept the Terms & Conditions and Privacy Policy to continue.");
       return;
     }
 
@@ -143,10 +149,29 @@ export default function SignupPage() {
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
 
+            <label className="flex items-start gap-3 rounded-2xl border border-gray-800 bg-black/30 p-3.5 text-sm leading-6 text-gray-300">
+              <input
+                type="checkbox"
+                checked={acceptedPolicies}
+                onChange={(e) => setAcceptedPolicies(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-900 accent-red-600"
+              />
+              <span>
+                I have read and agree to the{" "}
+                <a href="/terms" target="_blank" rel="noreferrer" className="font-bold text-red-400 underline hover:text-red-300">
+                  Terms & Conditions
+                </a>{" "}
+                and{" "}
+                <a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-bold text-red-400 underline hover:text-red-300">
+                  Privacy Policy
+                </a>.
+              </span>
+            </label>
+
             <button
               type="button"
               onClick={handleSignup}
-              disabled={loading}
+              disabled={loading || !acceptedPolicies}
               className="w-full rounded-xl bg-red-600 py-3.5 text-lg font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-700"
             >
               {loading ? "Creating Account..." : "Create Account"}
