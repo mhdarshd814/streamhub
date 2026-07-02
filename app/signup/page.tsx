@@ -158,11 +158,11 @@ export default function SignupPage() {
               />
               <span>
                 I have read and agree to the{" "}
-                <a href="/terms" target="_blank" rel="noreferrer" className="font-bold text-red-400 underline hover:text-red-300">
+                <a href="/terms" className="font-bold text-red-400 underline hover:text-red-300">
                   Terms & Conditions
                 </a>{" "}
                 and{" "}
-                <a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-bold text-red-400 underline hover:text-red-300">
+                <a href="/privacy" className="font-bold text-red-400 underline hover:text-red-300">
                   Privacy Policy
                 </a>.
               </span>
