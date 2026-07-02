@@ -236,11 +236,29 @@ export default function Navbar() {
     setUnreadNotifications(list.filter((item) => !item.is_read).length);
   }
 
+  function isGuestAllowedPath(path: string) {
+    return [
+      "/login",
+      "/signup",
+      "/terms",
+      "/privacy",
+      "/forgot-password",
+      "/reset-password",
+      "/about",
+      "/contact",
+      "/community-guidelines",
+      "/ads-policy",
+    ].some((publicPath) => path === publicPath || path.startsWith(`${publicPath}/`));
+  }
+
   function goTo(path: string) {
     setMenuOpen(false);
     setMobileMenuOpen(false);
     setNotificationOpen(false);
-    router.push(path);
+    const targetPath =
+      authReady && !loggedIn && !isGuestAllowedPath(path) ? "/signup" : path;
+
+    router.push(targetPath);
   }
 
   function profilePath() {
@@ -249,7 +267,7 @@ export default function Navbar() {
 
   function openMobileMenu() {
     if (!loggedIn) {
-      goTo("/login");
+      goTo("/signup");
       return;
     }
 
@@ -310,7 +328,7 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <button
             type="button"
-            onClick={() => goTo(loggedIn ? "/live-feed" : "/login")}
+            onClick={() => goTo(loggedIn ? "/live-feed" : "/signup")}
             className="flex cursor-pointer items-center gap-3"
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
@@ -512,7 +530,7 @@ export default function Navbar() {
         <div className="flex w-full items-center justify-between">
           <button
             type="button"
-            onClick={() => goTo(loggedIn ? "/live-feed" : "/login")}
+            onClick={() => goTo(loggedIn ? "/live-feed" : "/signup")}
             className="flex items-center gap-3"
           >
             <div className="h-12 w-12 overflow-hidden rounded-xl">
@@ -551,10 +569,10 @@ export default function Navbar() {
           ) : (
             <button
               type="button"
-              onClick={() => goTo("/login")}
+              onClick={() => goTo("/signup")}
               className="rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-600/20"
             >
-              Login
+              Sign Up
             </button>
           )}
         </div>

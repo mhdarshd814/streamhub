@@ -6,6 +6,8 @@ import { supabase } from "../../lib/supabase";
 
 const PROTECTED_PREFIXES = [
   "/live-feed",
+  "/explore",
+  "/messages",
   "/dashboard",
   "/go-live",
   "/calls",
@@ -88,7 +90,7 @@ export default function AuthRouteGuard({
       if (cancelled) return;
 
       if (!session?.user || !session.access_token) {
-        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        router.replace(`/signup?next=${encodeURIComponent(pathname)}`);
         return;
       }
 
@@ -106,7 +108,7 @@ export default function AuthRouteGuard({
       if (!session?.user || !session.access_token) {
         setAllowed(false);
         setChecking(false);
-        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        router.replace(`/signup?next=${encodeURIComponent(pathname)}`);
         return;
       }
 
