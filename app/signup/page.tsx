@@ -1,7 +1,7 @@
 "use client";
 
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function SignupPage() {
@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "short" | "checking" | "available" | "taken">("idle");
 
   function cleanUsername(value: string) {
     return value
@@ -17,6 +18,40 @@ export default function SignupPage() {
       .toLowerCase()
       .replace(/[^a-z0-9_]/g, "");
   }
+
+  useEffect(() => {
+    const safeUsername = cleanUsername(username);
+
+    if (!safeUsername) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    if (safeUsername.length < 3) {
+      setUsernameStatus("short");
+      return;
+    }
+
+    let cancelled = false;
+    setUsernameStatus("checking");
+
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", safeUsername)
+        .maybeSingle();
+
+      if (!cancelled) {
+        setUsernameStatus(data ? "taken" : "available");
+      }
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [username]);
 
   async function handleSignup() {
     const safeUsername = cleanUsername(username);
@@ -34,6 +69,16 @@ export default function SignupPage() {
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (usernameStatus === "taken") {
+      toast.error("Username is already taken.");
+      return;
+    }
+
+    if (usernameStatus === "checking") {
+      toast.error("Please wait while we check the username.");
       return;
     }
 
@@ -124,6 +169,23 @@ export default function SignupPage() {
               }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
+
+            {usernameStatus !== "idle" && (
+              <p
+                className={
+                  usernameStatus === "available"
+                    ? "text-xs font-bold text-green-400"
+                    : usernameStatus === "taken"
+                    ? "text-xs font-bold text-red-400"
+                    : "text-xs font-bold text-gray-400"
+                }
+              >
+                {usernameStatus === "short" && "Username must be at least 3 characters."}
+                {usernameStatus === "checking" && "Checking username..."}
+                {usernameStatus === "available" && "Username is available."}
+                {usernameStatus === "taken" && "Username is already taken."}
+              </p>
+            )}
 
             <input
               type="email"
