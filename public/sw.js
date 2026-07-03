@@ -138,6 +138,13 @@ self.addEventListener("fetch", function (event) {
 self.addEventListener("push", function (event) {
   const data = event.data ? event.data.json() : {};
 
+  const isIncomingCall =
+    data.type === "incoming_call" || data.notificationType === "incoming_call";
+
+  // Incoming calls are handled by the native notification (Android) and
+  // the in-app IncomingCallPopup. Skip the duplicate web notification.
+  if (isIncomingCall) return;
+
   const title = data.title || "StreamHub";
 
   const options = {
@@ -146,6 +153,7 @@ self.addEventListener("push", function (event) {
     badge: "/icon-192.png",
     data: {
       url: data.url || "/notifications",
+      type: data.type || data.notificationType || "general",
     },
   };
 
@@ -157,5 +165,19 @@ self.addEventListener("notificationclick", function (event) {
 
   const url = event.notification.data?.url || "/notifications";
 
-  event.waitUntil(clients.openWindow(url));
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(function (clientList) {
+        // Prefer focusing an already-open app window.
+        if (clientList.length > 0) {
+          const client = clientList[0];
+          if ("focus" in client) client.focus();
+          if ("navigate" in client) return client.navigate(url);
+          return;
+        }
+
+        return clients.openWindow(url);
+      })
+  );
 });
