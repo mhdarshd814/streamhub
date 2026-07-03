@@ -1,4 +1,4 @@
-const CACHE_NAME = "streamhub-pwa-v2";
+const CACHE_NAME = "streamhub-pwa-v3";
 
 const STATIC_CACHE_URLS = [
   "/",
@@ -20,6 +20,9 @@ const NETWORK_ONLY_PATHS = [
   "/notifications",
   "/following",
   "/explore",
+  "/incoming-call/",
+  "/calls",
+  "/messages",
 ];
 
 self.addEventListener("install", function (event) {
@@ -56,6 +59,10 @@ function shouldUseNetworkOnly(url) {
   });
 }
 
+function isBuildAsset(url) {
+  return url.pathname.startsWith("/_next/");
+}
+
 self.addEventListener("fetch", function (event) {
   const request = event.request;
 
@@ -70,6 +77,7 @@ self.addEventListener("fetch", function (event) {
     return;
   }
 
+  // Page navigations: network first, offline page only as last resort.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(function () {
@@ -79,6 +87,32 @@ self.addEventListener("fetch", function (event) {
     return;
   }
 
+  // Build assets (CSS/JS chunks): network first so a fresh deploy is
+  // always picked up. Cached copy is only a fallback, and a failed
+  // request is NEVER answered with HTML.
+  if (isBuildAsset(url)) {
+    event.respondWith(
+      fetch(request)
+        .then(function (networkResponse) {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(function (cache) {
+              cache.put(request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(function () {
+          return caches.match(request).then(function (cachedResponse) {
+            return cachedResponse || Response.error();
+          });
+        })
+    );
+    return;
+  }
+
+  // Other static files (icons, sounds): cache first, but a miss +
+  // network failure returns a real error, never the offline HTML page.
   event.respondWith(
     caches.match(request).then(function (cachedResponse) {
       if (cachedResponse) return cachedResponse;
@@ -95,7 +129,7 @@ self.addEventListener("fetch", function (event) {
           });
         })
         .catch(function () {
-          return caches.match("/offline");
+          return Response.error();
         });
     })
   );
