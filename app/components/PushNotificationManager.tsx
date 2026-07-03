@@ -97,7 +97,10 @@ export default function PushNotificationManager() {
       data.type === "incoming_call" &&
       typeof data.callId === "string"
     ) {
-      window.location.href = `/incoming-call/${data.callId}`;
+      // Do NOT navigate. Tapping the notification brings the app to the
+      // foreground, where the global IncomingCallPopup is already ringing
+      // (mount fetch + realtime + 3s poll). A hard navigation here races
+      // the WebView wake-up and produces an unstyled white page.
       return;
     }
 
