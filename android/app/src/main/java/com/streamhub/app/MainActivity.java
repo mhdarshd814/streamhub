@@ -88,6 +88,8 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private static final String SERVER_URL = "https://streamhubhq.com";
+
     private void handleIncomingIntent(Intent intent) {
         if (intent == null) return;
 
@@ -95,11 +97,13 @@ public class MainActivity extends BridgeActivity {
 
         if (targetUrl == null || targetUrl.isEmpty()) return;
 
+        final String fullUrl = targetUrl.startsWith("http")
+                ? targetUrl
+                : SERVER_URL + (targetUrl.startsWith("/") ? targetUrl : "/" + targetUrl);
+
         getBridge().getWebView().post(() -> {
             try {
-                getBridge().getWebView().loadUrl(
-                        "javascript:window.location.href='" + targetUrl + "';"
-                );
+                getBridge().getWebView().loadUrl(fullUrl);
             } catch (Exception ignored) {
             }
         });
