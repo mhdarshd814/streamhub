@@ -11,6 +11,39 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "short" | "checking" | "available" | "taken">("idle");
+  const [passwordStrength, setPasswordStrength] = useState<"idle" | "weak" | "medium" | "strong">("idle");
+
+  function evaluatePasswordStrength(value: string): "idle" | "weak" | "medium" | "strong" {
+    if (!value) return "idle";
+
+    let score = 0;
+    let hasLower = false;
+    let hasUpper = false;
+    let hasNumber = false;
+    let hasSymbol = false;
+
+    for (const char of value) {
+      if (char >= "a" && char <= "z") hasLower = true;
+      else if (char >= "A" && char <= "Z") hasUpper = true;
+      else if (char >= "0" && char <= "9") hasNumber = true;
+      else hasSymbol = true;
+    }
+
+    if (value.length >= 8) score++;
+    if (value.length >= 12) score++;
+    if (hasLower && hasUpper) score++;
+    if (hasNumber) score++;
+    if (hasSymbol) score++;
+
+    if (score <= 2) return "weak";
+    if (score <= 4) return "medium";
+    return "strong";
+  }
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    setPasswordStrength(evaluatePasswordStrength(value));
+  };
 
   function cleanUsername(value: string) {
     return value
@@ -204,12 +237,57 @@ export default function SignupPage() {
               placeholder="Password"
               value={password}
               autoComplete="new-password"
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => handlePasswordChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSignup();
               }}
               className="w-full rounded-xl border border-gray-700 bg-gray-800 p-3.5 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-600/20"
             />
+
+            {passwordStrength !== "idle" && (
+              <div className="space-y-1.5">
+                <div className="flex gap-1.5">
+                  <div
+                    className={
+                      passwordStrength === "weak"
+                        ? "h-1.5 flex-1 rounded-full bg-red-500"
+                        : passwordStrength === "medium"
+                        ? "h-1.5 flex-1 rounded-full bg-yellow-400"
+                        : "h-1.5 flex-1 rounded-full bg-green-400"
+                    }
+                  />
+                  <div
+                    className={
+                      passwordStrength === "medium"
+                        ? "h-1.5 flex-1 rounded-full bg-yellow-400"
+                        : passwordStrength === "strong"
+                        ? "h-1.5 flex-1 rounded-full bg-green-400"
+                        : "h-1.5 flex-1 rounded-full bg-gray-700"
+                    }
+                  />
+                  <div
+                    className={
+                      passwordStrength === "strong"
+                        ? "h-1.5 flex-1 rounded-full bg-green-400"
+                        : "h-1.5 flex-1 rounded-full bg-gray-700"
+                    }
+                  />
+                </div>
+                <p
+                  className={
+                    passwordStrength === "weak"
+                      ? "text-xs font-bold text-red-400"
+                      : passwordStrength === "medium"
+                      ? "text-xs font-bold text-yellow-400"
+                      : "text-xs font-bold text-green-400"
+                  }
+                >
+                  {passwordStrength === "weak" && "Weak password. Use 8+ characters with mixed case and numbers."}
+                  {passwordStrength === "medium" && "Medium password. Add symbols or more length for better security."}
+                  {passwordStrength === "strong" && "Strong password."}
+                </p>
+              </div>
+            )}
 
             <label className="flex items-start gap-3 rounded-2xl border border-gray-800 bg-black/30 p-3.5 text-sm leading-6 text-gray-300">
               <input
