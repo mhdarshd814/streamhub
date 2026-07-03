@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -173,7 +172,7 @@ export default function IncomingCallPopup() {
       return;
     }
 
-        if (!data?.id) {
+    if (!data?.id) {
       activeCallIdRef.current = null;
       stopRing();
       setLoadingAction(false);
@@ -401,14 +400,31 @@ export default function IncomingCallPopup() {
     <>
       {audioElement}
 
-      <div className="fixed inset-0 z-[99998] flex items-end justify-center bg-black/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:items-center sm:pb-4">
-        <div className="w-full max-w-sm overflow-hidden rounded-[2rem] border border-purple-500/30 bg-zinc-950 text-white shadow-2xl">
-          <div className="bg-gradient-to-br from-purple-700 via-fuchsia-700 to-red-600 px-5 py-6 text-center">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-white/80">
-              Incoming Call
-            </p>
+      {/* Full-screen takeover: the ONLY in-app ringing UI (Phase A1) */}
+      <div className="fixed inset-0 z-[99998] flex flex-col bg-gradient-to-b from-zinc-950 via-zinc-950 to-red-950/60 text-white">
+        {/* Top: context */}
+        <div className="flex flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)]">
+          <p className="text-xs font-bold uppercase tracking-[0.35em] text-white/50">
+            Incoming private call
+          </p>
 
-            <div className="mx-auto mt-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white/30 bg-black/30 text-4xl">
+          <span
+            className={`mt-3 rounded-full px-4 py-1.5 text-xs font-black ${
+              price > 0
+                ? "bg-red-600/20 text-red-300 ring-1 ring-red-500/40"
+                : "bg-white/10 text-white/70 ring-1 ring-white/15"
+            }`}
+          >
+            {price > 0 ? `$${price.toFixed(2)} per call` : "Free call"}
+          </span>
+        </div>
+
+        {/* Center: caller identity */}
+        <div className="flex flex-1 flex-col items-center justify-center px-6">
+          <div className="relative">
+            <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-red-600/20" />
+            <span className="absolute inset-0 -m-1.5 rounded-full bg-red-600/25" />
+            <div className="relative flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-4 border-white/20 bg-zinc-900 text-6xl shadow-2xl">
               {call.caller?.avatar_url ? (
                 <img
                   src={call.caller.avatar_url}
@@ -419,50 +435,64 @@ export default function IncomingCallPopup() {
                 "👤"
               )}
             </div>
-
-            <h2 className="mt-4 truncate text-2xl font-black">{callerName}</h2>
-
-            <p className="mt-1 truncate text-sm font-semibold text-white/80">
-              {call.stream?.title || "Private video call"}
-            </p>
-
-            <p className="mt-2 text-xs font-bold text-white/80">
-              {price > 0 ? `$${price.toFixed(2)} private call` : "Free private call"}
-            </p>
           </div>
 
-          <div className="space-y-3 p-5">
-            {soundBlocked && (
-              <button
-                onClick={unlockAndPlayRing}
-                className="w-full rounded-2xl border border-yellow-400/40 bg-yellow-500/10 px-5 py-3 text-sm font-black text-yellow-200 hover:bg-yellow-500/20"
-              >
-                🔊 Tap to Enable Ringtone
-              </button>
-            )}
+          <h2 className="mt-8 max-w-full truncate px-4 text-center text-3xl font-black">
+            {callerName}
+          </h2>
 
+          <p className="mt-2 max-w-full truncate px-4 text-center text-sm font-semibold text-white/60">
+            {call.stream?.title || "Private video call"}
+          </p>
+
+          {soundBlocked && (
             <button
-              onClick={acceptCall}
-              disabled={loadingAction}
-              className="w-full rounded-2xl bg-green-600 px-5 py-4 text-base font-black hover:bg-green-700 disabled:bg-zinc-700"
+              onClick={unlockAndPlayRing}
+              className="mt-6 rounded-full border border-yellow-400/40 bg-yellow-500/10 px-5 py-2.5 text-sm font-bold text-yellow-200 active:bg-yellow-500/25"
             >
-              {loadingAction ? "Opening..." : price > 0 ? `Accept & Pay $${price.toFixed(2)}` : "Accept"}
+              🔊 Tap to enable ringtone
             </button>
+          )}
+        </div>
 
+        {/* Bottom: WhatsApp-style circular actions */}
+        <div className="flex items-start justify-center gap-20 px-6 pb-[calc(env(safe-area-inset-bottom)+3.5rem)]">
+          <div className="flex flex-col items-center gap-3">
             <button
               onClick={declineCall}
               disabled={loadingAction}
-              className="w-full rounded-2xl bg-red-600 px-5 py-4 text-base font-black hover:bg-red-700 disabled:bg-zinc-700"
+              aria-label="Decline call"
+              className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-red-600 shadow-lg shadow-red-900/50 transition-transform active:scale-90 disabled:bg-zinc-700"
             >
-              Decline
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-8 w-8 rotate-[135deg]"
+              >
+                <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.24.2 2.45.57 3.57a1 1 0 0 1-.24 1.02l-2.21 2.2z" />
+              </svg>
             </button>
+            <span className="text-xs font-bold text-white/60">Decline</span>
+          </div>
 
-            <Link
-              href="/calls"
-              className="block w-full rounded-2xl bg-zinc-800 px-5 py-4 text-center text-base font-black hover:bg-zinc-700"
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={acceptCall}
+              disabled={loadingAction}
+              aria-label={price > 0 ? `Accept and pay $${price.toFixed(2)}` : "Accept call"}
+              className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-green-600 shadow-lg shadow-green-900/50 transition-transform active:scale-90 disabled:bg-zinc-700"
             >
-              Open Call Page
-            </Link>
+              {loadingAction ? (
+                <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8">
+                  <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.24.2 2.45.57 3.57a1 1 0 0 1-.24 1.02l-2.21 2.2z" />
+                </svg>
+              )}
+            </button>
+            <span className="text-xs font-bold text-white/60">
+              {loadingAction ? "Opening..." : price > 0 ? `Accept · $${price.toFixed(2)}` : "Accept"}
+            </span>
           </div>
         </div>
       </div>

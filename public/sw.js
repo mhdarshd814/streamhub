@@ -1,4 +1,4 @@
-const CACHE_NAME = "streamhub-pwa-v3";
+const CACHE_NAME = "streamhub-pwa-v4";
 
 const STATIC_CACHE_URLS = [
   "/",
@@ -141,9 +141,32 @@ self.addEventListener("push", function (event) {
   const isIncomingCall =
     data.type === "incoming_call" || data.notificationType === "incoming_call";
 
-  // Incoming calls are handled by the native notification (Android) and
-  // the in-app IncomingCallPopup. Skip the duplicate web notification.
-  if (isIncomingCall) return;
+  // Phase A4: the server no longer sends web push for calls when the user
+  // has an active Android device — the native IncomingCallService owns
+  // ringing there. A call push reaching this worker means the user is
+  // web-only, so the web notification IS the ringing UI for them.
+  if (isIncomingCall) {
+    const callTitle = data.title || "Incoming Private Call";
+
+    const callOptions = {
+      body: data.body || "Someone is calling you on StreamHub",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: "incoming-call-" + (data.callId || "unknown"),
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [700, 300, 700, 300, 700],
+      data: {
+        // Open home: the in-app IncomingCallPopup owns accept/decline.
+        url: "/",
+        type: "incoming_call",
+        callId: data.callId || "",
+      },
+    };
+
+    event.waitUntil(self.registration.showNotification(callTitle, callOptions));
+    return;
+  }
 
   const title = data.title || "StreamHub";
 

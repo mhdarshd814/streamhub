@@ -92,6 +92,11 @@ export async function POST(req: Request) {
       return bad("Banned users cannot send notifications", 403);
     }
 
+    const notificationType = body.type || "general";
+    const isIncomingCall =
+      notificationType === "incoming_call" ||
+      notificationType === "incoming_private_call";
+
     const { data: tokens, error: tokenError } = await supabase
       .from("push_tokens")
       .select("id, token")
@@ -120,28 +125,51 @@ export async function POST(req: Request) {
     await Promise.all(
       tokens.map(async (item) => {
         try {
-          await messaging.send({
-            token: item.token,
-            notification: {
-              title: body.title,
-              body: body.message || "",
-            },
-            data: {
-              url: body.url || "/calls",
-              type: body.type || "general",
-              streamId: body.streamId || "",
-              callId: body.callId || "",
-            },
-            android: {
-              priority: "high",
-              notification: {
-                channelId: "default",
-                priority: "high",
-                sound: "default",
-                clickAction: "OPEN_STREAMHUB",
+          if (isIncomingCall) {
+            // TRUE data-only for calls: no notification block anywhere, so
+            // onMessageReceived fires even in background/killed state and
+            // IncomingCallService owns the ringing UI. A notification block
+            // here would make FCM auto-display its own notification and
+            // bypass the native call flow entirely.
+            await messaging.send({
+              token: item.token,
+              data: {
+                type: notificationType,
+                title: body.title || "Incoming Private Call",
+                message: body.message || "Someone is calling you on StreamHub",
+                url: body.url || "/",
+                streamId: body.streamId || "",
+                callId: body.callId || "",
               },
-            },
-          });
+              android: {
+                priority: "high",
+                ttl: 60 * 1000,
+              },
+            });
+          } else {
+            await messaging.send({
+              token: item.token,
+              notification: {
+                title: body.title,
+                body: body.message || "",
+              },
+              data: {
+                url: body.url || "/calls",
+                type: notificationType,
+                streamId: body.streamId || "",
+                callId: body.callId || "",
+              },
+              android: {
+                priority: "high",
+                notification: {
+                  channelId: "default",
+                  priority: "high",
+                  sound: "default",
+                  clickAction: "OPEN_STREAMHUB",
+                },
+              },
+            });
+          }
 
           sent++;
         } catch (error: any) {

@@ -123,6 +123,7 @@ export async function POST(req: Request) {
     }
 
     const notificationType = body.notificationType || "general";
+    const isIncomingCall = notificationType === "incoming_call";
     const url = body.url || "/notifications";
     const callId = getCallIdFromUrl(url, body.callId);
 
@@ -131,7 +132,28 @@ export async function POST(req: Request) {
     let androidSent = 0;
     let androidFailed = 0;
 
-    if (vapidPublicKey && vapidPrivateKey && vapidEmail) {
+    // Android tokens are fetched FIRST so we can decide whether web push
+    // should be skipped for incoming calls (Phase A4: one owner per device).
+    const { data: androidTokens, error: tokenError } = await supabase
+      .from("push_tokens")
+      .select("id, token")
+      .eq("user_id", body.userId)
+      .eq("platform", "android")
+      .eq("is_active", true);
+
+    if (tokenError) {
+      return bad(tokenError.message, 500);
+    }
+
+    const hasAndroidDevice = (androidTokens?.length || 0) > 0;
+
+    // Phase A4: if the receiver has an active Android device, the native
+    // IncomingCallService is the sole owner of ringing. No web push at all
+    // for calls — kills the duplicate at the source instead of filtering
+    // in sw.js. Web push for calls still goes out to web-only users.
+    const skipWebPush = isIncomingCall && hasAndroidDevice;
+
+    if (!skipWebPush && vapidPublicKey && vapidPrivateKey && vapidEmail) {
       webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
 
       const { data: subscriptions, error: subError } = await supabase
@@ -184,60 +206,63 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: androidTokens, error: tokenError } = await supabase
-      .from("push_tokens")
-      .select("id, token")
-      .eq("user_id", body.userId)
-      .eq("platform", "android")
-      .eq("is_active", true);
-
-    if (tokenError) {
-      return bad(tokenError.message, 500);
-    }
-
-    if (androidTokens && androidTokens.length > 0) {
+    if (hasAndroidDevice) {
       getFirebaseAdmin();
 
       await Promise.all(
-        androidTokens.map(async (row) => {
+        (androidTokens || []).map(async (row) => {
           try {
-            const isIncomingCall =
-              notificationType === "incoming_call";
-
-            await getMessaging().send({
-              token: row.token,
-              ...(isIncomingCall
-                ? {}
-                : {
-                    notification: {
-                      title: body.title || "StreamHub",
-                      body: body.message || "New notification",
-                    },
-                  }),
-              data: {
-                type: notificationType,
-                notificationType,
-                url,
-                link: url,
-                streamId: body.streamId || "",
-                callId,
-              },
-              android: {
-                priority: "high",
-                ttl: 60 * 1000,
-                notification: {
-                  channelId:
-                    notificationType === "incoming_call"
-                      ? "incoming_calls_v3"
-                      : "default",
-                  sound: "default",
-                  priority: "max",
-                  visibility: "public",
-                  defaultSound: true,
-                  defaultVibrateTimings: true,
+            if (isIncomingCall) {
+              // TRUE data-only message. Any `notification` block — top-level
+              // OR android.notification — turns this into a notification
+              // message, which FCM auto-displays in background/killed state
+              // WITHOUT calling onMessageReceived. IncomingCallService would
+              // never run and the phone would show only a status-bar entry.
+              await getMessaging().send({
+                token: row.token,
+                data: {
+                  type: notificationType,
+                  notificationType,
+                  title: body.title || "Incoming Private Call",
+                  message: body.message || "Someone is calling you on StreamHub",
+                  url,
+                  link: url,
+                  streamId: body.streamId || "",
+                  callId,
                 },
-              },
-            });
+                android: {
+                  priority: "high",
+                  ttl: 60 * 1000,
+                },
+              });
+            } else {
+              await getMessaging().send({
+                token: row.token,
+                notification: {
+                  title: body.title || "StreamHub",
+                  body: body.message || "New notification",
+                },
+                data: {
+                  type: notificationType,
+                  notificationType,
+                  url,
+                  link: url,
+                  streamId: body.streamId || "",
+                  callId,
+                },
+                android: {
+                  priority: "high",
+                  notification: {
+                    channelId: "default",
+                    sound: "default",
+                    priority: "high",
+                    visibility: "public",
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                  },
+                },
+              });
+            }
 
             androidSent++;
           } catch (error: any) {
@@ -280,5 +305,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-

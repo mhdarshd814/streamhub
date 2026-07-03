@@ -1,9 +1,7 @@
 package com.streamhub.app;
 
 import android.content.Intent;
-import android.os.Bundle;
 import android.os.PowerManager;
-import android.telecom.TelecomManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -22,17 +20,16 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         }
 
         wakeDeviceBriefly();
-        StreamHubPhoneAccount.register(this);
 
         String title = getValue(message, "title", "Incoming Private Call");
         String body = getValue(message, "message", "Someone is calling you on StreamHub");
         String callId = getValue(message, "callId", "");
         String streamId = getValue(message, "streamId", "");
-        String targetUrl = getValue(message, "url", "");
 
-        if (targetUrl.isEmpty()) {
-            targetUrl = callId.isEmpty() ? "/calls" : "/incoming-call/" + callId;
-        }
+        // Phase A3: native Accept lands on home. The in-app IncomingCallPopup
+        // owns the styled accept/decline flow. Never route to /incoming-call.
+        String targetUrl = "/";
+
         Intent serviceIntent = new Intent(this, IncomingCallService.class);
         serviceIntent.putExtra("title", title);
         serviceIntent.putExtra("message", body);
@@ -41,37 +38,6 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         serviceIntent.putExtra("streamhub_url", targetUrl);
 
         ContextCompat.startForegroundService(this, serviceIntent);
-    }
-
-    private boolean tryStartTelecomIncomingCall(
-            String title,
-            String message,
-            String callId,
-            String streamId,
-            String targetUrl
-    ) {
-        try {
-            TelecomManager telecomManager =
-                    (TelecomManager) getSystemService(TELECOM_SERVICE);
-
-            if (telecomManager == null) return false;
-
-            Bundle extras = new Bundle();
-            extras.putString("title", title);
-            extras.putString("message", message);
-            extras.putString("callId", callId);
-            extras.putString("streamId", streamId);
-            extras.putString("streamhub_url", targetUrl);
-
-            telecomManager.addNewIncomingCall(
-                    StreamHubPhoneAccount.getHandle(this),
-                    extras
-            );
-
-            return true;
-        } catch (Exception error) {
-            return false;
-        }
     }
 
     private String getValue(RemoteMessage message, String key, String fallback) {
@@ -86,7 +52,7 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
 
             PowerManager.WakeLock wakeLock = powerManager.newWakeLock(
                     PowerManager.PARTIAL_WAKE_LOCK,
-                    "StreamHub:TelecomIncomingCallWakeLock"
+                    "StreamHub:IncomingCallWakeLock"
             );
 
             wakeLock.acquire(10000);
