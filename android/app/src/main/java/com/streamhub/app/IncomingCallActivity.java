@@ -26,6 +26,10 @@ public class IncomingCallActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Kill any white flash from the theme's window background before
+        // the dark layout below is drawn.
+        getWindow().getDecorView().setBackgroundColor(Color.parseColor("#020617"));
+
         wakeAndShowOnLockScreen();
         readIntentData();
         buildUi();

@@ -45,6 +45,13 @@ public class MainActivity extends BridgeActivity {
 
         WebView webView = getBridge().getWebView();
 
+        // Cold-start white screen fix: the WebView and window default to
+        // white while the remote app is loading over the network. Paint
+        // them dark so the loading state matches the app theme.
+        int appBackground = Color.parseColor("#020617");
+        window.getDecorView().setBackgroundColor(appBackground);
+        webView.setBackgroundColor(appBackground);
+
         webView.post(() -> {
             int statusBarHeight = getStatusBarHeight();
             webView.setPadding(0, statusBarHeight, 0, 0);
