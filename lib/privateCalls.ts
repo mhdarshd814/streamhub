@@ -40,8 +40,10 @@ async function isMutualFollow(callerId: string, targetUserId: string) {
 export async function startPrivateCallRequest(params: {
   callerId: string;
   target: PrivateCallTarget;
+  price?: number;
 }): Promise<StartPrivateCallResult> {
   const { callerId, target } = params;
+  const callPrice = Number(params.price || 0);
 
   if (!callerId) {
     return {
@@ -111,7 +113,7 @@ export async function startPrivateCallRequest(params: {
         visibility: "private",
         status: "offline",
         thumbnail_url: null,
-        private_call_price: 0,
+        private_call_price: callPrice,
       },
     ])
     .select()
