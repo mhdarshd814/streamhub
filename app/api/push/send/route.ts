@@ -123,7 +123,14 @@ export async function POST(req: Request) {
     }
 
     const notificationType = body.notificationType || "general";
-    const isIncomingCall = notificationType === "incoming_call";
+
+    // The live room sends "incoming_private_call"; the profile page sends
+    // "incoming_call". The native FCM handler accepts both — the server
+    // must too, or live-room calls fall through to the regular
+    // notification path and the native call flow never runs.
+    const isIncomingCall =
+      notificationType === "incoming_call" ||
+      notificationType === "incoming_private_call";
     const url = body.url || "/notifications";
     const callId = getCallIdFromUrl(url, body.callId);
 

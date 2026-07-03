@@ -19,15 +19,13 @@ public class MainActivity extends BridgeActivity {
 
     private static final String PREFS_NAME = "streamhub_prefs";
     private static final String FULL_SCREEN_PERMISSION_ASKED = "full_screen_permission_asked";
+    private static final String SERVER_URL = "https://streamhubhq.com";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        StreamHubPhoneAccount.register(this);
-
         maybeRequestFullScreenIntentPermission();
-        handleIncomingIntent(getIntent());
 
         Window window = getWindow();
 
@@ -36,7 +34,7 @@ public class MainActivity extends BridgeActivity {
         window.setStatusBarColor(Color.parseColor("#020617"));
         window.setNavigationBarColor(Color.parseColor("#020617"));
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.getInsetsController().setSystemBarsAppearance(
                     0,
                     WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
@@ -52,6 +50,12 @@ public class MainActivity extends BridgeActivity {
             webView.setPadding(0, statusBarHeight, 0, 0);
             webView.setClipToPadding(false);
         });
+
+        // NOTE: no handleIncomingIntent() here. On a cold start, calling
+        // loadUrl() while the Capacitor bridge is still initializing races
+        // the app's own load and produces a white screen. Capacitor loads
+        // home by default, which is exactly where incoming calls should
+        // land (Phase A3) — the in-app popup takes over from there.
     }
 
     @Override
@@ -88,14 +92,21 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private static final String SERVER_URL = "https://streamhubhq.com";
-
     private void handleIncomingIntent(Intent intent) {
         if (intent == null) return;
 
         String targetUrl = intent.getStringExtra("streamhub_url");
 
         if (targetUrl == null || targetUrl.isEmpty()) return;
+
+        // Home is where the app already is (or loads to). Reloading the
+        // WebView for "/" was the white-screen bug: a hard page reload that
+        // killed SPA state and could hang on any network hiccup. For home,
+        // do nothing — the IncomingCallPopup detects the ringing call.
+        if (targetUrl.equals("/") || targetUrl.equals(SERVER_URL)
+                || targetUrl.equals(SERVER_URL + "/")) {
+            return;
+        }
 
         final String fullUrl = targetUrl.startsWith("http")
                 ? targetUrl

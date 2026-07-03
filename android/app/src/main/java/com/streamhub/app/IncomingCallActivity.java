@@ -16,11 +16,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class IncomingCallActivity extends Activity {
-    private static final int CALL_NOTIFICATION_ID = 2001;
 
     private String callId = "";
     private String streamId = "";
-    private String targetUrl = "/calls";
+    private String targetUrl = "/";
+    private int notificationId = 2001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,11 +70,18 @@ public class IncomingCallActivity extends Activity {
         if (incomingCallId != null) callId = incomingCallId;
         if (incomingStreamId != null) streamId = incomingStreamId;
 
-        if (incomingUrl != null && !incomingUrl.isEmpty()) {
+        // Phase A3/A5: ringing never routes to /incoming-call. Home is the
+        // only destination; the in-app popup owns accept/decline UI.
+        if (incomingUrl != null && !incomingUrl.isEmpty()
+                && !incomingUrl.contains("/incoming-call")) {
             targetUrl = incomingUrl;
-        } else if (!callId.isEmpty()) {
-            targetUrl = "/incoming-call/" + callId;
+        } else {
+            targetUrl = "/";
         }
+
+        // The service derives the notification id from the callId hash.
+        // Mirror that so this screen clears the right notification.
+        notificationId = callId.isEmpty() ? 2001 : Math.abs(callId.hashCode());
     }
 
     private void buildUi() {
@@ -92,7 +99,9 @@ public class IncomingCallActivity extends Activity {
         appName.setTypeface(null, android.graphics.Typeface.BOLD);
 
         TextView title = new TextView(this);
-        title.setText("Incoming Private Call");
+        title.setText(getIntent() != null && getIntent().getStringExtra("title") != null
+                ? getIntent().getStringExtra("title")
+                : "Incoming Private Call");
         title.setTextColor(Color.WHITE);
         title.setTextSize(30);
         title.setGravity(Gravity.CENTER);
@@ -100,7 +109,9 @@ public class IncomingCallActivity extends Activity {
         title.setPadding(0, 32, 0, 12);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Someone is calling you on StreamHub");
+        subtitle.setText(getIntent() != null && getIntent().getStringExtra("message") != null
+                ? getIntent().getStringExtra("message")
+                : "Someone is calling you on StreamHub");
         subtitle.setTextColor(Color.parseColor("#94a3b8"));
         subtitle.setTextSize(16);
         subtitle.setGravity(Gravity.CENTER);
@@ -122,7 +133,7 @@ public class IncomingCallActivity extends Activity {
         acceptButton.setTextColor(Color.WHITE);
         acceptButton.setTextSize(16);
         acceptButton.setAllCaps(false);
-        acceptButton.setBackgroundColor(Color.parseColor("#dc2626"));
+        acceptButton.setBackgroundColor(Color.parseColor("#16a34a"));
 
         LinearLayout.LayoutParams buttonParams =
                 new LinearLayout.LayoutParams(0, 140, 1);
@@ -146,7 +157,8 @@ public class IncomingCallActivity extends Activity {
     }
 
     private void acceptCall() {
-        clearNotification(); stopService(new Intent(this, IncomingCallService.class));
+        clearNotification();
+        stopService(new Intent(this, IncomingCallService.class));
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("streamhub_url", targetUrl);
@@ -157,7 +169,18 @@ public class IncomingCallActivity extends Activity {
     }
 
     private void declineCall() {
-        clearNotification(); stopService(new Intent(this, IncomingCallService.class));
+        clearNotification();
+        stopService(new Intent(this, IncomingCallService.class));
+
+        // Server-side decline (updating private_call_requests) is handled by
+        // the web layer; the native decline stops ringing on this device.
+        Intent declineBroadcast = new Intent(this, IncomingCallActionReceiver.class);
+        declineBroadcast.setAction(IncomingCallActionReceiver.ACTION_DECLINE_CALL);
+        declineBroadcast.putExtra("callId", callId);
+        declineBroadcast.putExtra("streamId", streamId);
+        declineBroadcast.putExtra("notificationId", notificationId);
+        sendBroadcast(declineBroadcast);
+
         finish();
     }
 
@@ -166,7 +189,8 @@ public class IncomingCallActivity extends Activity {
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         if (manager != null) {
-            manager.cancel(CALL_NOTIFICATION_ID);
+            manager.cancel(notificationId);
+            manager.cancel(2001);
         }
     }
 }
