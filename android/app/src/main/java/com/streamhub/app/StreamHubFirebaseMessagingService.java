@@ -1,5 +1,6 @@
 package com.streamhub.app;
 
+import android.app.ActivityManager;
 import android.content.Intent;
 import android.os.PowerManager;
 
@@ -16,6 +17,15 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
         String type = message.getData().get("type");
 
         if (!"incoming_call".equals(type) && !"incoming_private_call".equals(type)) {
+            return;
+        }
+
+        // One owner per situation: when the app is open and visible, the
+        // in-app IncomingCallPopup owns ringing. Launching the native call
+        // screen over the running app creates two competing call UIs.
+        // Screen-off/locked states report a different importance, so those
+        // still ring natively.
+        if (isAppInForeground()) {
             return;
         }
 
@@ -43,6 +53,18 @@ public class StreamHubFirebaseMessagingService extends FirebaseMessagingService 
     private String getValue(RemoteMessage message, String key, String fallback) {
         String value = message.getData().get(key);
         return value == null || value.isEmpty() ? fallback : value;
+    }
+
+    private boolean isAppInForeground() {
+        try {
+            ActivityManager.RunningAppProcessInfo processInfo =
+                    new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.getMyMemoryState(processInfo);
+            return processInfo.importance
+                    == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private void wakeDeviceBriefly() {

@@ -44,12 +44,12 @@
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
-
-        <!-- Android 12+ system splash: without this the splash background
-             derives a light default, showing white before the app draws. -->
+        <!-- Solid dark everywhere. The @drawable/splash references were
+             removed: if that drawable is light, it painted the window
+             white regardless of every other dark setting. Re-add branding
+             later via a dark splash drawable if wanted. -->
         <item name="windowSplashScreenBackground">#020617</item>
-        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:windowBackground">#020617</item>
 
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">#020617</item>
