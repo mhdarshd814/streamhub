@@ -76,6 +76,13 @@ export default function RootLayout({
                 background: #000 !important;
               }
 
+              /* Hide ALL StreamHub chrome bars during fullscreen video:
+                 desktop nav, mobile-top-nav, mobile-bottom-nav. The video
+                 overlay owns the entire viewport. */
+              body.streamhub-theater-mode nav {
+                display: none !important;
+              }
+
               body.streamhub-theater-mode .app-shell {
                 padding: 0 !important;
                 margin: 0 !important;
