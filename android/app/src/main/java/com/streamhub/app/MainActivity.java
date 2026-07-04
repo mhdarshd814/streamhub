@@ -74,6 +74,55 @@ public class MainActivity extends BridgeActivity {
         maybeDeliverNativeAccept(intent);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        maybeDeliverPendingDecline();
+    }
+
+    private int declineDeliveryAttempts = 0;
+
+    private void maybeDeliverPendingDecline() {
+        String rawCallId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(IncomingCallActionReceiver.PENDING_DECLINE_KEY, "");
+
+        if (rawCallId == null || rawCallId.isEmpty()) return;
+
+        final String callId = rawCallId.replaceAll("[^a-zA-Z0-9\\-]", "");
+        if (callId.isEmpty()) return;
+
+        final WebView webView = getBridge().getWebView();
+        declineDeliveryAttempts = 0;
+
+        Runnable attempt = new Runnable() {
+            @Override
+            public void run() {
+                declineDeliveryAttempts++;
+
+                String js = "(function(){"
+                        + "if(!window.location||String(window.location.origin).indexOf('streamhubhq.com')<0){return 'wait';}"
+                        + "try{localStorage.setItem('streamhub_decline_call','" + callId + "');return 'ok';}"
+                        + "catch(e){return 'err';}"
+                        + "})()";
+
+                webView.evaluateJavascript(js, value -> {
+                    boolean delivered = "\"ok\"".equals(value);
+
+                    if (delivered) {
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                                .edit()
+                                .remove(IncomingCallActionReceiver.PENDING_DECLINE_KEY)
+                                .apply();
+                    } else if (declineDeliveryAttempts < 40) {
+                        webView.postDelayed(this, 500);
+                    }
+                });
+            }
+        };
+
+        webView.postDelayed(attempt, 400);
+    }
+
     private int acceptDeliveryAttempts = 0;
 
     private void maybeDeliverNativeAccept(Intent intent) {

@@ -115,6 +115,7 @@ export default function IncomingCallPopup() {
       // Polling keeps the popup reliable for repeat calls.
       pollTimer = setInterval(async () => {
         await loadLatestIncomingCall(user.id, true);
+        maybeAutoDeclineFromNative();
         maybeAutoAcceptFromNative();
       }, 3000);
     }
@@ -170,6 +171,27 @@ export default function IncomingCallPopup() {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  function consumeNativeDecline(target: CallRequest): boolean {
+    // Native notification Decline stores the callId; MainActivity delivers
+    // it here on next app open (see IncomingCallActionReceiver).
+    try {
+      const pending = localStorage.getItem("streamhub_decline_call");
+      if (!pending || pending !== target.id) return false;
+      localStorage.removeItem("streamhub_decline_call");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function maybeAutoDeclineFromNative() {
+    const current = callRef.current;
+    if (!current) return;
+    if (consumeNativeDecline(current)) {
+      declineCallFor(current, true);
     }
   }
 
@@ -259,10 +281,17 @@ export default function IncomingCallPopup() {
         : Promise.resolve({ data: null }),
     ]);
 
+    const loaded: CallRequest = { ...data, caller, stream };
+
+    // Declined on the native notification while the app was closed:
+    // decline server-side silently, never show or ring.
+    if (consumeNativeDecline(loaded)) {
+      declineCallFor(loaded, true);
+      return;
+    }
+
     activeCallIdRef.current = data.id;
     setLoadingAction(false);
-
-    const loaded: CallRequest = { ...data, caller, stream };
     callRef.current = loaded;
     setCall(loaded);
 
@@ -406,10 +435,10 @@ export default function IncomingCallPopup() {
     window.location.replace(`/live/${target.stream_id}?autojoin=1`);
   }
 
-  async function declineCall() {
-    if (!userId || !call || call.receiver_id !== userId) return;
+  async function declineCallFor(target: CallRequest, silent: boolean) {
+    if (!userId || !target || target.receiver_id !== userId) return;
 
-    setLoadingAction(true);
+    if (!silent) setLoadingAction(true);
 
     const { error } = await supabase
       .from("private_call_requests")
@@ -418,17 +447,19 @@ export default function IncomingCallPopup() {
         ring_status: "declined",
         declined_at: new Date().toISOString(),
       })
-      .eq("id", call.id);
+      .eq("id", target.id);
 
     if (error) {
       setLoadingAction(false);
-      alert(error.message);
+      if (!silent) alert(error.message);
       return;
     }
 
     stopRing();
-    activeCallIdRef.current = null;
-    setCall(null);
+    if (activeCallIdRef.current === target.id) {
+      activeCallIdRef.current = null;
+      setCall(null);
+    }
     setLoadingAction(false);
   }
 
@@ -511,7 +542,7 @@ export default function IncomingCallPopup() {
         <div className="flex items-start justify-center gap-20 px-6 pb-[calc(env(safe-area-inset-bottom)+3.5rem)]">
           <div className="flex flex-col items-center gap-3">
             <button
-              onClick={declineCall}
+              onClick={() => call && declineCallFor(call, false)}
               disabled={loadingAction}
               aria-label="Decline call"
               className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-red-600 shadow-lg shadow-red-900/50 transition-transform active:scale-90 disabled:bg-zinc-700"

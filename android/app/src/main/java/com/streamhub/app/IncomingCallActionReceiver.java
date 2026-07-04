@@ -6,49 +6,57 @@ import android.content.Context;
 import android.content.Intent;
 
 public class IncomingCallActionReceiver extends BroadcastReceiver {
-    public static final String ACTION_ACCEPT_CALL = "com.streamhub.app.ACCEPT_CALL";
-    public static final String ACTION_DECLINE_CALL = "com.streamhub.app.DECLINE_CALL";
+
+    public static final String ACTION_DECLINE_CALL = "com.streamhub.app.ACTION_DECLINE_CALL";
+
+    private static final String PREFS_NAME = "streamhub_prefs";
+    public static final String PENDING_DECLINE_KEY = "pending_decline_call";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent == null) return;
-
-        String action = intent.getAction();
-        String callId = intent.getStringExtra("callId");
-        String streamId = intent.getStringExtra("streamId");
-        String targetUrl = intent.getStringExtra("streamhub_url");
-        int notificationId = intent.getIntExtra("notificationId", 2001);
-
-        NotificationManager manager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-
-        if (manager != null) {
-            manager.cancel(notificationId);
-        }
-
-        CallRingtoneManager.stop();
-        context.stopService(new Intent(context, IncomingCallService.class));
-
-        if (ACTION_ACCEPT_CALL.equals(action)) {
-            if (targetUrl == null || targetUrl.isEmpty()) {
-                targetUrl = callId == null || callId.isEmpty()
-                        ? "/calls"
-                        : "/incoming-call/" + callId;
-            }
-
-            Intent activityIntent = new Intent(context, IncomingCallActivity.class);
-            activityIntent.putExtra("streamhub_url", targetUrl);
-            activityIntent.putExtra("callId", callId);
-            activityIntent.putExtra("streamId", streamId);
-            activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-            context.startActivity(activityIntent);
+        if (intent == null || !ACTION_DECLINE_CALL.equals(intent.getAction())) {
             return;
         }
 
-        if (ACTION_DECLINE_CALL.equals(action)) {
-            // Native decline currently dismisses the lock-screen notification.
-            // Server-side decline update will be added in the next phase.
+        String callId = intent.getStringExtra("callId");
+        int notificationId = intent.getIntExtra("notificationId", 2001);
+
+        // 1. Stop the ringing service (kills ringtone + vibration and
+        //    removes the foreground notification with it).
+        try {
+            context.stopService(new Intent(context, IncomingCallService.class));
+        } catch (Exception ignored) {
+        }
+
+        // 2. Belt-and-braces: stop the ringtone directly and cancel both
+        //    possible notification ids.
+        try {
+            CallRingtoneManager.stop();
+        } catch (Exception ignored) {
+        }
+
+        try {
+            NotificationManager manager =
+                    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) {
+                manager.cancel(notificationId);
+                manager.cancel(2001);
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 3. The server-side decline needs the user's session, which only
+        //    the web app has. Save the callId; MainActivity delivers it to
+        //    the web layer on next app open, and the popup declines it
+        //    silently. Until then the caller side ends via ring timeout.
+        if (callId != null && !callId.isEmpty()) {
+            try {
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putString(PENDING_DECLINE_KEY, callId)
+                        .apply();
+            } catch (Exception ignored) {
+            }
         }
     }
 }
