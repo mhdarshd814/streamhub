@@ -28,13 +28,8 @@ public class IncomingCallActionReceiver extends BroadcastReceiver {
         } catch (Exception ignored) {
         }
 
-        // 2. Belt-and-braces: stop the ringtone directly and cancel both
-        //    possible notification ids.
-        try {
-            CallRingtoneManager.stop();
-        } catch (Exception ignored) {
-        }
-
+        // 2. Cancel both possible notification ids (the service stop above
+        //    already kills the ringtone, which the service itself owns).
         try {
             NotificationManager manager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);

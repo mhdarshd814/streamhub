@@ -8,6 +8,9 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -28,6 +31,7 @@ public class IncomingCallService extends Service {
     private static final long RING_TIMEOUT_MS = 60_000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private MediaPlayer ringtonePlayer;
     private int notificationId = DEFAULT_NOTIFICATION_ID;
 
     @Override
@@ -70,10 +74,9 @@ public class IncomingCallService extends Service {
             startForeground(notificationId, notification);
         }
 
-        // Looping ring + vibration is owned exclusively by CallRingtoneManager.
-        // The channel sound is intentionally null (see createCallChannel) to
-        // prevent the double-ringtone bug on OEM skins.
-        CallRingtoneManager.start(this);
+        // The service owns its own looping ringtone. No external ringtone
+        // class, no channel sound: one deterministic sound owner.
+        startRingtone();
 
         handler.removeCallbacksAndMessages(null);
         handler.postDelayed(this::stopRinging, RING_TIMEOUT_MS);
@@ -82,7 +85,7 @@ public class IncomingCallService extends Service {
     }
 
     private void stopRinging() {
-        CallRingtoneManager.stop();
+        stopRingtone();
 
         NotificationManager manager =
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -159,6 +162,9 @@ public class IncomingCallService extends Service {
                 .setSmallIcon(getApplicationInfo().icon)
                 .setContentTitle(title)
                 .setContentText(message)
+                // Visible build marker: if the notification does not show
+                // this subtext, the installed APK does not contain this code.
+                .setSubText("v-callfix3")
                 .setContentIntent(fullScreenPendingIntent)
                 // THE fix: actually attach the full-screen intent.
                 .setFullScreenIntent(fullScreenPendingIntent, true)
@@ -212,6 +218,46 @@ public class IncomingCallService extends Service {
         manager.createNotificationChannel(channel);
     }
 
+    private void startRingtone() {
+        stopRingtone();
+
+        try {
+            ringtonePlayer = new MediaPlayer();
+
+            ringtonePlayer.setAudioAttributes(
+                    new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+            );
+
+            ringtonePlayer.setDataSource(
+                    this,
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            );
+
+            ringtonePlayer.setLooping(true);
+            ringtonePlayer.prepare();
+            ringtonePlayer.start();
+        } catch (Exception e) {
+            ringtonePlayer = null;
+        }
+    }
+
+    private void stopRingtone() {
+        try {
+            if (ringtonePlayer != null) {
+                if (ringtonePlayer.isPlaying()) {
+                    ringtonePlayer.stop();
+                }
+                ringtonePlayer.release();
+            }
+        } catch (Exception ignored) {
+        } finally {
+            ringtonePlayer = null;
+        }
+    }
+
     private String getStringExtra(Intent intent, String key, String fallback) {
         if (intent == null) return fallback;
         String value = intent.getStringExtra(key);
@@ -221,7 +267,7 @@ public class IncomingCallService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacksAndMessages(null);
-        CallRingtoneManager.stop();
+        stopRingtone();
         super.onDestroy();
     }
 
