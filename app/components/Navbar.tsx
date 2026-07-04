@@ -667,7 +667,6 @@ export default function Navbar() {
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-3">
-              <MobileSheetItem label="Go Live" href="/go-live" goTo={goTo} strong />
               <MobileSheetItem label="Calls" href="/calls" goTo={goTo} strong />
               <MobileSheetItem label="Profile" href={profilePath()} goTo={goTo} />
               <MobileSheetItem label="Wallet" href="/wallet" goTo={goTo} />
@@ -676,9 +675,7 @@ export default function Navbar() {
               <MobileSheetItem label="Dashboard" href="/dashboard" goTo={goTo} />
               <MobileSheetItem label="Schedule" href="/schedule" goTo={goTo} />
               <MobileSheetItem label="Upcoming" href="/streams/upcoming" goTo={goTo} />
-              <MobileSheetItem label="Privacy Policy" href="/privacy" goTo={goTo} />
-              <MobileSheetItem label="Terms of Service" href="/terms" goTo={goTo} />
-              <MobileSheetItem label="Delete Account" href="/delete-account" goTo={goTo} />
+              <MobileSheetItem label="Settings" href="/settings" goTo={goTo} />
 
               {profile?.is_admin && (
                 <MobileSheetItem label="Admin" href="/admin" goTo={goTo} strong />
