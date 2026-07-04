@@ -51,10 +51,108 @@ export default function ExplorePage() {
   const [category, setCategory] = useState("All");
   const [status, setStatus] = useState("All");
   const [loading, setLoading] = useState(true);
+  const [people, setPeople] = useState<Profile[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [followBusyId, setFollowBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDiscovery();
   }, []);
+
+  // People search: server-side profile lookup, debounced while typing.
+  useEffect(() => {
+    const query = search.trim();
+
+    if (query.length < 2) {
+      setPeople([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      searchPeople(query);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  async function searchPeople(query: string) {
+    setPeopleLoading(true);
+
+    const safe = query.replace(/[%_,]/g, "");
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url, followers, is_verified")
+      .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
+      .order("followers", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.warn("People search failed:", error.message);
+      setPeopleLoading(false);
+      return;
+    }
+
+    setPeople(
+      ((data || []) as Profile[]).filter((p) => p.id !== currentUserId)
+    );
+    setPeopleLoading(false);
+  }
+
+  // Same follow behavior as the profile page: insert/delete on follows,
+  // optimistic local counts, no direct write to profiles.followers.
+  async function toggleFollowUser(target: Profile) {
+    if (!currentUserId || target.id === currentUserId) return;
+
+    setFollowBusyId(target.id);
+
+    const alreadyFollowing = followingIds.includes(target.id);
+
+    if (alreadyFollowing) {
+      const { error } = await supabase
+        .from("follows")
+        .delete()
+        .eq("follower_id", currentUserId)
+        .eq("following_id", target.id);
+
+      if (error) {
+        alert(error.message);
+        setFollowBusyId(null);
+        return;
+      }
+
+      setFollowingIds((ids) => ids.filter((id) => id !== target.id));
+      setPeople((list) =>
+        list.map((p) =>
+          p.id === target.id
+            ? { ...p, followers: Math.max(Number(p.followers || 0) - 1, 0) }
+            : p
+        )
+      );
+    } else {
+      const { error } = await supabase.from("follows").insert({
+        follower_id: currentUserId,
+        following_id: target.id,
+      });
+
+      if (error) {
+        alert(error.message);
+        setFollowBusyId(null);
+        return;
+      }
+
+      setFollowingIds((ids) => [...ids, target.id]);
+      setPeople((list) =>
+        list.map((p) =>
+          p.id === target.id
+            ? { ...p, followers: Number(p.followers || 0) + 1 }
+            : p
+        )
+      );
+    }
+
+    setFollowBusyId(null);
+  }
 
   async function loadDiscovery() {
     setLoading(true);
@@ -327,6 +425,87 @@ export default function ExplorePage() {
             Private video calls are hidden. Subscriber-only streams are visible, but watching remains protected.
           </p>
         </div>
+
+        {search.trim().length >= 2 && (
+          <section className="mb-8">
+            <div className="mb-5">
+              <h2 className="text-2xl font-black sm:text-3xl">People</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Find users to view their profile and follow.
+              </p>
+            </div>
+
+            {peopleLoading ? (
+              <EmptyState text="Searching people..." />
+            ) : people.length === 0 ? (
+              <EmptyState text="No users match this search." />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {people.map((person) => (
+                  <div
+                    key={person.id}
+                    className="rounded-2xl border border-gray-800 bg-gray-900 p-5 transition hover:border-red-600"
+                  >
+                    <button
+                      onClick={() => openProfile(person.id)}
+                      className="mb-4 flex w-full items-center gap-4 text-left"
+                    >
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                        {person.avatar_url ? (
+                          <img
+                            src={person.avatar_url}
+                            alt={person.username || "user"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          "👤"
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-black">
+                          {person.display_name || person.username || "User"}
+                        </p>
+                        <p className="truncate text-sm text-gray-400">
+                          @{person.username || "user"}
+                        </p>
+                      </div>
+                    </button>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-400">
+                        {person.followers || 0} followers
+                        {person.is_verified && (
+                          <span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-black text-white">
+                            Verified
+                          </span>
+                        )}
+                      </span>
+
+                      {currentUserId && (
+                        <button
+                          onClick={() => toggleFollowUser(person)}
+                          disabled={followBusyId === person.id}
+                          className={
+                            followingIds.includes(person.id)
+                              ? "rounded-xl border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-black text-gray-300 active:scale-95 disabled:opacity-50"
+                              : "rounded-xl bg-red-600 px-4 py-2 text-sm font-black text-white active:scale-95 disabled:opacity-50"
+                          }
+                        >
+                          {followBusyId === person.id
+                            ? "..."
+                            : followingIds.includes(person.id)
+                            ? "Following"
+                            : "Follow"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {loading ? (
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
