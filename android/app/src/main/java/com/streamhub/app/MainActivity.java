@@ -58,6 +58,8 @@ public class MainActivity extends BridgeActivity {
             webView.setClipToPadding(false);
         });
 
+        maybeDeliverNativeAccept(getIntent());
+
         // NOTE: no handleIncomingIntent() here. On a cold start, calling
         // loadUrl() while the Capacitor bridge is still initializing races
         // the app's own load and produces a white screen. Capacitor loads
@@ -69,6 +71,46 @@ public class MainActivity extends BridgeActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         handleIncomingIntent(intent);
+        maybeDeliverNativeAccept(intent);
+    }
+
+    private int acceptDeliveryAttempts = 0;
+
+    private void maybeDeliverNativeAccept(Intent intent) {
+        if (intent == null) return;
+        if (!"accept".equals(intent.getStringExtra("action"))) return;
+
+        String rawCallId = intent.getStringExtra("callId");
+        if (rawCallId == null || rawCallId.isEmpty()) return;
+
+        // Sanitize: the id is written into a JS string.
+        final String callId = rawCallId.replaceAll("[^a-zA-Z0-9\\-]", "");
+        if (callId.isEmpty()) return;
+
+        final WebView webView = getBridge().getWebView();
+        acceptDeliveryAttempts = 0;
+
+        Runnable attempt = new Runnable() {
+            @Override
+            public void run() {
+                acceptDeliveryAttempts++;
+
+                String js = "(function(){"
+                        + "if(!window.location||String(window.location.origin).indexOf('streamhubhq.com')<0){return 'wait';}"
+                        + "try{localStorage.setItem('streamhub_accept_call','" + callId + "');return 'ok';}"
+                        + "catch(e){return 'err';}"
+                        + "})()";
+
+                webView.evaluateJavascript(js, value -> {
+                    boolean delivered = "\"ok\"".equals(value);
+                    if (!delivered && acceptDeliveryAttempts < 40) {
+                        webView.postDelayed(this, 500);
+                    }
+                });
+            }
+        };
+
+        webView.postDelayed(attempt, 400);
     }
 
     private void maybeRequestFullScreenIntentPermission() {

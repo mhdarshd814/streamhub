@@ -166,6 +166,8 @@ public class IncomingCallActivity extends Activity {
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("streamhub_url", targetUrl);
+        intent.putExtra("action", "accept");
+        intent.putExtra("callId", callId);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         startActivity(intent);

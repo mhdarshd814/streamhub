@@ -41,8 +41,14 @@ export default function IncomingCallPopup() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const activeCallIdRef = useRef<string | null>(null);
+  const callRef = useRef<CallRequest | null>(null);
+  const autoHandledRef = useRef<string | null>(null);
   const audioUnlockedRef = useRef(false);
   const vibrateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    callRef.current = call;
+  }, [call]);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +115,7 @@ export default function IncomingCallPopup() {
       // Polling keeps the popup reliable for repeat calls.
       pollTimer = setInterval(async () => {
         await loadLatestIncomingCall(user.id, true);
+        maybeAutoAcceptFromNative();
       }, 3000);
     }
 
@@ -154,6 +161,35 @@ export default function IncomingCallPopup() {
     };
   }, []);
 
+  function consumeNativeAccept(target: CallRequest): boolean {
+    // Native notification Accept writes the callId here (see MainActivity).
+    try {
+      const pending = localStorage.getItem("streamhub_accept_call");
+      if (!pending || pending !== target.id) return false;
+      localStorage.removeItem("streamhub_accept_call");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function maybeAutoAcceptFromNative() {
+    const current = callRef.current;
+    if (!current) return;
+    if (autoHandledRef.current === current.id) return;
+    if (!consumeNativeAccept(current)) return;
+
+    autoHandledRef.current = current.id;
+    const price = Number(current.stream?.private_call_price || 0);
+
+    // Free calls: the user already pressed Accept on the native
+    // notification — join directly. Paid calls keep one in-app tap so the
+    // price is on screen before the wallet is charged.
+    if (price === 0) {
+      acceptCallFor(current);
+    }
+  }
+
   async function loadLatestIncomingCall(currentUserId: string, shouldRing: boolean) {
     const now = new Date().toISOString();
 
@@ -173,6 +209,9 @@ export default function IncomingCallPopup() {
     }
 
     if (!data?.id) {
+      try {
+        localStorage.removeItem("streamhub_accept_call");
+      } catch {}
       activeCallIdRef.current = null;
       stopRing();
       setLoadingAction(false);
@@ -222,7 +261,20 @@ export default function IncomingCallPopup() {
 
     activeCallIdRef.current = data.id;
     setLoadingAction(false);
-    setCall({ ...data, caller, stream });
+
+    const loaded: CallRequest = { ...data, caller, stream };
+    callRef.current = loaded;
+    setCall(loaded);
+
+    // Native Accept handoff: join without ringing again.
+    if (autoHandledRef.current !== loaded.id && consumeNativeAccept(loaded)) {
+      autoHandledRef.current = loaded.id;
+      const price = Number(loaded.stream?.private_call_price || 0);
+      if (price === 0) {
+        acceptCallFor(loaded);
+        return;
+      }
+    }
 
     if (shouldRing) playRing();
   }
@@ -306,16 +358,16 @@ export default function IncomingCallPopup() {
     } catch {}
   }
 
-  async function acceptCall() {
-    if (!userId || !call || !call.stream_id || call.receiver_id !== userId) return;
+  async function acceptCallFor(target: CallRequest) {
+    if (!userId || !target || !target.stream_id || target.receiver_id !== userId) return;
 
     setLoadingAction(true);
     stopRing();
-    const price = Number(call.stream?.private_call_price || 0);
+    const price = Number(target.stream?.private_call_price || 0);
 
     if (price > 0) {
       const { error } = await supabase.rpc("pay_private_call_and_accept", {
-        p_call_request_id: call.id,
+        p_call_request_id: target.id,
       });
 
       if (error) {
@@ -325,7 +377,7 @@ export default function IncomingCallPopup() {
       }
     } else {
       const { error } = await supabase.rpc("accept_private_call_request", {
-        p_call_request_id: call.id,
+        p_call_request_id: target.id,
       });
 
       if (error) {
@@ -337,21 +389,21 @@ export default function IncomingCallPopup() {
 
     await supabase.from("notifications").insert([
       {
-        user_id: call.caller_id,
+        user_id: target.caller_id,
         type: "private_call_paid",
         title: price > 0 ? "Private Call Payment Received" : "Private Call Accepted",
         message:
           price > 0
             ? `Your private call was accepted and $${price.toFixed(2)} was added to your wallet.`
             : "Your private call request was accepted.",
-        link: `/live/${call.stream_id}`,
+        link: `/live/${target.stream_id}`,
         is_read: false,
       },
     ]);
 
     stopRing();
     activeCallIdRef.current = null;
-    window.location.replace(`/live/${call.stream_id}?autojoin=1`);
+    window.location.replace(`/live/${target.stream_id}?autojoin=1`);
   }
 
   async function declineCall() {
@@ -477,7 +529,7 @@ export default function IncomingCallPopup() {
 
           <div className="flex flex-col items-center gap-3">
             <button
-              onClick={acceptCall}
+              onClick={() => call && acceptCallFor(call)}
               disabled={loadingAction}
               aria-label={price > 0 ? `Accept and pay $${price.toFixed(2)}` : "Accept call"}
               className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-green-600 shadow-lg shadow-green-900/50 transition-transform active:scale-90 disabled:bg-zinc-700"
