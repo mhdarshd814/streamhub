@@ -751,12 +751,11 @@ let receiverPrivateCallChannel: any;
             if (updatedCall.stream_id !== streamId) return;
 
             if (updatedCall.status === "accepted") {
-              // Caller is already inside this room; pushing to the same
-              // route showed nothing. Give clear connecting feedback and
-              // let the receiver's video join the room.
+              // The receiver accepted: start the caller's side of the room
+              // automatically so both sides connect without extra taps.
               setStatusText("Call accepted. Connecting...");
-              alert("Private call accepted. Connecting now...");
               await loadGuestInvites();
+              await startLiveStream();
               return;
             }
 
