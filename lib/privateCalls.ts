@@ -100,6 +100,13 @@ export async function startPrivateCallRequest(params: {
       };
     }
 
+    if (data?.reason === "caller_busy") {
+      return {
+        ok: false,
+        message: "You are already on another call. End it before starting a new one.",
+      };
+    }
+
     return {
       ok: false,
       message: data?.message || "Failed to start private call.",

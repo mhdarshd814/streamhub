@@ -507,6 +507,7 @@ export default function LiveRoomPage() {
     let busyCallChannel: any;
 let receiverPrivateCallChannel: any;
     let callExpiryTimer: ReturnType<typeof setInterval> | null = null;
+    let callerPollTimer: ReturnType<typeof setInterval> | null = null;
 
     async function getRealViewerCount() {
       const { count, error } = await supabase
@@ -735,6 +736,58 @@ let receiverPrivateCallChannel: any;
         )
         .subscribe();
 
+      // Shared handler used by BOTH the realtime subscription below AND
+      // the polling fallback. A single WebSocket event that gets dropped
+      // (as we saw repeatedly tonight) should never be the only path to
+      // the caller's room connecting — polling guarantees convergence
+      // even if realtime silently fails.
+      const processedCallerStatusRef = { current: "" };
+
+      const handleCallerCallUpdate = async (updatedCall: PrivateCallRequest) => {
+        if (updatedCall.stream_id !== streamId) return;
+
+        const statusKey = `${updatedCall.status}:${updatedCall.ring_status || ""}`;
+        if (processedCallerStatusRef.current === statusKey) return;
+        processedCallerStatusRef.current = statusKey;
+
+        if (updatedCall.status === "accepted") {
+          setStatusText("Call accepted. Connecting...");
+          await loadGuestInvites();
+          await startLiveStream();
+          return;
+        }
+
+        if (updatedCall.status === "declined") {
+          setStatusText("Private call declined.");
+
+          cleanupRemoteAudio();
+
+          if (roomRef.current) {
+            roomRef.current.disconnect();
+            roomRef.current = null;
+          }
+
+          setRoom(null);
+          setRemoteVideos([]);
+          setIsLive(false);
+          setViewerCount(0);
+
+          alert(
+            updatedCall.ring_status === "busy"
+              ? "The person you called is on another call."
+              : "Private call declined."
+          );
+
+          router.replace("/calls");
+          return;
+        }
+
+        if (updatedCall.status === "missed") {
+          setStatusText("Private call missed. No answer.");
+          await loadGuestInvites();
+        }
+      };
+
       privateCallChannel = supabase
         .channel("studio-private-calls-" + channelKey)
         .on(
@@ -746,52 +799,32 @@ let receiverPrivateCallChannel: any;
             filter: `caller_id=eq.${user.id}`,
           },
           async (payload) => {
-            const updatedCall = payload.new as PrivateCallRequest;
-
-            if (updatedCall.stream_id !== streamId) return;
-
-            if (updatedCall.status === "accepted") {
-              // The receiver accepted: start the caller's side of the room
-              // automatically so both sides connect without extra taps.
-              setStatusText("Call accepted. Connecting...");
-              await loadGuestInvites();
-              await startLiveStream();
-              return;
-            }
-
-            if (updatedCall.status === "declined") {
-              // Leave the room immediately: no dead waiting state.
-              setStatusText("Private call declined.");
-
-              cleanupRemoteAudio();
-
-              if (roomRef.current) {
-                roomRef.current.disconnect();
-                roomRef.current = null;
-              }
-
-              setRoom(null);
-              setRemoteVideos([]);
-              setIsLive(false);
-              setViewerCount(0);
-
-              alert(
-                updatedCall.ring_status === "busy"
-                  ? "The person you called is on another call."
-                  : "Private call declined."
-              );
-
-              router.replace("/calls");
-              return;
-            }
-
-            if (updatedCall.status === "missed") {
-              setStatusText("Private call missed. No answer.");
-              await loadGuestInvites();
-            }
+            await handleCallerCallUpdate(payload.new as PrivateCallRequest);
           },
         )
         .subscribe();
+
+      // Polling fallback: only runs while this is a private call still
+      // waiting on an answer (status has not yet been processed as
+      // accepted/declined/missed). Stops itself once resolved.
+      callerPollTimer = setInterval(async () => {
+        if (processedCallerStatusRef.current) {
+          if (callerPollTimer) clearInterval(callerPollTimer);
+          return;
+        }
+
+        const { data: latestCall } = await supabase
+          .from("private_call_requests")
+          .select("*")
+          .eq("stream_id", streamId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (latestCall) {
+          await handleCallerCallUpdate(latestCall as PrivateCallRequest);
+        }
+      }, 3000);
 
 
       receiverPrivateCallChannel = supabase
@@ -935,6 +968,7 @@ let receiverPrivateCallChannel: any;
       if (joinRequestChannel) supabase.removeChannel(joinRequestChannel);
       if (busyCallChannel) supabase.removeChannel(busyCallChannel);
       if (callExpiryTimer) clearInterval(callExpiryTimer);
+      if (callerPollTimer) clearInterval(callerPollTimer);
 
       cleanupRemoteAudio();
 
