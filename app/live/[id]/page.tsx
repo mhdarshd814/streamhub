@@ -976,6 +976,8 @@ let receiverPrivateCallChannel: any;
         roomRef.current.disconnect();
         roomRef.current = null;
       }
+
+      (window as any).__streamhubActiveCall = false;
     };
   }, [streamId, router]);
 
@@ -2250,6 +2252,7 @@ let receiverPrivateCallChannel: any;
       setTimeout(() => attachLocalVideoTrack(newRoom), 500);
 
       roomRef.current = newRoom;
+      (window as any).__streamhubActiveCall = true;
       setRoom(newRoom);
       setCameraOn(cameraStarted);
       setMicOn(micStarted);
@@ -2306,6 +2309,8 @@ let receiverPrivateCallChannel: any;
   }, [stream?.id, role, pendingInvite, room, starting]);
 
   async function stopLiveStream() {
+    (window as any).__streamhubActiveCall = false;
+
     try {
       await KeepAwake.allowSleep();
     } catch (error) {
