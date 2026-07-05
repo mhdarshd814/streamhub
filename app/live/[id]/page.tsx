@@ -2302,6 +2302,20 @@ let receiverPrivateCallChannel: any;
     setCameraOn(false);
     setMicOn(false);
 
+    // Private calls: without this, the private_call_requests row stays
+    // "accepted" forever, which would permanently mark this pair as
+    // "busy" toward each other for every future call. This also flips
+    // the other side's realtime handler (which already watches for
+    // cancelled/declined/missed) so hanging up here properly ends the
+    // call on their screen too, instead of leaving them connected alone.
+    if (isPrivate && stream?.id) {
+      try {
+        await supabase.rpc("end_private_call", { p_stream_id: stream.id });
+      } catch (error) {
+        console.warn("end_private_call failed:", error);
+      }
+    }
+
     if (role === "host") {
       await updateStreamStatus("offline");
     }

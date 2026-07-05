@@ -18,25 +18,6 @@ export type StartPrivateCallResult =
       redirectTo?: string;
     };
 
-async function isMutualFollow(callerId: string, targetUserId: string) {
-  const [{ data: iFollow }, { data: followsMe }] = await Promise.all([
-    supabase
-      .from("follows")
-      .select("id")
-      .eq("follower_id", callerId)
-      .eq("following_id", targetUserId)
-      .maybeSingle(),
-    supabase
-      .from("follows")
-      .select("id")
-      .eq("follower_id", targetUserId)
-      .eq("following_id", callerId)
-      .maybeSingle(),
-  ]);
-
-  return !!iFollow && !!followsMe;
-}
-
 export async function startPrivateCallRequest(params: {
   callerId: string;
   target: PrivateCallTarget;
@@ -53,39 +34,6 @@ export async function startPrivateCallRequest(params: {
     };
   }
 
-  const targetName =
-    target.display_name || target.username || "this user";
-
-  const canCall = await isMutualFollow(callerId, target.id);
-
-  if (!canCall) {
-    const { data: myProfile } = await supabase
-      .from("profiles")
-      .select("display_name, username")
-      .eq("id", callerId)
-      .maybeSingle();
-
-    const callerName =
-      myProfile?.display_name || myProfile?.username || "A StreamHub user";
-
-    await supabase.from("notifications").insert([
-      {
-        user_id: target.id,
-        type: "follow_back_for_calls",
-        title: "Connection Request",
-        message: `${callerName} wants to connect with you. Follow back to enable private calls.`,
-        link: `/profile/${callerId}`,
-        is_read: false,
-      },
-    ]);
-
-    return {
-      ok: false,
-      message:
-        "You can only call mutual followers. A follow-back notification has been sent.",
-    };
-  }
-
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -98,71 +46,68 @@ export async function startPrivateCallRequest(params: {
     };
   }
 
-  const callTitle = `Private Call with ${targetName}`;
-  const expiresAt = new Date(Date.now() + 60_000).toISOString();
+  // Single atomic call: mutual-follow check, busy check, and creation of
+  // the stream/stream_guests/private_call_requests rows all happen
+  // server-side in one transaction. This is what makes the busy check
+  // reliable for BOTH web and the native Android app — if this returns
+  // busy, no push notification is ever sent, so the receiver's phone
+  // never rings for a call they can't take.
+  const { data, error } = await supabase.rpc("start_private_call_request", {
+    p_receiver_id: target.id,
+    p_price: callPrice,
+  });
 
-  const { data: streamData, error: streamError } = await supabase
-    .from("streams")
-    .insert([
-      {
-        user_id: callerId,
-        title: callTitle,
-        category: "One-on-One Call",
-        description: "Private one-on-one video call.",
-        tags: "private,call,one-on-one",
-        visibility: "private",
-        status: "offline",
-        thumbnail_url: null,
-        private_call_price: callPrice,
-      },
-    ])
-    .select()
-    .single();
-
-  if (streamError || !streamData) {
+  if (error) {
     return {
       ok: false,
-      message: streamError?.message || "Failed to create private call.",
+      message: error.message || "Failed to start private call.",
     };
   }
 
-  const { error: guestError } = await supabase.from("stream_guests").insert([
-    {
-      stream_id: streamData.id,
-      host_id: callerId,
-      guest_id: target.id,
-      status: "pending",
-    },
-  ]);
+  if (!data?.ok) {
+    if (data?.reason === "not_mutual") {
+      const { data: myProfile } = await supabase
+        .from("profiles")
+        .select("display_name, username")
+        .eq("id", callerId)
+        .maybeSingle();
 
-  if (guestError) {
+      const callerName =
+        myProfile?.display_name || myProfile?.username || "A StreamHub user";
+
+      await supabase.from("notifications").insert([
+        {
+          user_id: target.id,
+          type: "follow_back_for_calls",
+          title: "Connection Request",
+          message: `${callerName} wants to connect with you. Follow back to enable private calls.`,
+          link: `/profile/${callerId}`,
+          is_read: false,
+        },
+      ]);
+
+      return {
+        ok: false,
+        message:
+          "You can only call mutual followers. A follow-back notification has been sent.",
+      };
+    }
+
+    if (data?.reason === "busy") {
+      return {
+        ok: false,
+        message: "This user is currently on another call.",
+      };
+    }
+
     return {
       ok: false,
-      message: guestError.message,
+      message: data?.message || "Failed to start private call.",
     };
   }
 
-  const { data: callData, error: callError } = await supabase
-    .from("private_call_requests")
-    .insert([
-      {
-        caller_id: callerId,
-        receiver_id: target.id,
-        stream_id: streamData.id,
-        status: "pending",
-        ring_status: "ringing",
-        expires_at: expiresAt,
-      },
-    ])
-    .select()
-    .single();
-
-  if (callError || !callData) {
-    return {
-      ok: false,
-      message: callError?.message || "Failed to create call request.",
-    };
-  }
+  const streamId = data.stream_id as string;
+  const callId = data.call_id as string;
 
   await supabase.from("notifications").insert([
     {
@@ -170,7 +115,7 @@ export async function startPrivateCallRequest(params: {
       type: "private_call_request",
       title: "Incoming Private Call",
       message: "Someone is calling you on StreamHub.",
-      link: `/incoming-call/${callData.id}`,
+      link: `/incoming-call/${callId}`,
       is_read: false,
     },
   ]);
@@ -186,10 +131,10 @@ export async function startPrivateCallRequest(params: {
         userId: target.id,
         title: "Incoming Private Call",
         message: "Someone is calling you on StreamHub.",
-        url: `/incoming-call/${callData.id}`,
+        url: `/incoming-call/${callId}`,
         notificationType: "incoming_call",
-        streamId: streamData.id,
-        callId: callData.id,
+        streamId,
+        callId,
       }),
     });
   } catch (pushError) {
@@ -198,7 +143,7 @@ export async function startPrivateCallRequest(params: {
 
   return {
     ok: true,
-    streamId: streamData.id,
-    callId: callData.id,
+    streamId,
+    callId,
   };
 }
