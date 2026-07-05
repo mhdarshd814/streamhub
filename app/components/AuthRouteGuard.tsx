@@ -22,6 +22,11 @@ const PROTECTED_PREFIXES = [
   "/live",
 ];
 
+// Remembered across navigations within this app session. After the first
+// successful check, page changes render instantly and the session is
+// re-verified in the background instead of blocking on a splash screen.
+let sessionConfirmed = false;
+
 function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
@@ -67,8 +72,8 @@ export default function AuthRouteGuard({
 
   const protectedRoute = useMemo(() => isProtectedPath(pathname), [pathname]);
 
-  const [checking, setChecking] = useState(protectedRoute);
-  const [allowed, setAllowed] = useState(!protectedRoute);
+  const [checking, setChecking] = useState(protectedRoute && !sessionConfirmed);
+  const [allowed, setAllowed] = useState(!protectedRoute || sessionConfirmed);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,8 +85,12 @@ export default function AuthRouteGuard({
         return;
       }
 
-      setChecking(true);
-      setAllowed(false);
+      // Only block with the splash on the very first check of this app
+      // session; afterwards verify silently.
+      if (!sessionConfirmed) {
+        setChecking(true);
+        setAllowed(false);
+      }
 
       const {
         data: { session },
@@ -90,10 +99,12 @@ export default function AuthRouteGuard({
       if (cancelled) return;
 
       if (!session?.user || !session.access_token) {
+        sessionConfirmed = false;
         router.replace(`/signup?next=${encodeURIComponent(pathname)}`);
         return;
       }
 
+      sessionConfirmed = true;
       setAllowed(true);
       setChecking(false);
     }
@@ -106,12 +117,14 @@ export default function AuthRouteGuard({
       if (!protectedRoute) return;
 
       if (!session?.user || !session.access_token) {
+        sessionConfirmed = false;
         setAllowed(false);
         setChecking(false);
         router.replace(`/signup?next=${encodeURIComponent(pathname)}`);
         return;
       }
 
+      sessionConfirmed = true;
       setAllowed(true);
       setChecking(false);
     });

@@ -7,30 +7,38 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function getSessionWithTimeout() {
-      const timeout = new Promise<null>((resolve) => {
-        setTimeout(() => resolve(null), 1800);
-      });
-
-      const sessionLookup = supabase.auth
-        .getSession()
-        .then(({ data }) => data.session || null)
-        .catch(() => null);
-
-      return Promise.race([sessionLookup, timeout]);
-    }
-
     async function routeUser() {
-      const session = await getSessionWithTimeout();
+      // Wait for the real session answer. The old 1.8s race timed out on
+      // slow Android cold starts and wrongly sent signed-in users to
+      // /login. A generous fallback only guards against a total hang.
+      let resolved = false;
 
-      if (cancelled) return;
+      const fallback = setTimeout(() => {
+        if (!resolved && !cancelled) {
+          window.location.replace("/login");
+        }
+      }, 10000);
 
-      if (session?.user && session.access_token) {
-        window.location.replace("/live-feed");
-        return;
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        resolved = true;
+        clearTimeout(fallback);
+
+        if (cancelled) return;
+
+        if (session?.user && session.access_token) {
+          window.location.replace("/live-feed");
+        } else {
+          window.location.replace("/login");
+        }
+      } catch {
+        resolved = true;
+        clearTimeout(fallback);
+        if (!cancelled) window.location.replace("/login");
       }
-
-      window.location.replace("/login");
     }
 
     routeUser();
