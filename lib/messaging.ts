@@ -283,7 +283,37 @@ export async function sendTextMessage(
     };
   }
 
-  return { message: data as Message, error: null };
+  const sentMessage = data as Message;
+
+  // Fire-and-forget: push notification to the other participant's devices
+  // (Android FCM + web push). Never blocks or fails the send itself.
+  void notifyMessageRecipients(conversationId, sentMessage.id);
+
+  return { message: sentMessage, error: null };
+}
+
+async function notifyMessageRecipients(
+  conversationId: string,
+  messageId: string
+): Promise<void> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) return;
+
+    await fetch("/api/messages/notify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ conversationId, messageId }),
+    });
+  } catch {
+    // Notification delivery is best-effort; the message itself already sent.
+  }
 }
 
 /** Mark every unread message in a conversation as read for the given user. */
