@@ -785,6 +785,31 @@ let receiverPrivateCallChannel: any;
         if (updatedCall.status === "missed") {
           setStatusText("Private call missed. No answer.");
           await loadGuestInvites();
+          return;
+        }
+
+        if (
+          updatedCall.status === "cancelled" ||
+          updatedCall.ring_status === "cancelled"
+        ) {
+          // The guest left after connecting (or the call was cancelled
+          // after being accepted). The caller's room must exit too,
+          // matching what the receiver-side handler already does.
+          setStatusText("Private call ended.");
+
+          cleanupRemoteAudio();
+
+          if (roomRef.current) {
+            roomRef.current.disconnect();
+            roomRef.current = null;
+          }
+
+          setRoom(null);
+          setRemoteVideos([]);
+          setIsLive(false);
+          setViewerCount(0);
+
+          router.replace("/calls");
         }
       };
 
