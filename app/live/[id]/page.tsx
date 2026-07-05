@@ -59,11 +59,11 @@ type PrivateCallRequest = {
   stream_id: string | null;
   status: "pending" | "accepted" | "declined" | "missed" | "cancelled";
   ring_status?: "ringing"
-   | "ringing"
    | "answered"
    | "declined"
    | "expired"
    | "cancelled"
+   | "busy"
    | null;
   expires_at?: string | null;
   created_at: string;
@@ -751,14 +751,38 @@ let receiverPrivateCallChannel: any;
             if (updatedCall.stream_id !== streamId) return;
 
             if (updatedCall.status === "accepted") {
-              setStatusText("Private call accepted. Opening room...");
-              router.push(`/live/${streamId}`);
+              // Caller is already inside this room; pushing to the same
+              // route showed nothing. Give clear connecting feedback and
+              // let the receiver's video join the room.
+              setStatusText("Call accepted. Connecting...");
+              alert("Private call accepted. Connecting now...");
+              await loadGuestInvites();
               return;
             }
 
             if (updatedCall.status === "declined") {
+              // Leave the room immediately: no dead waiting state.
               setStatusText("Private call declined.");
-              await loadGuestInvites();
+
+              cleanupRemoteAudio();
+
+              if (roomRef.current) {
+                roomRef.current.disconnect();
+                roomRef.current = null;
+              }
+
+              setRoom(null);
+              setRemoteVideos([]);
+              setIsLive(false);
+              setViewerCount(0);
+
+              alert(
+                updatedCall.ring_status === "busy"
+                  ? "The person you called is on another call."
+                  : "Private call declined."
+              );
+
+              router.replace("/calls");
               return;
             }
 
