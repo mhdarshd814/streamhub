@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import { fetchConversations, type ConversationListItem as ConversationListItemType } from "../../lib/messaging";
 import ConversationListItem from "../components/messaging/ConversationListItem";
 import NewConversationModal from "../components/messaging/NewConversationModal";
+import { usePresenceFor } from "../../hooks/usePresence";
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -24,6 +25,12 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [debugError, setDebugError] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
+
+  const otherUserIds = items
+    .map((item) => item.otherProfile?.id)
+    .filter((id): id is string => !!id);
+
+  const presenceByUserId = usePresenceFor(otherUserIds);
 
   const loadInbox = useCallback(async (currentUserId: string) => {
     try {
@@ -152,6 +159,11 @@ export default function MessagesPage() {
             <ConversationListItem
               key={item.conversation.id}
               item={item}
+              presence={
+                item.otherProfile?.id
+                  ? presenceByUserId[item.otherProfile.id]
+                  : undefined
+              }
               onClick={() => router.push(`/messages/${item.conversation.id}`)}
             />
           ))}

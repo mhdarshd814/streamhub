@@ -18,6 +18,7 @@ import {
 import MessageBubble from "../../components/messaging/MessageBubble";
 import MessageInput from "../../components/messaging/MessageInput";
 import { startPrivateCallRequest } from "../../../lib/privateCalls";
+import { usePresenceFor, formatPresenceLabel } from "../../../hooks/usePresence";
 
 export default function MessageThreadPage() {
   const router = useRouter();
@@ -27,6 +28,12 @@ export default function MessageThreadPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
+  const presenceByUserId = usePresenceFor(
+    otherProfile?.id ? [otherProfile.id] : []
+  );
+  const otherPresence = otherProfile?.id
+    ? presenceByUserId[otherProfile.id]
+    : undefined;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [callMenuOpen, setCallMenuOpen] = useState(false);
@@ -239,7 +246,22 @@ export default function MessageThreadPage() {
           </div>
         )}
 
-        <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium">{name}</div>
+          {otherPresence && (
+            <div
+              className={
+                otherPresence.isOnCall
+                  ? "truncate text-xs font-semibold text-red-400"
+                  : otherPresence.isOnline
+                  ? "truncate text-xs font-semibold text-green-400"
+                  : "truncate text-xs text-white/40"
+              }
+            >
+              {formatPresenceLabel(otherPresence)}
+            </div>
+          )}
+        </div>
 
         <div className="relative">
           <button

@@ -1,12 +1,14 @@
-﻿// app/components/messaging/ConversationListItem.tsx
+// app/components/messaging/ConversationListItem.tsx
 "use client";
 
 import type { ConversationListItem as ConversationListItemType } from "../../../lib/messaging";
 import { displayNameFor } from "../../../lib/messaging";
+import type { PresenceInfo } from "../../../hooks/usePresence";
 
 type Props = {
   item: ConversationListItemType;
   onClick: () => void;
+  presence?: PresenceInfo;
 };
 
 function formatTimestamp(iso: string | null): string {
@@ -20,7 +22,7 @@ function formatTimestamp(iso: string | null): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export default function ConversationListItem({ item, onClick }: Props) {
+export default function ConversationListItem({ item, onClick, presence }: Props) {
   const { conversation, otherProfile, lastMessage, unreadCount } = item;
   const name = displayNameFor(otherProfile);
   const preview = lastMessage?.is_deleted
@@ -30,6 +32,12 @@ export default function ConversationListItem({ item, onClick }: Props) {
     : lastMessage?.message_type
     ? `[${lastMessage.message_type}]`
     : "Say hello";
+
+  // Green dot: online or on a call (call counts as "active", not away).
+  // No dot at all when offline — matches WhatsApp's convention of only
+  // showing a positive online signal, not an explicit "offline" marker.
+  const showDot = !!presence && (presence.isOnline || presence.isOnCall);
+  const dotColor = presence?.isOnCall ? "bg-red-500" : "bg-green-500";
 
   return (
     <button
@@ -48,6 +56,12 @@ export default function ConversationListItem({ item, onClick }: Props) {
           <div className="h-12 w-12 rounded-full bg-[rgba(127,29,29,0.45)] flex items-center justify-center text-white font-semibold">
             {name.charAt(0).toUpperCase()}
           </div>
+        )}
+
+        {showDot && (
+          <span
+            className={`absolute bottom-0 right-0 h-3 w-3 rounded-full ${dotColor} ring-2 ring-black`}
+          />
         )}
       </div>
 
@@ -76,4 +90,3 @@ export default function ConversationListItem({ item, onClick }: Props) {
     </button>
   );
 }
-
