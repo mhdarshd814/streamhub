@@ -88,6 +88,23 @@ export function useUnreadMessages() {
               void loadUnreadCount(userIdRef.current);
             }
 
+            // Delivered tick: a message_status row already exists with
+            // status='sent' (written by the create_message_status_rows
+            // trigger). The moment this realtime event reaches any of the
+            // recipient's active sessions, bump it to 'delivered' - same
+            // update-only pattern markConversationRead already uses for
+            // 'read'. Never touch it if the thread is already open and
+            // about to mark it read directly (harmless either way, but
+            // avoids a redundant write).
+            if (row && row.sender_id !== userId) {
+              void supabase
+                .from("message_status")
+                .update({ status: "delivered", updated_at: new Date().toISOString() })
+                .eq("message_id", row.id)
+                .eq("user_id", userId)
+                .eq("status", "sent");
+            }
+
             // In-app toast: only for messages from others, not deleted,
             // and only when the user is NOT already inside that thread.
             if (

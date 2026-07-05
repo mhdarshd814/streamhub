@@ -38,6 +38,9 @@ export default function MessageThreadPage() {
   const [loading, setLoading] = useState(true);
   const [callMenuOpen, setCallMenuOpen] = useState(false);
   const [otherIsTyping, setOtherIsTyping] = useState(false);
+  const [tickStatusByMessageId, setTickStatusByMessageId] = useState<
+    Record<string, "sent" | "delivered" | "read">
+  >({});
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSentAtRef = useRef(0);
@@ -128,6 +131,71 @@ export default function MessageThreadPage() {
       window.dispatchEvent(new CustomEvent("messages:unread-changed"));
     })();
   }, [conversationId, router]);
+
+  // Ticks: message_status rows for MY OWN sent messages, as seen by the
+  // other participant. A row is created (status='sent') automatically by
+  // a database trigger for every message; it's updated to 'delivered'
+  // globally (see useUnreadMessages) and to 'read' when they open this
+  // thread (see markConversationRead below).
+  useEffect(() => {
+    if (!userId || !otherProfile?.id) return;
+
+    const otherUserId = otherProfile.id;
+    let mounted = true;
+
+    async function loadTickStatuses() {
+      const { data: myMessageIds } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", conversationId)
+        .eq("sender_id", userId);
+
+      const ids = (myMessageIds || []).map((m) => m.id);
+      if (ids.length === 0) return;
+
+      const { data: statusRows } = await supabase
+        .from("message_status")
+        .select("message_id, status")
+        .eq("user_id", otherUserId)
+        .in("message_id", ids);
+
+      if (!mounted) return;
+
+      const next: Record<string, "sent" | "delivered" | "read"> = {};
+      (statusRows || []).forEach((row: any) => {
+        next[row.message_id] = row.status;
+      });
+
+      setTickStatusByMessageId(next);
+    }
+
+    void loadTickStatuses();
+
+    const tickChannel = supabase
+      .channel(`ticks-${conversationId}-${otherUserId}-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "message_status",
+          filter: `user_id=eq.${otherUserId}`,
+        },
+        (payload) => {
+          const row = payload.new as { message_id: string; status: string };
+          setTickStatusByMessageId((current) => ({
+            ...current,
+            [row.message_id]: row.status as "sent" | "delivered" | "read",
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(tickChannel);
+    };
+  }, [conversationId, userId, otherProfile?.id]);
 
   // Realtime: subscribe to new messages in this conversation.
   // Mirrors the "live-chat-" channel pattern in app/live/[id]/page.tsx.
@@ -392,6 +460,11 @@ export default function MessageThreadPage() {
             key={message.id}
             message={message}
             isOwn={message.sender_id === userId}
+            status={
+              message.sender_id === userId
+                ? tickStatusByMessageId[message.id] || "sent"
+                : undefined
+            }
           />
         ))}
         <div ref={messagesEndRef} />
