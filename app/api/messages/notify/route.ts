@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     // notification text cannot be spoofed.
     const { data: message, error: messageError } = await supabase
       .from("messages")
-      .select("id, conversation_id, sender_id, content, type")
+      .select("id, conversation_id, sender_id, content, message_type")
       .eq("id", body.messageId)
       .maybeSingle();
 
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       senderProfile?.display_name || senderProfile?.username || "New message";
 
     const title = senderName;
-    const bodyText = previewOf(message.content, message.type);
+    const bodyText = previewOf(message.content, message.message_type);
     const url = `/messages/${body.conversationId}`;
 
     let sent = 0;
