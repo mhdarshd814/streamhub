@@ -7,12 +7,14 @@ type MessageInputProps = {
   onSend: (text: string) => Promise<void> | void;
   disabled?: boolean;
   placeholder?: string;
+  onTyping?: () => void;
 };
 
 export default function MessageInput({
   onSend,
   disabled,
   placeholder = "Message...",
+  onTyping,
 }: MessageInputProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -49,7 +51,10 @@ export default function MessageInput({
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          setValue(e.target.value);
+          onTyping?.();
+        }}
         onKeyDown={handleKeyDown}
         rows={1}
         placeholder={placeholder}

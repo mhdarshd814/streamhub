@@ -37,6 +37,10 @@ export default function MessageThreadPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [callMenuOpen, setCallMenuOpen] = useState(false);
+  const [otherIsTyping, setOtherIsTyping] = useState(false);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingSentAtRef = useRef(0);
   const [startingCall, setStartingCall] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -183,6 +187,55 @@ export default function MessageThreadPage() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Typing indicator: a Broadcast channel, not a database table. Nothing
+  // is ever written to Postgres for this — it's purely ephemeral, so it's
+  // instant and leaves no trace once the 3-second auto-hide fires.
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase.channel(`typing-${conversationId}`, {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      .on("broadcast", { event: "typing" }, (payload) => {
+        if (payload.payload?.userId === userId) return;
+
+        setOtherIsTyping(true);
+
+        if (typingHideTimerRef.current) {
+          clearTimeout(typingHideTimerRef.current);
+        }
+
+        typingHideTimerRef.current = setTimeout(() => {
+          setOtherIsTyping(false);
+        }, 3000);
+      })
+      .subscribe();
+
+    typingChannelRef.current = channel;
+
+    return () => {
+      if (typingHideTimerRef.current) clearTimeout(typingHideTimerRef.current);
+      supabase.removeChannel(channel);
+      typingChannelRef.current = null;
+    };
+  }, [conversationId, userId]);
+
+  function handleTyping() {
+    // Throttle to at most once per second — no need to broadcast on
+    // every single keystroke.
+    const now = Date.now();
+    if (now - lastTypingSentAtRef.current < 1000) return;
+    lastTypingSentAtRef.current = now;
+
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { userId },
+    });
+  }
+
   async function handleSend(text: string) {
     if (!userId) return;
 
@@ -248,18 +301,24 @@ export default function MessageThreadPage() {
 
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{name}</div>
-          {otherPresence && (
-            <div
-              className={
-                otherPresence.isOnCall
-                  ? "truncate text-xs font-semibold text-red-400"
-                  : otherPresence.isOnline
-                  ? "truncate text-xs font-semibold text-green-400"
-                  : "truncate text-xs text-white/40"
-              }
-            >
-              {formatPresenceLabel(otherPresence)}
+          {otherIsTyping ? (
+            <div className="truncate text-xs font-semibold text-green-400">
+              typing...
             </div>
+          ) : (
+            otherPresence && (
+              <div
+                className={
+                  otherPresence.isOnCall
+                    ? "truncate text-xs font-semibold text-red-400"
+                    : otherPresence.isOnline
+                    ? "truncate text-xs font-semibold text-green-400"
+                    : "truncate text-xs text-white/40"
+                }
+              >
+                {formatPresenceLabel(otherPresence)}
+              </div>
+            )
           )}
         </div>
 
@@ -338,7 +397,7 @@ export default function MessageThreadPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      <MessageInput onSend={handleSend} disabled={!conversation} />
+      <MessageInput onSend={handleSend} disabled={!conversation} onTyping={handleTyping} />
     </div>
   );
 }
