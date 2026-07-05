@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import PushNotificationManager from "./components/PushNotificationManager";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import IncomingCallPopup from "./components/IncomingCallPopup";
+import PresenceHeartbeat from "./components/PresenceHeartbeat";
 import AdMobBanner from "./components/AdMobBanner";
 import CapacitorStatusBar from "./components/CapacitorStatusBar";
 import AndroidBackButton from "./components/AndroidBackButton";
@@ -64,6 +65,7 @@ export default function RootLayout({
         <PushNotificationManager />
         <PWAInstallPrompt />
         <IncomingCallPopup />
+        <PresenceHeartbeat />
         <AdMobBanner />
         <style
           dangerouslySetInnerHTML={{
