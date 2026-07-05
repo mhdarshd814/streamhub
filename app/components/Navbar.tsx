@@ -478,7 +478,7 @@ export default function Navbar() {
                     <div className="scale-in absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
                       <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />                                            
                       <MenuItem label="Wallet" href="/wallet" goTo={goTo} />
-                      <MenuItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
+                      <MenuItem label="Invites" href="/notifications" goTo={goTo} badge={pendingInvites} />
                       <MenuItem label="Privacy Policy" href="/privacy" goTo={goTo} />
                       <MenuItem label="Terms of Service" href="/terms" goTo={goTo} />
                       <MenuItem label="Delete Account" href="/delete-account" goTo={goTo} />
@@ -670,8 +670,7 @@ export default function Navbar() {
               <MobileSheetItem label="Calls" href="/calls" goTo={goTo} strong />
               <MobileSheetItem label="Profile" href={profilePath()} goTo={goTo} />
               <MobileSheetItem label="Wallet" href="/wallet" goTo={goTo} />
-              <MobileSheetItem label="Alerts" href="/notifications" goTo={goTo} badge={unreadNotifications} />
-              <MobileSheetItem label="Invites" href="/invites" goTo={goTo} badge={pendingInvites} />
+              <MobileSheetItem label="Alerts" href="/notifications" goTo={goTo} badge={unreadNotifications + pendingInvites} />
               <MobileSheetItem label="Dashboard" href="/dashboard" goTo={goTo} />
               <MobileSheetItem label="Schedule" href="/schedule" goTo={goTo} />
               <MobileSheetItem label="Upcoming" href="/streams/upcoming" goTo={goTo} />
