@@ -1947,17 +1947,18 @@ export default function WatchPage() {
 
             {fullscreenChatOpen && (
               <div
-                className="absolute inset-x-3 max-h-[40dvh] overflow-hidden rounded-3xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl sm:left-auto sm:right-5 sm:w-[380px]"
+                className="absolute inset-x-3 flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-black/25 backdrop-blur-2xl sm:left-auto sm:right-5 sm:w-[340px]"
                 style={{
-                  // The floating button row below now wraps to two lines
-                  // (7 buttons: Follow/Like/Tip/Chat/Viewers/Block/Exit),
-                  // so the chat panel needs more bottom clearance than the
-                  // old single-line assumption gave it.
+                  // Fixed height (not just max-height) is what makes this a
+                  // true flex column: header stays put, the message list is
+                  // the only part that grows/scrolls, and the input row is
+                  // pinned at the bottom no matter how many messages arrive.
+                  height: "34dvh",
                   bottom: "calc(148px + env(safe-area-inset-bottom))",
                 }}
               >
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="font-black">Live Chat</h3>
+                <div className="flex shrink-0 items-center justify-between px-3 pt-3">
+                  <h3 className="text-sm font-black text-white/90">Live Chat</h3>
                   <button
                     onClick={() => setFullscreenChatOpen(false)}
                     className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold hover:bg-white/20"
@@ -1966,26 +1967,26 @@ export default function WatchPage() {
                   </button>
                 </div>
 
-                <div className="max-h-[32dvh] space-y-2 overflow-auto pr-1">
+                <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 py-2">
                   {messages.length === 0 ? (
                     <p className="py-6 text-center text-sm text-white/45">
                       No messages yet.
                     </p>
                   ) : (
                     messages.slice(-40).map((msg) => (
-                      <div key={msg.id} className="rounded-2xl bg-white/10 p-2">
-                        <p className="truncate text-xs font-bold text-red-400">
+                      <div key={msg.id} className="max-w-[92%] rounded-2xl bg-black/35 px-2.5 py-1.5">
+                        <span className="mr-1.5 text-xs font-bold text-red-400">
                           {msg.username}
-                        </p>
-                        <p className="break-words text-sm leading-5 text-white/85">
+                        </span>
+                        <span className="break-words text-sm leading-5 text-white/90">
                           {msg.message}
-                        </p>
+                        </span>
                       </div>
                     ))
                   )}
                 </div>
 
-                <div className="mt-3 flex gap-2">
+                <div className="flex shrink-0 gap-2 p-3 pt-2">
                   <input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
@@ -1994,13 +1995,13 @@ export default function WatchPage() {
                     }}
                     placeholder={chatDisabled ? "Chat unavailable" : "Type a message..."}
                     disabled={chatDisabled}
-                    className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm outline-none placeholder:text-white/30 focus:border-red-500 disabled:text-white/30"
+                    className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none backdrop-blur-md placeholder:text-white/40 focus:border-red-500 disabled:text-white/30"
                   />
 
                   <button
                     onClick={sendMessage}
                     disabled={chatDisabled}
-                    className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-500 disabled:bg-white/10 disabled:text-white/35"
+                    className="shrink-0 rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-500 disabled:bg-white/10 disabled:text-white/35"
                   >
                     Send
                   </button>
