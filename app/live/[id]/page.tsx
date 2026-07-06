@@ -751,11 +751,9 @@ let receiverPrivateCallChannel: any;
         processedCallerStatusRef.current = statusKey;
 
         if (updatedCall.status === "accepted") {
-          console.log("[CALL DEBUG] caller handler: status=accepted, calling startLiveStream()");
           setStatusText("Call accepted. Connecting...");
           await loadGuestInvites();
           await startLiveStream();
-          console.log("[CALL DEBUG] startLiveStream() call finished");
           return;
         }
 
@@ -2111,18 +2109,10 @@ let receiverPrivateCallChannel: any;
   }
 
   async function startLiveStream() {
-    console.log("[CALL DEBUG] startLiveStream() entered. stream=", !!stream, "starting=", starting);
-
-    if (!stream || starting) {
-      console.log("[CALL DEBUG] startLiveStream() BLOCKED: no stream or already starting");
-      return;
-    }
+    if (!stream || starting) return;
 
     const allowed = await checkCurrentUserStillAllowed();
-    if (!allowed) {
-      console.log("[CALL DEBUG] startLiveStream() BLOCKED: checkCurrentUserStillAllowed() returned false");
-      return;
-    }
+    if (!allowed) return;
 
     try {
       setStarting(true);
