@@ -107,7 +107,10 @@ export default function WatchPage() {
   const [tipMessage, setTipMessage] = useState("");
   const [tipSubmitting, setTipSubmitting] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
-  const [isViewerFullscreen, setIsViewerFullscreen] = useState(false);
+  // TikTok-style overlay is now the default viewing experience (was
+  // previously opt-in via a "Fullscreen" button). This reuses the
+  // existing, fully-working overlay - no new layout logic added.
+  const [isViewerFullscreen, setIsViewerFullscreen] = useState(true);
   const [fullscreenChatOpen, setFullscreenChatOpen] = useState(false);
   const [videoTrackVersion, setVideoTrackVersion] = useState(0);
   const [videoFitMode, setVideoFitMode] = useState<"cover" | "contain">("cover");
@@ -293,13 +296,14 @@ export default function WatchPage() {
   }
 
   function closeViewerFullscreen() {
-    setIsViewerFullscreen(false);
-    setFullscreenChatOpen(false);
-
     document.documentElement.classList.remove("streamhub-theater-mode");
     document.body.classList.remove("streamhub-theater-mode");
     document.documentElement.style.overflow = "";
     document.body.style.overflow = "";
+
+    // The overlay is the only viewing experience now, so "Exit" leaves
+    // the stream rather than falling back to the old boxed layout.
+    router.push("/live-feed");
   }
 
 
@@ -1987,6 +1991,24 @@ export default function WatchPage() {
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-16">
               <div className="pointer-events-auto mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
+                {showFollowButton && (
+                  <button
+                    onClick={toggleFollowHost}
+                    disabled={followLoading}
+                    className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur transition ${
+                      isFollowingHost
+                        ? "bg-white text-black hover:bg-white/90"
+                        : "bg-purple-600 text-white hover:bg-purple-500"
+                    } disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35`}
+                  >
+                    {followLoading
+                      ? "Wait..."
+                      : isFollowingHost
+                      ? "Following ✓"
+                      : "Follow +"}
+                  </button>
+                )}
+
                 <button
                   onClick={toggleLike}
                   disabled={streamStatus !== "live" || blockedAccess}
@@ -1998,6 +2020,22 @@ export default function WatchPage() {
                 >
                   {liked ? "Liked" : "Like"}
                 </button>
+
+                {stream?.user_id &&
+                  currentUserId !== stream.user_id &&
+                  stream.visibility !== "private" && (
+                    <button
+                      onClick={() => setTipOpen(true)}
+                      disabled={streamStatus !== "live" || !connected || blockedAccess}
+                      className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur transition ${
+                        streamStatus === "live" && connected && !blockedAccess
+                          ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                          : "cursor-not-allowed bg-white/10 text-white/35"
+                      }`}
+                    >
+                      Tip
+                    </button>
+                  )}
 
                 <button
                   onClick={() => setFullscreenChatOpen((current) => !current)}
@@ -2019,13 +2057,21 @@ export default function WatchPage() {
                   Viewers {viewerCount}
                 </div>
 
-
+                {stream?.user_id && currentUserId !== stream.user_id && (
+                  <BlockUserButton
+                    targetUserId={stream.user_id}
+                    onBlocked={() => {
+                      setBlockedAccess(true);
+                      setStatus("You blocked this creator.");
+                    }}
+                  />
+                )}
 
                 <button
                   onClick={closeViewerFullscreen}
                   className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
                 >
-                  Exit Fullscreen
+                  Exit
                 </button>
               </div>
             </div>
