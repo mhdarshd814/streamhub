@@ -280,20 +280,30 @@ export default function WatchPage() {
 
     setIsViewerFullscreen(true);
     setFullscreenChatOpen(false);
+  }
+
+  // The overlay is now the default view (isViewerFullscreen starts true),
+  // so the class-adding and video-attach side effects that used to live
+  // only inside openViewerFullscreen() must run whenever the overlay is
+  // active - including on initial mount, not just on a manual trigger.
+  useEffect(() => {
+    if (!isViewerFullscreen) return;
 
     document.documentElement.classList.add("streamhub-theater-mode");
     document.body.classList.add("streamhub-theater-mode");
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
 
-    setTimeout(() => {
+    const attachTimer = setTimeout(() => {
       attachVideoTrackToContainer(
         remoteVideoTrackRef.current,
         fullscreenVideoContainerRef.current,
         "0px"
       );
     }, 100);
-  }
+
+    return () => clearTimeout(attachTimer);
+  }, [isViewerFullscreen, connected, streamStatus]);
 
   function closeViewerFullscreen() {
     document.documentElement.classList.remove("streamhub-theater-mode");
