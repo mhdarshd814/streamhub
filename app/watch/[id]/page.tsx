@@ -1946,7 +1946,16 @@ export default function WatchPage() {
             )}
 
             {fullscreenChatOpen && (
-              <div className="absolute inset-x-3 bottom-24 max-h-[48dvh] overflow-hidden rounded-3xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl sm:left-auto sm:right-5 sm:w-[380px]">
+              <div
+                className="absolute inset-x-3 max-h-[40dvh] overflow-hidden rounded-3xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl sm:left-auto sm:right-5 sm:w-[380px]"
+                style={{
+                  // The floating button row below now wraps to two lines
+                  // (7 buttons: Follow/Like/Tip/Chat/Viewers/Block/Exit),
+                  // so the chat panel needs more bottom clearance than the
+                  // old single-line assumption gave it.
+                  bottom: "calc(148px + env(safe-area-inset-bottom))",
+                }}
+              >
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="font-black">Live Chat</h3>
                   <button
