@@ -2333,6 +2333,65 @@ let receiverPrivateCallChannel: any;
     return () => clearTimeout(timer);
   }, [stream?.id, role, pendingInvite, room, starting]);
 
+  // Per-minute call billing: only for connected private calls with a
+  // rate > 0. Fires an immediate charge on connect, then every ~60s while
+  // the room stays open. Auto-ends the call the moment the caller can't
+  // afford the next minute, with a clear message on both sides.
+  useEffect(() => {
+    const isPrivateCall = stream?.visibility === "private";
+    const ratePerMinute = Number(stream?.private_call_price || 0);
+
+    if (!room || !isPrivateCall || ratePerMinute <= 0 || !stream?.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function tick() {
+      const { data, error } = await supabase.rpc("charge_private_call_minute", {
+        p_stream_id: stream!.id,
+      });
+
+      if (cancelled) return;
+
+      if (error) {
+        console.warn("charge_private_call_minute failed:", error.message);
+        return;
+      }
+
+      if (data?.ok) {
+        if (
+          data.charged > 0 &&
+          typeof data.caller_balance_after === "number" &&
+          data.caller_balance_after < ratePerMinute
+        ) {
+          alert(
+            "Low balance: this call will end after the next minute unless the wallet is topped up."
+          );
+        }
+        return;
+      }
+
+      if (data?.reason === "insufficient_funds") {
+        alert("Call ended: insufficient balance to continue this paid call.");
+        await stopLiveStream();
+        return;
+      }
+
+      // reason === 'not_active': the call already ended some other way
+      // (declined/cancelled/missed elsewhere) — nothing to do here.
+    }
+
+    void tick();
+    const billingTimer = setInterval(tick, 60000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(billingTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room, stream?.id, stream?.visibility, stream?.private_call_price]);
+
   async function stopLiveStream() {
     (window as any).__streamhubActiveCall = false;
 
