@@ -6,7 +6,8 @@ import { supabase } from "../../lib/supabase";
 type StreamVisibility = "public" | "private";
 
 const DEFAULT_PUBLIC_TITLE = "Live Now";
-const DEFAULT_PRIVATE_TITLE = "Private Call";
+
+const RATE_PRESETS = ["0", "1", "3", "5", "10"];
 
 export default function GoLivePage() {
   const [title, setTitle] = useState(DEFAULT_PUBLIC_TITLE);
@@ -15,12 +16,21 @@ export default function GoLivePage() {
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<StreamVisibility>("public");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [privateCallPriceOption, setPrivateCallPriceOption] = useState("0");
-  const [customPrivateCallPrice, setCustomPrivateCallPrice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // Private call rate: this is a profile setting now, not a per-session
+  // price. Whatever you set here is what anyone pays when THEY call YOU
+  // (via Messages) — this tab never creates or opens a call room itself.
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [savedRate, setSavedRate] = useState(0);
+  const [rateOption, setRateOption] = useState("0");
+  const [customRate, setCustomRate] = useState("");
+  const [loadingRate, setLoadingRate] = useState(true);
+  const [savingRate, setSavingRate] = useState(false);
+  const [rateSavedJustNow, setRateSavedJustNow] = useState(false);
 
   useEffect(() => {
     checkAccess();
@@ -38,13 +48,14 @@ export default function GoLivePage() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("is_banned")
+      .select("is_banned, private_call_rate")
       .eq("id", user.id)
       .maybeSingle();
 
     if (error) {
       alert(error.message);
       setCheckingAccess(false);
+      setLoadingRate(false);
       return;
     }
 
@@ -53,7 +64,20 @@ export default function GoLivePage() {
       return;
     }
 
+    setCurrentUserId(user.id);
+
+    const rate = Number(data?.private_call_rate || 0);
+    setSavedRate(rate);
+
+    if (RATE_PRESETS.includes(String(rate))) {
+      setRateOption(String(rate));
+    } else if (rate > 0) {
+      setRateOption("custom");
+      setCustomRate(String(rate));
+    }
+
     setCheckingAccess(false);
+    setLoadingRate(false);
   }
 
   function selectVisibility(nextVisibility: StreamVisibility) {
@@ -62,17 +86,8 @@ export default function GoLivePage() {
     if (nextVisibility === "public") {
       setCategory("Live");
 
-      if (!userEditedTitle || title === DEFAULT_PRIVATE_TITLE) {
+      if (!userEditedTitle) {
         setTitle(DEFAULT_PUBLIC_TITLE);
-        setUserEditedTitle(false);
-      }
-    }
-
-    if (nextVisibility === "private") {
-      setCategory("Private Call");
-
-      if (!userEditedTitle || title === DEFAULT_PUBLIC_TITLE) {
-        setTitle(DEFAULT_PRIVATE_TITLE);
         setUserEditedTitle(false);
       }
     }
@@ -80,29 +95,12 @@ export default function GoLivePage() {
 
   function handleTitleChange(value: string) {
     setTitle(value);
-    setUserEditedTitle(
-      value.trim() !== "" &&
-        value !== DEFAULT_PUBLIC_TITLE &&
-        value !== DEFAULT_PRIVATE_TITLE
-    );
-  }
-
-  function getPrivateCallPriceAmount() {
-    if (visibility !== "private") return 0;
-
-    if (privateCallPriceOption === "custom") {
-      return Number(customPrivateCallPrice);
-    }
-
-    return Number(privateCallPriceOption);
+    setUserEditedTitle(value.trim() !== "" && value !== DEFAULT_PUBLIC_TITLE);
   }
 
   function getDefaultTitle() {
     const cleanTitle = title.trim();
-
-    if (cleanTitle) return cleanTitle;
-
-    return visibility === "private" ? DEFAULT_PRIVATE_TITLE : DEFAULT_PUBLIC_TITLE;
+    return cleanTitle || DEFAULT_PUBLIC_TITLE;
   }
 
   async function uploadThumbnail(file: File) {
@@ -146,27 +144,6 @@ export default function GoLivePage() {
   async function handleStartStream() {
     if (saving || uploading) return;
 
-    const priceAmount = getPrivateCallPriceAmount();
-
-    if (
-      visibility === "private" &&
-      privateCallPriceOption === "custom" &&
-      customPrivateCallPrice.trim() === ""
-    ) {
-      alert("Please enter a custom private call price.");
-      return;
-    }
-
-    if (visibility === "private" && (Number.isNaN(priceAmount) || priceAmount < 0)) {
-      alert("Please enter a valid private call price.");
-      return;
-    }
-
-    if (visibility === "private" && priceAmount > 100) {
-      alert("Private call price cannot be more than $100.");
-      return;
-    }
-
     setSaving(true);
 
     const {
@@ -206,9 +183,9 @@ export default function GoLivePage() {
           category: category || "Live",
           description: description.trim() || null,
           tags: null,
-          visibility,
+          visibility: "public",
           thumbnail_url: thumbnailUrl || null,
-          private_call_price: priceAmount,
+          private_call_price: 0,
           status: "offline",
         },
       ])
@@ -222,6 +199,51 @@ export default function GoLivePage() {
     }
 
     window.location.href = `/live/${data.id}`;
+  }
+
+  function getRateAmount() {
+    if (rateOption === "custom") return Number(customRate);
+    return Number(rateOption);
+  }
+
+  async function handleSaveRate() {
+    if (savingRate || !currentUserId) return;
+
+    const amount = getRateAmount();
+
+    if (rateOption === "custom" && customRate.trim() === "") {
+      alert("Please enter a custom rate.");
+      return;
+    }
+
+    if (Number.isNaN(amount) || amount < 0) {
+      alert("Please enter a valid rate.");
+      return;
+    }
+
+    if (amount > 100) {
+      alert("Rate cannot be more than $100.");
+      return;
+    }
+
+    setSavingRate(true);
+    setRateSavedJustNow(false);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ private_call_rate: amount })
+      .eq("id", currentUserId);
+
+    setSavingRate(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setSavedRate(amount);
+    setRateSavedJustNow(true);
+    setTimeout(() => setRateSavedJustNow(false), 2500);
   }
 
   if (checkingAccess) {
@@ -245,7 +267,7 @@ export default function GoLivePage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-400">
-            Choose public live, private call, or schedule a stream.
+            Choose public live, set your private call rate, or schedule a stream.
           </p>
         </div>
 
@@ -271,7 +293,7 @@ export default function GoLivePage() {
                 : "rounded-xl bg-black px-3 py-5 text-base font-bold text-gray-300 hover:bg-gray-900"
             }
           >
-            Private Call
+            Private Call Rate
           </button>
         </div>
 
@@ -283,87 +305,117 @@ export default function GoLivePage() {
           <span>Schedule Stream</span>
         </button>
 
-        <div className="rounded-3xl border border-gray-800 bg-gray-950 p-4 shadow-2xl sm:p-6">
-          <div className="mb-4 rounded-2xl border border-gray-800 bg-black p-4">
-            <p className="text-sm font-bold text-red-400">
-              {visibility === "private" ? "Private Call Room" : "Public Live Stream"}
-            </p>
+        {visibility === "private" ? (
+          <div className="rounded-3xl border border-gray-800 bg-gray-950 p-4 shadow-2xl sm:p-6">
+            <div className="mb-4 rounded-2xl border border-gray-800 bg-black p-4">
+              <p className="text-sm font-bold text-red-400">Private Call Rate</p>
 
-            <h2 className="mt-2 text-2xl font-black">
-              {visibility === "private" ? "Set up a private call" : "Public room ready"}
-            </h2>
+              <h2 className="mt-2 text-2xl font-black">Set your call rate</h2>
 
-            <p className="mt-2 text-sm leading-6 text-gray-400">
-              {visibility === "private"
-                ? "Set your call price, open the room, then invite or wait for the viewer."
-                : "Review optional settings, then start your public live room."}
-            </p>
-          </div>
+              <p className="mt-2 text-sm leading-6 text-gray-400">
+                This is what people pay when THEY call YOU from Messages.
+                There's nothing to start here — calls begin when someone
+                reaches out. Set to Free to allow calls at no charge.
+              </p>
 
-          {visibility === "private" && (
-            <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
-              <label className="mb-2 block text-sm font-black text-red-300">
-                Call price
-              </label>
-
-              <select
-                value={privateCallPriceOption}
-                onChange={(e) => {
-                  setPrivateCallPriceOption(e.target.value);
-                  if (e.target.value !== "custom") setCustomPrivateCallPrice("");
-                }}
-                className="w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
-              >
-                <option value="0">Free</option>
-                <option value="1">$1 Fan</option>
-                <option value="3">$3 Premium</option>
-                <option value="5">$5 VIP</option>
-                <option value="10">$10 Creator Pro</option>
-                <option value="custom">Custom</option>
-              </select>
-
-              {privateCallPriceOption === "custom" && (
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={customPrivateCallPrice}
-                  onChange={(e) => setCustomPrivateCallPrice(e.target.value)}
-                  placeholder="Enter amount"
-                  className="mt-3 w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
-                />
+              {savedRate > 0 && (
+                <p className="mt-3 text-sm font-bold text-green-400">
+                  Current rate: ${savedRate.toFixed(2)}
+                </p>
+              )}
+              {savedRate === 0 && !loadingRate && (
+                <p className="mt-3 text-sm font-bold text-gray-400">
+                  Current rate: Free
+                </p>
               )}
             </div>
-          )}
 
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen(!advancedOpen)}
-            className="mb-4 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold text-gray-300 hover:bg-gray-800"
-          >
-            {advancedOpen ? "Hide Optional Settings" : "Optional Settings"}
-          </button>
-
-          {advancedOpen && (
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-300">
-                  Title optional
+            {loadingRate ? (
+              <p className="text-sm text-gray-400">Loading your rate...</p>
+            ) : (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+                <label className="mb-2 block text-sm font-black text-red-300">
+                  Your rate
                 </label>
 
-                <input
-                  value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder={
-                    visibility === "private"
-                      ? "Private call title"
-                      : "What are you live about?"
-                  }
-                  className="w-full rounded-2xl border border-gray-800 bg-black px-4 py-4 text-base outline-none focus:border-red-500"
-                />
-              </div>
+                <select
+                  value={rateOption}
+                  onChange={(e) => {
+                    setRateOption(e.target.value);
+                    if (e.target.value !== "custom") setCustomRate("");
+                  }}
+                  className="w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
+                >
+                  <option value="0">Free</option>
+                  <option value="1">$1 Fan</option>
+                  <option value="3">$3 Premium</option>
+                  <option value="5">$5 VIP</option>
+                  <option value="10">$10 Creator Pro</option>
+                  <option value="custom">Custom</option>
+                </select>
 
-              {visibility === "public" && (
+                {rateOption === "custom" && (
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={customRate}
+                    onChange={(e) => setCustomRate(e.target.value)}
+                    placeholder="Enter amount"
+                    className="mt-3 w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
+                  />
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSaveRate}
+                  disabled={savingRate}
+                  className="mt-4 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:bg-gray-700"
+                >
+                  {savingRate
+                    ? "Saving..."
+                    : rateSavedJustNow
+                    ? "Rate Saved ✓"
+                    : "Save Rate"}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-gray-800 bg-gray-950 p-4 shadow-2xl sm:p-6">
+            <div className="mb-4 rounded-2xl border border-gray-800 bg-black p-4">
+              <p className="text-sm font-bold text-red-400">Public Live Stream</p>
+
+              <h2 className="mt-2 text-2xl font-black">Public room ready</h2>
+
+              <p className="mt-2 text-sm leading-6 text-gray-400">
+                Review optional settings, then start your public live room.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen(!advancedOpen)}
+              className="mb-4 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm font-bold text-gray-300 hover:bg-gray-800"
+            >
+              {advancedOpen ? "Hide Optional Settings" : "Optional Settings"}
+            </button>
+
+            {advancedOpen && (
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-300">
+                    Title optional
+                  </label>
+
+                  <input
+                    value={title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="What are you live about?"
+                    className="w-full rounded-2xl border border-gray-800 bg-black px-4 py-4 text-base outline-none focus:border-red-500"
+                  />
+                </div>
+
                 <div>
                   <label className="mb-2 block text-sm font-bold text-gray-300">
                     Category optional
@@ -381,70 +433,64 @@ export default function GoLivePage() {
                     <option value="Lifestyle">Lifestyle</option>
                   </select>
                 </div>
-              )}
 
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-300">
-                  Description optional
-                </label>
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-300">
+                    Description optional
+                  </label>
 
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional stream description"
-                  className="h-24 w-full resize-none rounded-2xl border border-gray-800 bg-black p-4 outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-300">
-                  Thumbnail optional
-                </label>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadThumbnail(file);
-                  }}
-                  className="w-full rounded-2xl border border-gray-800 bg-black p-4 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white"
-                />
-
-                {uploading && (
-                  <p className="mt-2 text-sm text-gray-400">
-                    Uploading thumbnail...
-                  </p>
-                )}
-              </div>
-
-              {thumbnailUrl && (
-                <div className="overflow-hidden rounded-2xl border border-gray-800">
-                  <img
-                    src={thumbnailUrl}
-                    alt="Thumbnail preview"
-                    className="h-44 w-full object-cover"
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Optional stream description"
+                    className="h-24 w-full resize-none rounded-2xl border border-gray-800 bg-black p-4 outline-none focus:border-red-500"
                   />
                 </div>
-              )}
-            </div>
-          )}
 
-          {(
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-300">
+                    Thumbnail optional
+                  </label>
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadThumbnail(file);
+                    }}
+                    className="w-full rounded-2xl border border-gray-800 bg-black p-4 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-sm file:font-bold file:text-white"
+                  />
+
+                  {uploading && (
+                    <p className="mt-2 text-sm text-gray-400">
+                      Uploading thumbnail...
+                    </p>
+                  )}
+                </div>
+
+                {thumbnailUrl && (
+                  <div className="overflow-hidden rounded-2xl border border-gray-800">
+                    <img
+                      src={thumbnailUrl}
+                      alt="Thumbnail preview"
+                      className="h-44 w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={handleStartStream}
               disabled={saving || uploading}
               className="mt-5 w-full rounded-full bg-red-600 px-6 py-4 text-lg font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:bg-gray-700"
             >
-              {saving ? "Opening..." : visibility === "private" ? "Start Private Call" : "Start Public Live"}
+              {saving ? "Opening..." : "Start Public Live"}
             </button>
-            )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-
-
-

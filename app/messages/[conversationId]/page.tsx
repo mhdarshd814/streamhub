@@ -17,7 +17,7 @@ import {
 } from "../../../lib/messaging";
 import MessageBubble from "../../components/messaging/MessageBubble";
 import MessageInput from "../../components/messaging/MessageInput";
-import { startPrivateCallRequest } from "../../../lib/privateCalls";
+import { startPrivateCallRequest, getPrivateCallRate } from "../../../lib/privateCalls";
 import { usePresenceFor, formatPresenceLabel } from "../../../hooks/usePresence";
 
 export default function MessageThreadPage() {
@@ -36,7 +36,7 @@ export default function MessageThreadPage() {
     : undefined;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [callMenuOpen, setCallMenuOpen] = useState(false);
+  const [otherCallRate, setOtherCallRate] = useState(0);
   const [otherIsTyping, setOtherIsTyping] = useState(false);
   const [tickStatusByMessageId, setTickStatusByMessageId] = useState<
     Record<string, "sent" | "delivered" | "read">
@@ -47,10 +47,9 @@ export default function MessageThreadPage() {
   const [startingCall, setStartingCall] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const handleStartCall = async (price: number) => {
+  const handleStartCall = async () => {
     if (!userId || !otherProfile || startingCall) return;
 
-    setCallMenuOpen(false);
     setStartingCall(true);
 
     const toastId = toast.loading("Calling...");
@@ -58,7 +57,6 @@ export default function MessageThreadPage() {
     const result = await startPrivateCallRequest({
       callerId: userId,
       target: otherProfile,
-      price,
     });
 
     toast.dismiss(toastId);
@@ -121,6 +119,12 @@ export default function MessageThreadPage() {
 
       setConversation(conv);
       setOtherProfile(profile);
+
+      if (profile?.id) {
+        getPrivateCallRate(profile.id)
+          .then(setOtherCallRate)
+          .catch(() => setOtherCallRate(0));
+      }
 
       const { messages: msgs, error: msgError } = await fetchMessages(conversationId);
       if (msgError) toast.error(msgError);
@@ -390,62 +394,26 @@ export default function MessageThreadPage() {
           )}
         </div>
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setCallMenuOpen((open) => !open)}
-            disabled={startingCall}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
-            aria-label="Start call"
-            title="Start call"
+        <button
+          type="button"
+          onClick={handleStartCall}
+          disabled={startingCall}
+          className="flex h-9 items-center gap-1.5 rounded-full px-3 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+          aria-label="Start call"
+          title={otherCallRate > 0 ? `Call · $${otherCallRate.toFixed(2)}` : "Free call"}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-5 w-5 shrink-0"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5"
-            >
-              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.21 2.2z" />
-            </svg>
-          </button>
-
-          {callMenuOpen && (
-            <div className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/60">
-              <button
-                type="button"
-                onClick={() => handleStartCall(0)}
-                className="flex w-full items-center justify-between px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                <span>Free Call</span>
-                <span className="text-xs font-black text-green-400">FREE</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartCall(1)}
-                className="flex w-full items-center justify-between border-t border-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                <span>$1 Call</span>
-                <span className="text-xs font-semibold text-gray-400">5 min</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartCall(5)}
-                className="flex w-full items-center justify-between border-t border-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                <span>$5 Call</span>
-                <span className="text-xs font-semibold text-gray-400">25 min</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartCall(10)}
-                className="flex w-full items-center justify-between border-t border-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                <span>$10 Call</span>
-                <span className="text-xs font-semibold text-gray-400">1 hour</span>
-              </button>
-            </div>
-          )}
-        </div>
+            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.21 2.2z" />
+          </svg>
+          <span className="text-xs font-bold">
+            {otherCallRate > 0 ? `$${otherCallRate.toFixed(2)}` : "Free"}
+          </span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">

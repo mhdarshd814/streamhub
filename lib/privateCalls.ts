@@ -11,6 +11,7 @@ export type StartPrivateCallResult =
       ok: true;
       streamId: string;
       callId: string;
+      price: number;
     }
   | {
       ok: false;
@@ -21,10 +22,8 @@ export type StartPrivateCallResult =
 export async function startPrivateCallRequest(params: {
   callerId: string;
   target: PrivateCallTarget;
-  price?: number;
 }): Promise<StartPrivateCallResult> {
   const { callerId, target } = params;
-  const callPrice = Number(params.price || 0);
 
   if (!callerId) {
     return {
@@ -46,15 +45,11 @@ export async function startPrivateCallRequest(params: {
     };
   }
 
-  // Single atomic call: mutual-follow check, busy check, and creation of
-  // the stream/stream_guests/private_call_requests rows all happen
-  // server-side in one transaction. This is what makes the busy check
-  // reliable for BOTH web and the native Android app — if this returns
-  // busy, no push notification is ever sent, so the receiver's phone
-  // never rings for a call they can't take.
+  // Price is no longer chosen here. It's the receiver's own preset rate,
+  // read server-side inside this RPC — a caller can never set or tamper
+  // with what they'll be charged.
   const { data, error } = await supabase.rpc("start_private_call_request", {
     p_receiver_id: target.id,
-    p_price: callPrice,
   });
 
   if (error) {
@@ -115,6 +110,7 @@ export async function startPrivateCallRequest(params: {
 
   const streamId = data.stream_id as string;
   const callId = data.call_id as string;
+  const price = Number(data.price || 0);
 
   await supabase.from("notifications").insert([
     {
@@ -152,5 +148,19 @@ export async function startPrivateCallRequest(params: {
     ok: true,
     streamId,
     callId,
+    price,
   };
+}
+
+/** Fetch a user's own private-call rate (for display before calling them). */
+export async function getPrivateCallRate(
+  userId: string
+): Promise<number> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("private_call_rate")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return Number(data?.private_call_rate || 0);
 }
