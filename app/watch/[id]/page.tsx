@@ -1947,14 +1947,17 @@ export default function WatchPage() {
 
             {fullscreenChatOpen && (
               <div
-                className="absolute inset-x-3 flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-black/25 backdrop-blur-2xl sm:left-auto sm:right-5 sm:w-[340px]"
+                className="fixed inset-x-3 z-[2147483647] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-black/25 backdrop-blur-2xl sm:left-auto sm:right-5 sm:w-[300px]"
                 style={{
-                  // Fixed height (not just max-height) is what makes this a
-                  // true flex column: header stays put, the message list is
-                  // the only part that grows/scrolls, and the input row is
-                  // pinned at the bottom no matter how many messages arrive.
-                  height: "34dvh",
-                  bottom: "calc(148px + env(safe-area-inset-bottom))",
+                  // Fixed pixel height (not dvh, not absolute positioning) -
+                  // both proved unreliable in this WebView. A hard px height
+                  // + overflow:hidden guarantees the input row can never be
+                  // pushed out of view or overlap anything below it,
+                  // regardless of how many messages arrive. Kept small on
+                  // purpose so it covers as little of the video as possible.
+                  height: "220px",
+                  bottom: "calc(160px + env(safe-area-inset-bottom))",
+                  overflow: "hidden",
                 }}
               >
                 <div className="flex shrink-0 items-center justify-between px-3 pt-3">
