@@ -326,6 +326,36 @@ export default function DashboardPage() {
   }
 
   function openLiveRoom(id: string) {
+    const targetStream = streams.find((s) => s.id === id);
+
+    if (targetStream?.visibility === "private") {
+      // Hard guard, not just a hidden button: block re-entry into any
+      // private call that isn't genuinely joinable right now, regardless
+      // of what badge happened to render. Covers stale/frozen "live"
+      // states too, not only calls already marked ended.
+      const relatedCalls = privateCalls.filter(
+        (call) => call.stream_id === id
+      );
+
+      const hasJoinableCall = relatedCalls.some((call) => {
+        const isStillRinging =
+          call.status === "pending" &&
+          (!call.expires_at || new Date(call.expires_at) > new Date());
+
+        const isActiveAndLive =
+          call.status === "accepted" && targetStream.status === "live";
+
+        return isStillRinging || isActiveAndLive;
+      });
+
+      if (!hasJoinableCall) {
+        alert(
+          "This private call has already ended. Start a new call instead."
+        );
+        return;
+      }
+    }
+
     window.location.href = `/live/${id}`;
   }
 
