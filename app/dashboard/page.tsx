@@ -894,6 +894,17 @@ export default function DashboardPage() {
                 const isLive = stream.status === "live";
                 const isPrivate = stream.visibility === "private";
 
+                // A private call is "ended" (not just offline) if it ever
+                // actually connected (accepted_at set) and isn't live now.
+                // Distinguishes a finished 1:1 call from one that was
+                // never answered (missed/declined/cancelled while ringing).
+                const wasEverAccepted =
+                  isPrivate &&
+                  privateCalls.some(
+                    (call) => call.stream_id === stream.id && !!call.accepted_at
+                  );
+                const isEndedCall = isPrivate && !isLive && wasEverAccepted;
+
                 return (
                   <div
                     key={stream.id}
@@ -918,10 +929,12 @@ export default function DashboardPage() {
                             className={
                               isLive
                                 ? "rounded-full bg-red-600 px-3 py-1 text-xs font-black"
+                                : isEndedCall
+                                ? "rounded-full bg-gray-700 px-3 py-1 text-xs font-black text-gray-300"
                                 : "rounded-full bg-gray-800 px-3 py-1 text-xs font-black text-gray-400"
                             }
                           >
-                            {isLive ? "LIVE" : "OFFLINE"}
+                            {isLive ? "LIVE" : isEndedCall ? "ENDED CALL" : "OFFLINE"}
                           </span>
 
                           <span
@@ -947,12 +960,14 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
-                      <button
-                        onClick={() => openLiveRoom(stream.id)}
-                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700"
-                      >
-                        Studio
-                      </button>
+                      {!isEndedCall && (
+                        <button
+                          onClick={() => openLiveRoom(stream.id)}
+                          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700"
+                        >
+                          Studio
+                        </button>
+                      )}
 
                       {!isPrivate && (
                         <button
