@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -65,12 +66,14 @@ export default function ProfilePage() {
 
       <div className="max-w-2xl rounded-xl bg-gray-900 p-8">
         <div className="mb-6 flex items-center gap-6">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+          <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
             {profile.avatar_url ? (
-              <img
+              <Image
                 src={profile.avatar_url}
                 alt={profile.username}
-                className="h-full w-full object-cover"
+                fill
+                sizes="96px"
+                className="object-cover"
               />
             ) : (
               <span className="text-sm font-black text-gray-300">Me</span>

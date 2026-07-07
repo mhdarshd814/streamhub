@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 import { startPrivateCallRequest } from "../../lib/privateCalls";
 
@@ -598,15 +599,15 @@ export default function CallsPage() {
             className="w-full rounded-2xl border border-accent/20 bg-canvas px-4 py-4 text-white outline-none placeholder:text-faint focus:border-accent"
           />
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
             {searching && (
-              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
+              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted lg:col-span-2">
                 Searching...
               </div>
             )}
 
             {!searching && searchText.trim().length >= 2 && results.length === 0 && (
-              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
+              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted lg:col-span-2">
                 No mutual followers found.
               </div>
             )}
@@ -621,12 +622,14 @@ export default function CallsPage() {
                   className="flex flex-col gap-4 rounded-2xl border border-hairline bg-canvas/40 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="avatar h-12 w-12">
+                    <div className="avatar relative h-12 w-12">
                       {profile.avatar_url ? (
-                        <img
+                        <Image
                           src={profile.avatar_url}
                           alt={name}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="48px"
+                          className="object-cover"
                         />
                       ) : (
                         "??"
@@ -675,9 +678,9 @@ export default function CallsPage() {
             className="input-field"
           />
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
             {peopleSearching && (
-              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
+              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted lg:col-span-2">
                 Searching people...
               </div>
             )}
@@ -685,7 +688,7 @@ export default function CallsPage() {
             {!peopleSearching &&
               peopleSearchText.trim().length >= 2 &&
               peopleResults.length === 0 && (
-                <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
+                <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted lg:col-span-2">
                   No users found.
                 </div>
               )}
@@ -701,12 +704,14 @@ export default function CallsPage() {
                   className="flex flex-col gap-4 rounded-2xl border border-hairline bg-canvas/40 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="avatar h-12 w-12">
+                    <div className="avatar relative h-12 w-12">
                       {profile.avatar_url ? (
-                        <img
+                        <Image
                           src={profile.avatar_url}
                           alt={name}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="48px"
+                          className="object-cover"
                         />
                       ) : (
                         "??"
@@ -758,7 +763,8 @@ export default function CallsPage() {
           <Stat label="Paid Calls" value={paidCalls} color="text-success" />
         </section>
 
-        <section className="mb-8 rounded-2xl border border-accent/20 bg-accent-soft p-5 sm:p-6">
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <section className="rounded-2xl border border-accent/20 bg-accent-soft p-5 sm:p-6">
           <h2 className="font-display mb-4 text-xl font-black">Incoming Calls</h2>
 
           {incoming.length === 0 ? (
@@ -801,6 +807,7 @@ export default function CallsPage() {
             </div>
           )}
         </section>
+        </div>
       </div>
     </main>
   );
@@ -830,12 +837,14 @@ function CallCard({
     <div className="rounded-2xl border border-hairline bg-canvas/40 p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="avatar h-12 w-12">
+          <div className="avatar relative h-12 w-12">
             {otherPerson?.avatar_url ? (
-              <img
+              <Image
                 src={otherPerson.avatar_url}
                 alt={name}
-                className="h-full w-full object-cover"
+                fill
+                sizes="48px"
+                className="object-cover"
               />
             ) : (
               "??"

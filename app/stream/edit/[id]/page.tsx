@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../../../lib/supabase";
 
 export default function EditStreamPage() {
@@ -187,11 +188,15 @@ export default function EditStreamPage() {
           <div className="mb-5">
             <p className="text-gray-400 mb-2">Thumbnail Preview</p>
 
-            <img
-              src={thumbnailUrl}
-              alt="Thumbnail preview"
-              className="w-full h-52 rounded-lg object-cover bg-gray-700"
-            />
+            <div className="relative h-52 w-full overflow-hidden rounded-lg bg-gray-700">
+              <Image
+                src={thumbnailUrl}
+                alt="Thumbnail preview"
+                fill
+                sizes="100vw"
+                className="object-cover"
+              />
+            </div>
           </div>
         )}
 

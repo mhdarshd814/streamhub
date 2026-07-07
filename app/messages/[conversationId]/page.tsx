@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { supabase } from "../../../lib/supabase";
 import {
@@ -359,10 +360,11 @@ export default function MessageThreadPage() {
           </svg>
         </button>
         {otherProfile?.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={otherProfile.avatar_url}
             alt={name}
+            width={36}
+            height={36}
             className="h-9 w-9 rounded-full object-cover"
           />
         ) : (

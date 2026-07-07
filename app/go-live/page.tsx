@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type StreamVisibility = "public" | "private";
@@ -623,11 +624,13 @@ export default function GoLivePage() {
                 </div>
 
                 {thumbnailUrl && (
-                  <div className="overflow-hidden rounded-2xl border border-gray-800">
-                    <img
+                  <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-gray-800">
+                    <Image
                       src={thumbnailUrl}
                       alt="Thumbnail preview"
-                      className="h-44 w-full object-cover"
+                      fill
+                      sizes="100vw"
+                      className="object-cover"
                     />
                   </div>
                 )}

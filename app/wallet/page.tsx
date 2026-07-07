@@ -312,8 +312,27 @@ export default function WalletPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-canvas px-4 py-6 text-white">
-        <p className="text-muted">Loading wallet...</p>
+      <main className="min-h-screen bg-canvas px-4 pb-32 pt-5 text-white sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-6 space-y-2">
+            <div className="skeleton skeleton-line w-32" />
+            <div className="skeleton skeleton-line h-7 w-64" />
+          </div>
+
+          <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="skeleton skeleton-card min-h-[5.5rem]" />
+            ))}
+          </div>
+
+          <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="skeleton skeleton-card min-h-[4rem]" />
+            ))}
+          </div>
+
+          <div className="skeleton skeleton-card min-h-[12rem]" />
+        </div>
       </main>
     );
   }
@@ -373,14 +392,15 @@ export default function WalletPage() {
           />
         </div>
 
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <MiniStat label="Tips" value={`$${formatMoney(stats.tipsRevenue)}`} />
           <MiniStat label="Private Calls" value={`$${formatMoney(stats.privateCallRevenue)}`} />
           <MiniStat label="Platform Fees" value={`$${formatMoney(stats.tipFees)}`} />
           <MiniStat label="Pending Payouts" value={`$${formatMoney(stats.pendingWithdrawal)}`} />
         </div>
 
-        <section className="mb-8 rounded-2xl border border-success/20 bg-success-soft p-5 sm:p-6">
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <section className="rounded-2xl border border-success/20 bg-success-soft p-5 sm:p-6">
           <h2 className="font-display mb-1.5 text-xl font-black">Add Funds</h2>
 
           <p className="mb-4 text-sm leading-6 text-muted">
@@ -423,7 +443,7 @@ export default function WalletPage() {
           </button>
         </section>
 
-        <section className="card-section mb-8">
+        <section className="card-section">
           <h2 className="font-display mb-1.5 text-xl font-black">Request Payout</h2>
 
           <p className="mb-4 text-sm leading-6 text-muted">
@@ -463,6 +483,7 @@ export default function WalletPage() {
             {submitting ? "Submitting..." : "Request Payout"}
           </button>
         </section>
+        </div>
 
         <section className="mb-8 rounded-2xl border border-info/20 bg-info-soft p-5 sm:p-6">
           <h2 className="font-display mb-4 text-xl font-black">Private Call Earnings</h2>

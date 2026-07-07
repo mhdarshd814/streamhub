@@ -3,6 +3,7 @@
 import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type Profile = {
@@ -585,12 +586,14 @@ export default function IncomingCallPage() {
           Incoming Call
         </p>
 
-        <div className="mx-auto mb-6 flex h-32 w-32 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-red-600 bg-gray-800 shadow-2xl shadow-red-600/30">
+        <div className="relative mx-auto mb-6 flex h-32 w-32 animate-pulse items-center justify-center overflow-hidden rounded-full border-4 border-red-600 bg-gray-800 shadow-2xl shadow-red-600/30">
           {call.caller?.avatar_url ? (
-            <img
+            <Image
               src={call.caller.avatar_url}
               alt={callerName}
-              className="h-full w-full object-cover"
+              fill
+              sizes="128px"
+              className="object-cover"
             />
           ) : (
             <span className="text-6xl">👤</span>

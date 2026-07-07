@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type FeedStream = {
@@ -47,6 +48,14 @@ export default function LiveFeedPage() {
   const [suggested, setSuggested] = useState<SuggestedCreator[]>([]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Pull-to-refresh: only engages when the feed is already scrolled to the
+  // top (so it never fights the vertical snap-scroll between cards).
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const PULL_THRESHOLD = 70;
+  const MAX_PULL = 100;
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -174,12 +183,53 @@ export default function LiveFeedPage() {
     setFollowBusyId(null);
   }
 
+  function handleTouchStart(e: React.TouchEvent) {
+    const el = containerRef.current;
+    if (!el || el.scrollTop > 0 || refreshing) return;
+    touchStartYRef.current = e.touches[0].clientY;
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (touchStartYRef.current === null || refreshing) return;
+
+    const el = containerRef.current;
+    if (!el || el.scrollTop > 0) {
+      touchStartYRef.current = null;
+      setPullDistance(0);
+      return;
+    }
+
+    const delta = e.touches[0].clientY - touchStartYRef.current;
+    if (delta > 0) {
+      setPullDistance(Math.min(delta * 0.5, MAX_PULL));
+    }
+  }
+
+  async function handleTouchEnd() {
+    if (touchStartYRef.current === null) return;
+    touchStartYRef.current = null;
+
+    if (pullDistance >= PULL_THRESHOLD) {
+      setRefreshing(true);
+      await loadFeed();
+      setRefreshing(false);
+    }
+
+    setPullDistance(0);
+  }
+
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-canvas text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-accent" />
-          <p className="text-sm text-muted">Finding what's live...</p>
+      <main className="relative h-[100dvh] w-full overflow-hidden bg-canvas">
+        <div className="skeleton absolute inset-0 rounded-none" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-[calc(env(safe-area-inset-bottom)+6rem)]">
+          <div className="flex items-center gap-3">
+            <div className="skeleton skeleton-avatar border-2 border-white/10" />
+            <div className="flex-1 space-y-2">
+              <div className="skeleton skeleton-line w-1/2" />
+              <div className="skeleton skeleton-line w-1/3" />
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -213,12 +263,14 @@ export default function LiveFeedPage() {
                     onClick={() => router.push(`/profile/${creator.id}`)}
                     className="card flex items-center gap-3 p-3 text-left hover:border-accent"
                   >
-                    <div className="avatar h-12 w-12">
+                    <div className="avatar relative h-12 w-12">
                       {creator.avatar_url ? (
-                        <img
+                        <Image
                           src={creator.avatar_url}
                           alt={creator.username || "user"}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="48px"
+                          className="object-cover"
                         />
                       ) : (
                         "👤"
@@ -245,17 +297,38 @@ export default function LiveFeedPage() {
   return (
     <div
       ref={containerRef}
-      className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll bg-canvas"
+      className="fade-in h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll bg-canvas"
       style={{ scrollbarWidth: "none" }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {items.map((item) => {
+      {(pullDistance > 0 || refreshing) && (
+        <div
+          className="pointer-events-none fixed inset-x-0 z-20 flex justify-center"
+          style={{
+            top: "calc(env(safe-area-inset-top) + 0.75rem)",
+            opacity: refreshing ? 1 : Math.min(pullDistance / PULL_THRESHOLD, 1),
+            transition: refreshing ? undefined : "opacity 120ms ease",
+          }}
+        >
+          <div
+            className={`h-8 w-8 rounded-full border-2 border-white/25 border-t-accent ${
+              refreshing ? "animate-spin" : ""
+            }`}
+            style={!refreshing ? { transform: `rotate(${pullDistance * 3}deg)` } : undefined}
+          />
+        </div>
+      )}
+
+      {items.map((item, index) => {
         const name =
           item.host?.display_name || item.host?.username || "Streamer";
 
         return (
           <div
             key={item.stream.id}
-            className="relative flex h-[100dvh] w-full snap-start snap-always items-center justify-center overflow-hidden"
+            className="relative mx-auto flex h-[100dvh] w-full snap-start snap-always items-center justify-center overflow-hidden xl:max-w-[480px] xl:border-x xl:border-white/10"
           >
             {/* Background: thumbnail as the preview "poster". Tapping
                 anywhere joins the real, fully-interactive watch page. */}
@@ -265,10 +338,13 @@ export default function LiveFeedPage() {
               aria-label={`Join ${name}'s live stream`}
             >
               {item.stream.thumbnail_url ? (
-                <img
+                <Image
                   src={item.stream.thumbnail_url}
                   alt={item.stream.title || "Live stream"}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="100vw"
+                  priority={index === 0}
+                  className="object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-surface to-canvas">
@@ -302,13 +378,15 @@ export default function LiveFeedPage() {
                     e.stopPropagation();
                     if (item.host?.id) router.push(`/profile/${item.host.id}`);
                   }}
-                  className="avatar h-12 w-12 border-2 border-white/40"
+                  className="avatar relative h-12 w-12 border-2 border-white/40"
                 >
                   {item.host?.avatar_url ? (
-                    <img
+                    <Image
                       src={item.host.avatar_url}
                       alt={name}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="48px"
+                      className="object-cover"
                     />
                   ) : (
                     <span className="text-xl">👤</span>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type Profile = {
@@ -289,9 +290,11 @@ export default function AdminVerificationPage() {
                   <div key={request.id} className="p-4 sm:p-6">
                     <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex min-w-0 items-center gap-4">
-                        <img
+                        <Image
                           src={profile?.avatar_url || "/default-avatar.png"}
                           alt={creatorName}
+                          width={56}
+                          height={56}
                           className="h-14 w-14 rounded-full object-cover"
                         />
 

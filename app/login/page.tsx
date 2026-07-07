@@ -4,6 +4,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
@@ -107,11 +108,14 @@ export default function LoginPage() {
     <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center bg-black px-5 py-4 text-white">
       <div className="slide-up w-full max-w-md">
         <div className="mb-5 text-center">
-          <div className="premium-glow mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30">
-            <img
+          <div className="premium-glow relative mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30">
+            <Image
               src="/icon-512.png"
               alt="StreamHub"
-              className="h-full w-full object-cover"
+              fill
+              sizes="64px"
+              priority
+              className="object-cover"
             />
           </div>
 

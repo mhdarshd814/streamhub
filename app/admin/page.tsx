@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type AdminStats = {
@@ -472,12 +473,14 @@ export default function AdminHomePage() {
                   className="rounded-2xl border border-yellow-500/20 bg-black/40 p-4 transition hover:border-yellow-400 hover:bg-yellow-500/10"
                 >
                   <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                    <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-800">
                       {creator.profile?.avatar_url ? (
-                        <img
+                        <Image
                           src={creator.profile.avatar_url}
                           alt={creator.profile.username || "Creator"}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="40px"
+                          className="object-cover"
                         />
                       ) : (
                         "👤"

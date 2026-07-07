@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type Profile = {
@@ -236,12 +237,14 @@ export default function PublicUserPage() {
         <div className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
-              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700 text-5xl sm:h-32 sm:w-32">
+              <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700 text-5xl sm:h-32 sm:w-32">
                 {profile.avatar_url ? (
-                  <img
+                  <Image
                     src={profile.avatar_url}
                     alt={profile.username}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="(min-width: 640px) 128px, 112px"
+                    className="object-cover"
                   />
                 ) : (
                   "👤"
@@ -340,16 +343,18 @@ export default function PublicUserPage() {
                   onClick={() => openStream(stream)}
                   className={
                     isLive
-                      ? "overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 transition hover:border-red-600"
+                      ? "cursor-pointer overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 transition-all duration-150 hover:border-red-600 hover:-translate-y-0.5 active:scale-[0.98]"
                       : "cursor-not-allowed overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 opacity-70"
                   }
                 >
                   <div className="relative h-48 overflow-hidden bg-gray-800 sm:h-52">
                     {stream.thumbnail_url ? (
-                      <img
+                      <Image
                         src={stream.thumbnail_url}
                         alt={stream.title}
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="(min-width: 640px) 50vw, 100vw"
+                        className="object-cover"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">

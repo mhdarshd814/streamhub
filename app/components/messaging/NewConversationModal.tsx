@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { supabase } from "../../../lib/supabase";
 import { getOrCreateDirectConversation, displayNameFor, type Profile } from "../../../lib/messaging";
@@ -134,10 +135,11 @@ export default function NewConversationModal({
                   className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-raised disabled:opacity-50"
                 >
                   {profile.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={profile.avatar_url}
                       alt={name}
+                      width={40}
+                      height={40}
                       className="h-10 w-10 rounded-full object-cover"
                     />
                   ) : (

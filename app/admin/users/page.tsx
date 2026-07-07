@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type Profile = {
@@ -271,12 +272,14 @@ export default function AdminUsersPage() {
                     className="flex flex-col gap-4 p-4 sm:p-5 xl:flex-row xl:items-start xl:justify-between"
                   >
                     <div className="flex min-w-0 items-start gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
                         {user.avatar_url ? (
-                          <img
+                          <Image
                             src={user.avatar_url}
                             alt={name}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="56px"
+                            className="object-cover"
                           />
                         ) : (
                           <span className="text-xl">👤</span>

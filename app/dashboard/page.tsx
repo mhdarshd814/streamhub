@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 const ResponsiveContainer = dynamic(
@@ -941,12 +942,14 @@ export default function DashboardPage() {
                     className="flex flex-col gap-5 p-4 transition hover:bg-gray-800/50 sm:p-5 lg:flex-row lg:items-center lg:justify-between"
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                      <div className="flex h-44 w-full items-center justify-center overflow-hidden rounded-xl bg-gray-800 sm:h-20 sm:w-28 sm:shrink-0">
+                      <div className="relative flex h-44 w-full items-center justify-center overflow-hidden rounded-xl bg-gray-800 sm:h-20 sm:w-28 sm:shrink-0">
                         {stream.thumbnail_url ? (
-                          <img
+                          <Image
                             src={stream.thumbnail_url}
                             alt={stream.title}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="(min-width: 640px) 112px, 100vw"
+                            className="object-cover"
                           />
                         ) : (
                           <span className="text-gray-500">No Image</span>

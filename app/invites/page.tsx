@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -265,10 +266,12 @@ export default function InvitesPage() {
                   <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
                     <div className="relative h-52 bg-gray-800 sm:h-64 lg:h-full">
                       {stream?.thumbnail_url ? (
-                        <img
+                        <Image
                           src={stream.thumbnail_url}
                           alt={stream.title}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="(min-width: 1024px) 280px, 100vw"
+                          className="object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
@@ -320,9 +323,11 @@ export default function InvitesPage() {
                         </div>
 
                         <div className="flex items-center gap-3 rounded-2xl bg-gray-800 p-3">
-                          <img
+                          <Image
                             src={host?.avatar_url || "/default-avatar.png"}
                             alt={host?.username || "Host"}
+                            width={44}
+                            height={44}
                             className="h-11 w-11 shrink-0 rounded-full object-cover"
                           />
 

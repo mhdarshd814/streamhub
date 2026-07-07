@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 const COUNTRIES = [
@@ -431,9 +432,11 @@ export default function EditProfilePage() {
 
               <div className="mb-5 flex justify-center">
                 {avatarUrl && !avatarLoadFailed ? (
-                  <img
+                  <Image
                     src={avatarUrl}
                     alt="Avatar preview"
+                    width={128}
+                    height={128}
                     className="h-28 w-28 rounded-full border border-gray-700 bg-gray-700 object-cover sm:h-32 sm:w-32"
                     onError={() => setAvatarLoadFailed(true)}
                   />

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 const PROTECTED_PREFIXES = [
@@ -37,11 +38,14 @@ function AuthLoadingScreen() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
       <section className="slide-up w-full max-w-sm text-center">
-        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
-          <img
+        <div className="relative mx-auto mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl shadow-2xl shadow-red-600/30 premium-glow">
+          <Image
             src="/icon-512.png"
             alt="StreamHub"
-            className="h-full w-full object-cover"
+            fill
+            sizes="96px"
+            priority
+            className="object-cover"
           />
         </div>
 

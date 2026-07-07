@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -450,12 +451,14 @@ export default function ExplorePage() {
                       onClick={() => openProfile(person.id)}
                       className="mb-4 flex w-full items-center gap-4 text-left"
                     >
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
                         {person.avatar_url ? (
-                          <img
+                          <Image
                             src={person.avatar_url}
                             alt={person.username || "user"}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="56px"
+                            className="object-cover"
                           />
                         ) : (
                           "👤"
@@ -542,12 +545,14 @@ export default function ExplorePage() {
                       className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-left transition hover:border-red-600"
                     >
                       <div className="mb-4 flex items-center gap-4">
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
                           {creator.avatar_url ? (
-                            <img
+                            <Image
                               src={creator.avatar_url}
                               alt={creator.username || "creator"}
-                              className="h-full w-full object-cover"
+                              fill
+                              sizes="56px"
+                              className="object-cover"
                             />
                           ) : (
                             "👤"
@@ -726,7 +731,7 @@ function StreamCard({
     <div
       className={
         isLive
-          ? "overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 transition hover:border-red-600"
+          ? "overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 transition-all duration-150 hover:border-red-600 hover:-translate-y-0.5 active:scale-[0.98]"
           : "overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 opacity-70"
       }
     >
@@ -739,10 +744,12 @@ function StreamCard({
         }
       >
         {stream.thumbnail_url ? (
-          <img
+          <Image
             src={stream.thumbnail_url}
             alt={stream.title}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -781,12 +788,14 @@ function StreamCard({
           onClick={() => openProfile(stream.profile?.id)}
           className="mb-5 flex cursor-pointer items-center gap-3"
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
             {stream.profile?.avatar_url ? (
-              <img
+              <Image
                 src={stream.profile.avatar_url}
                 alt={stream.profile.username || "creator"}
-                className="h-full w-full object-cover"
+                fill
+                sizes="44px"
+                className="object-cover"
               />
             ) : (
               "👤"

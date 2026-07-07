@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type BroadcastStream = {
@@ -304,12 +305,14 @@ export default function AdminBroadcastsPage() {
                     className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between"
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                      <div className="flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl bg-gray-800 sm:h-24 sm:w-36">
+                      <div className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl bg-gray-800 sm:h-24 sm:w-36">
                         {broadcast.thumbnail_url ? (
-                          <img
+                          <Image
                             src={broadcast.thumbnail_url}
                             alt={broadcast.title}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="(min-width: 640px) 144px, 100vw"
+                            className="object-cover"
                           />
                         ) : (
                           <span className="text-4xl">📡</span>

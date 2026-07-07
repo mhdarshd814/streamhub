@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type Stream = {
@@ -362,10 +363,12 @@ export default function AdminStreamsPage() {
                     <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
                       <div className="relative flex h-40 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-800 sm:h-24 sm:w-36">
                         {stream.thumbnail_url ? (
-                          <img
+                          <Image
                             src={stream.thumbnail_url}
                             alt={stream.title}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="(min-width: 640px) 144px, 100vw"
+                            className="object-cover"
                           />
                         ) : (
                           <span className="text-gray-500">No Image</span>

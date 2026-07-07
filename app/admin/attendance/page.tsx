@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type AttendanceRow = {
@@ -256,12 +257,14 @@ export default function AdminAttendancePage() {
                       <tr key={row.id} className="border-t border-gray-800 hover:bg-black/40">
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                            <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-800">
                               {row.profiles?.avatar_url ? (
-                                <img
+                                <Image
                                   src={row.profiles.avatar_url}
                                   alt={name}
-                                  className="h-full w-full object-cover"
+                                  fill
+                                  sizes="40px"
+                                  className="object-cover"
                                 />
                               ) : (
                                 "👤"

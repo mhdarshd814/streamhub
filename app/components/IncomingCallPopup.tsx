@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
@@ -509,10 +510,12 @@ export default function IncomingCallPopup() {
             <span className="absolute inset-0 -m-1.5 rounded-full bg-live/25" />
             <div className="avatar relative h-36 w-36 border-4 border-hairline-strong text-6xl shadow-2xl">
               {call.caller?.avatar_url ? (
-                <img
+                <Image
                   src={call.caller.avatar_url}
                   alt={callerName}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="144px"
+                  className="object-cover"
                 />
               ) : (
                 "👤"

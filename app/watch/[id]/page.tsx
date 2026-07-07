@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Room,
   RoomEvent,
@@ -2083,13 +2084,15 @@ export default function WatchPage() {
                     <button
                       onClick={openHostProfile}
                       aria-label={`View ${hostName}'s profile`}
-                      className="avatar h-12 w-12 border-2 border-white/60"
+                      className="avatar relative h-12 w-12 border-2 border-white/60"
                     >
                       {host?.avatar_url ? (
-                        <img
+                        <Image
                           src={host.avatar_url}
                           alt={hostName}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="48px"
+                          className="object-cover"
                         />
                       ) : (
                         <span className="text-xl">👤</span>
@@ -2329,12 +2332,12 @@ export default function WatchPage() {
           </div>
         )}
 
-        <section className="relative">
+        <section className="relative lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-6">
           <div className="min-w-0">
             <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black shadow-2xl sm:rounded-[28px]">
               <div
                 ref={videoContainerRef}
-                className="relative flex h-[100dvh] items-center justify-center bg-gradient-to-br from-surface via-surface-raised to-canvas"
+                className="relative flex h-[100dvh] items-center justify-center bg-gradient-to-br from-surface via-surface-raised to-canvas lg:h-[720px]"
               >
                 <div className="relative px-5 text-center">
                   <p className="text-base font-semibold text-white/80 sm:text-lg">
@@ -2382,9 +2385,11 @@ export default function WatchPage() {
                   onClick={openHostProfile}
                   className="flex min-w-0 cursor-pointer items-center gap-3 sm:gap-4"
                 >
-                  <img
+                  <Image
                     src={host?.avatar_url || "/default-avatar.png"}
                     alt={hostName}
+                    width={56}
+                    height={56}
                     className="h-12 w-12 rounded-2xl border border-white/10 object-cover sm:h-14 sm:w-14"
                   />
 
@@ -2510,7 +2515,7 @@ export default function WatchPage() {
             </div>
           </div>
 
-          <aside className="flex h-[560px] flex-col rounded-[22px] border border-white/10 bg-white/[0.04] p-4 shadow-2xl backdrop-blur-xl sm:rounded-[28px] sm:p-5 lg:h-[720px]">
+          <aside className="mt-4 flex h-[560px] flex-col rounded-[22px] border border-white/10 bg-white/[0.04] p-4 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[28px] sm:p-5 lg:mt-0 lg:h-[720px]">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="font-display text-2xl font-black sm:text-3xl lg:text-2xl">

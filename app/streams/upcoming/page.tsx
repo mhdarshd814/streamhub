@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type UpcomingStream = {
@@ -241,12 +242,14 @@ export default function UpcomingStreamsPage() {
                         className="rounded-3xl border border-gray-800 bg-gray-900 p-5"
                       >
                         <div className="mb-4 flex items-center gap-3">
-                          <img
+                          <Image
                             src={
                               stream.profiles?.avatar_url ||
                               "/default-avatar.png"
                             }
                             alt={creatorName}
+                            width={48}
+                            height={48}
                             className="h-12 w-12 rounded-full object-cover"
                           />
 

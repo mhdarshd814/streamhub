@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
 
 type Profile = {
@@ -620,12 +621,14 @@ export default function PublicProfilePage() {
           <div className="relative -mt-48 border-t border-red-900/20 bg-gradient-to-b from-black/40 via-gray-950/90 to-black p-5 pt-16 backdrop-blur-[1px] sm:-mt-56 sm:p-8 sm:pt-20">
             <div className="relative z-20 flex flex-col gap-6 pt-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-red-700/70 bg-gray-800 shadow-2xl shadow-red-600/20 sm:h-36 sm:w-36">
+                <div className="relative h-28 w-28 overflow-hidden rounded-full border-4 border-red-700/70 bg-gray-800 shadow-2xl shadow-red-600/20 sm:h-36 sm:w-36">
                   {profile.avatar_url ? (
-                    <img
+                    <Image
                       src={profile.avatar_url}
                       alt={profile.username || "Creator"}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(min-width: 640px) 144px, 112px"
+                      className="object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-5xl">

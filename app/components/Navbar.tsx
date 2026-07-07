@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { useUnreadMessages } from "../../hooks/useUnreadMessages";
@@ -331,8 +332,8 @@ export default function Navbar() {
             onClick={() => goTo(loggedIn ? "/live-feed" : "/signup")}
             className="flex cursor-pointer items-center gap-3"
           >
-            <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-accent/30">
-              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+            <div className="relative h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-accent/30">
+              <Image src="/icon-512.png" alt="StreamHub" fill sizes="56px" className="object-cover" />
             </div>
 
             <div className="text-left leading-none">
@@ -457,12 +458,14 @@ export default function Navbar() {
                     }}
                     className="flex items-center gap-3 rounded-xl border border-hairline bg-surface px-4 py-2 hover:border-accent"
                   >
-                    <div className="avatar h-9 w-9">
+                    <div className="avatar relative h-9 w-9">
                       {profile?.avatar_url ? (
-                        <img
+                        <Image
                           src={profile.avatar_url}
                           alt={profile.username || "Profile"}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="36px"
+                          className="object-cover"
                         />
                       ) : (
                         "Me"
@@ -533,8 +536,8 @@ export default function Navbar() {
             onClick={() => goTo(loggedIn ? "/live-feed" : "/signup")}
             className="flex items-center gap-3"
           >
-            <div className="h-12 w-12 overflow-hidden rounded-xl">
-              <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
+            <div className="relative h-12 w-12 overflow-hidden rounded-xl">
+              <Image src="/icon-512.png" alt="StreamHub" fill sizes="48px" className="object-cover" />
             </div>
 
             <div className="text-left leading-none">
@@ -612,9 +615,11 @@ export default function Navbar() {
             >
               <span className="flex h-7 items-center justify-center text-2xl">
                 {profile?.avatar_url ? (
-                  <img
+                  <Image
                     src={profile.avatar_url}
                     alt={profile.username || "Profile"}
+                    width={24}
+                    height={24}
                     className="h-6 w-6 rounded-full object-cover"
                   />
                 ) : (
@@ -644,12 +649,14 @@ export default function Navbar() {
             <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-surface-raised" />
 
             <div className="mb-5 flex items-center gap-3">
-              <div className="avatar h-14 w-14">
+              <div className="avatar relative h-14 w-14">
                 {profile?.avatar_url ? (
-                  <img
+                  <Image
                     src={profile.avatar_url}
                     alt={profile.username || "Profile"}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="56px"
+                    className="object-cover"
                   />
                 ) : (
                   <span className="text-2xl">Me</span>

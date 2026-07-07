@@ -1,6 +1,7 @@
 // app/components/messaging/ConversationListItem.tsx
 "use client";
 
+import Image from "next/image";
 import type { ConversationListItem as ConversationListItemType } from "../../../lib/messaging";
 import { displayNameFor } from "../../../lib/messaging";
 import type { PresenceInfo } from "../../../hooks/usePresence";
@@ -9,6 +10,7 @@ type Props = {
   item: ConversationListItemType;
   onClick: () => void;
   presence?: PresenceInfo;
+  active?: boolean;
 };
 
 function formatTimestamp(iso: string | null): string {
@@ -22,7 +24,7 @@ function formatTimestamp(iso: string | null): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export default function ConversationListItem({ item, onClick, presence }: Props) {
+export default function ConversationListItem({ item, onClick, presence, active }: Props) {
   const { conversation, otherProfile, lastMessage, unreadCount } = item;
   const name = displayNameFor(otherProfile);
   const preview = lastMessage?.is_deleted
@@ -43,14 +45,17 @@ export default function ConversationListItem({ item, onClick, presence }: Props)
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-3 border-b border-hairline px-4 py-3 text-left transition-colors hover:bg-surface-raised"
+      className={`flex w-full items-center gap-3 border-b border-hairline px-4 py-3 text-left transition-colors hover:bg-surface-raised ${
+        active ? "bg-surface-raised" : ""
+      }`}
     >
       <div className="relative shrink-0">
         {otherProfile?.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={otherProfile.avatar_url}
             alt={name}
+            width={48}
+            height={48}
             className="h-12 w-12 rounded-full object-cover"
           />
         ) : (

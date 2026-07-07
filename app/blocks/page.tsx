@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type BlockRow = {
@@ -138,12 +139,14 @@ export default function BlocksPage() {
                   className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 flex items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
+                    <div className="relative h-12 w-12 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center">
                       {profile?.avatar_url ? (
-                        <img
+                        <Image
                           src={profile.avatar_url}
                           alt="Avatar"
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="48px"
+                          className="object-cover"
                         />
                       ) : (
                         <span className="text-zinc-400 text-sm">
