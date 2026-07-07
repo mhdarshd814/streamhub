@@ -22,10 +22,8 @@ export type StartPrivateCallResult =
 export async function startPrivateCallRequest(params: {
   callerId: string;
   target: PrivateCallTarget;
-  callType?: "video" | "audio";
 }): Promise<StartPrivateCallResult> {
   const { callerId, target } = params;
-  const callType = params.callType || "video";
 
   if (!callerId) {
     return {
@@ -52,7 +50,6 @@ export async function startPrivateCallRequest(params: {
   // with what they'll be charged.
   const { data, error } = await supabase.rpc("start_private_call_request", {
     p_receiver_id: target.id,
-    p_call_type: callType,
   });
 
   if (error) {
