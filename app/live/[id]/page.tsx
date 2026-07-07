@@ -17,6 +17,7 @@ type Stream = {
   likes: number;
   user_id: string;
   private_call_price?: number | null;
+  private_call_duration_minutes?: number | null;
   description?: string | null;
   thumbnail_url?: string | null;
   created_at: string;
@@ -2333,64 +2334,50 @@ let receiverPrivateCallChannel: any;
     return () => clearTimeout(timer);
   }, [stream?.id, role, pendingInvite, room, starting]);
 
-  // Per-minute call billing: only for connected private calls with a
-  // rate > 0. Fires an immediate charge on connect, then every ~60s while
-  // the room stays open. Auto-ends the call the moment the caller can't
-  // afford the next minute, with a clear message on both sides.
+  // Fixed-price call duration: the package price was already charged in
+  // full on accept (see pay_private_call_and_accept). This just tracks
+  // the purchased duration and auto-ends the call when time runs out,
+  // with a warning shortly before. Runs on BOTH sides (caller/receiver)
+  // since either could otherwise be left in a call that should have
+  // ended.
+  const durationWarnedRef = useRef(false);
+
   useEffect(() => {
     const isPrivateCall = stream?.visibility === "private";
-    const ratePerMinute = Number(stream?.private_call_price || 0);
+    const durationMinutes = Number(stream?.private_call_duration_minutes || 0);
 
-    if (!room || !isPrivateCall || ratePerMinute <= 0 || !stream?.id) {
+    if (!room || !isPrivateCall || durationMinutes <= 0) {
       return;
     }
 
-    let cancelled = false;
+    // Local connect time is used as the call's start reference - the
+    // accept-to-connect gap is a few seconds at most and this avoids an
+    // extra DB round trip just to read accepted_at.
+    const callStartedAt = Date.now();
+    const durationMs = durationMinutes * 60 * 1000;
+    const warnAtMs = Math.max(durationMs - 60000, 0); // warn 60s before end
 
-    async function tick() {
-      const { data, error } = await supabase.rpc("charge_private_call_minute", {
-        p_stream_id: stream!.id,
-      });
+    durationWarnedRef.current = false;
 
-      if (cancelled) return;
+    const countdownTimer = setInterval(async () => {
+      const elapsed = Date.now() - callStartedAt;
 
-      if (error) {
-        console.warn("charge_private_call_minute failed:", error.message);
+      if (!durationWarnedRef.current && elapsed >= warnAtMs && elapsed < durationMs) {
+        durationWarnedRef.current = true;
+        alert("This call will end in about 1 minute (time package used up).");
         return;
       }
 
-      if (data?.ok) {
-        if (
-          data.charged > 0 &&
-          typeof data.caller_balance_after === "number" &&
-          data.caller_balance_after < ratePerMinute
-        ) {
-          alert(
-            "Low balance: this call will end after the next minute unless the wallet is topped up."
-          );
-        }
-        return;
-      }
-
-      if (data?.reason === "insufficient_funds") {
-        alert("Call ended: insufficient balance to continue this paid call.");
+      if (elapsed >= durationMs) {
+        clearInterval(countdownTimer);
+        alert("Call ended: your purchased call time has been used up.");
         await stopLiveStream();
-        return;
       }
+    }, 5000);
 
-      // reason === 'not_active': the call already ended some other way
-      // (declined/cancelled/missed elsewhere) — nothing to do here.
-    }
-
-    void tick();
-    const billingTimer = setInterval(tick, 60000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(billingTimer);
-    };
+    return () => clearInterval(countdownTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room, stream?.id, stream?.visibility, stream?.private_call_price]);
+  }, [room, stream?.visibility, stream?.private_call_duration_minutes]);
 
   async function stopLiveStream() {
     (window as any).__streamhubActiveCall = false;

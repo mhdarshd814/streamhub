@@ -7,7 +7,11 @@ type StreamVisibility = "public" | "private";
 
 const DEFAULT_PUBLIC_TITLE = "Live Now";
 
-const RATE_PRESETS = ["0", "1", "3", "5", "10"];
+const RATE_PACKAGES = [
+  { value: "1", amount: 1, minutes: 5 },
+  { value: "5", amount: 5, minutes: 30 },
+  { value: "10", amount: 10, minutes: 90 },
+];
 
 export default function GoLivePage() {
   const [title, setTitle] = useState(DEFAULT_PUBLIC_TITLE);
@@ -28,6 +32,8 @@ export default function GoLivePage() {
   const [savedRate, setSavedRate] = useState(0);
   const [rateOption, setRateOption] = useState("0");
   const [customRate, setCustomRate] = useState("");
+  const [customDuration, setCustomDuration] = useState("");
+  const [savedDuration, setSavedDuration] = useState(0);
   const [loadingRate, setLoadingRate] = useState(true);
   const [savingRate, setSavingRate] = useState(false);
   const [rateSavedJustNow, setRateSavedJustNow] = useState(false);
@@ -53,7 +59,7 @@ export default function GoLivePage() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "is_banned, private_call_rate, call_availability_enabled, call_available_from, call_available_until"
+        "is_banned, private_call_rate, private_call_duration_minutes, call_availability_enabled, call_available_from, call_available_until"
       )
       .eq("id", user.id)
       .maybeSingle();
@@ -73,13 +79,22 @@ export default function GoLivePage() {
     setCurrentUserId(user.id);
 
     const rate = Number(data?.private_call_rate || 0);
+    const duration = Number(data?.private_call_duration_minutes || 0);
     setSavedRate(rate);
+    setSavedDuration(duration);
 
-    if (RATE_PRESETS.includes(String(rate))) {
-      setRateOption(String(rate));
-    } else if (rate > 0) {
+    const matchingPreset = RATE_PACKAGES.find(
+      (pkg) => pkg.amount === rate && pkg.minutes === duration
+    );
+
+    if (rate === 0) {
+      setRateOption("0");
+    } else if (matchingPreset) {
+      setRateOption(matchingPreset.value);
+    } else {
       setRateOption("custom");
       setCustomRate(String(rate));
+      setCustomDuration(String(duration));
     }
 
     setAvailabilityEnabled(!!data?.call_availability_enabled);
@@ -218,18 +233,40 @@ export default function GoLivePage() {
   }
 
   function getRateAmount() {
+    if (rateOption === "0") return 0;
     if (rateOption === "custom") return Number(customRate);
-    return Number(rateOption);
+    const pkg = RATE_PACKAGES.find((p) => p.value === rateOption);
+    return pkg ? pkg.amount : 0;
+  }
+
+  function getDurationAmount() {
+    if (rateOption === "0") return 0;
+    if (rateOption === "custom") return Number(customDuration);
+    const pkg = RATE_PACKAGES.find((p) => p.value === rateOption);
+    return pkg ? pkg.minutes : 0;
   }
 
   async function handleSaveRate() {
     if (savingRate || !currentUserId) return;
 
     const amount = getRateAmount();
+    const durationMinutes = getDurationAmount();
 
-    if (rateOption === "custom" && customRate.trim() === "") {
-      alert("Please enter a custom rate.");
-      return;
+    if (rateOption === "custom") {
+      if (customRate.trim() === "" || customDuration.trim() === "") {
+        alert("Please enter both a custom rate and a call duration.");
+        return;
+      }
+
+      if (Number.isNaN(durationMinutes) || durationMinutes <= 0) {
+        alert("Please enter a valid call duration in minutes.");
+        return;
+      }
+
+      if (durationMinutes > 180) {
+        alert("Call duration cannot be more than 180 minutes.");
+        return;
+      }
     }
 
     if (Number.isNaN(amount) || amount < 0) {
@@ -254,6 +291,7 @@ export default function GoLivePage() {
       .from("profiles")
       .update({
         private_call_rate: amount,
+        private_call_duration_minutes: amount > 0 ? durationMinutes : 0,
         call_availability_enabled: availabilityEnabled,
         call_available_from: availabilityEnabled ? availableFrom : null,
         call_available_until: availabilityEnabled ? availableUntil : null,
@@ -268,6 +306,7 @@ export default function GoLivePage() {
     }
 
     setSavedRate(amount);
+    setSavedDuration(amount > 0 ? durationMinutes : 0);
     setRateSavedJustNow(true);
     setTimeout(() => setRateSavedJustNow(false), 2500);
   }
@@ -346,7 +385,7 @@ export default function GoLivePage() {
 
               {savedRate > 0 && (
                 <p className="mt-3 text-sm font-bold text-green-400">
-                  Current rate: ${savedRate.toFixed(2)}
+                  Current package: ${savedRate.toFixed(2)} for {savedDuration} min
                 </p>
               )}
               {savedRate === 0 && !loadingRate && (
@@ -361,35 +400,59 @@ export default function GoLivePage() {
             ) : (
               <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
                 <label className="mb-2 block text-sm font-black text-red-300">
-                  Your rate
+                  Your call package
                 </label>
 
                 <select
                   value={rateOption}
                   onChange={(e) => {
                     setRateOption(e.target.value);
-                    if (e.target.value !== "custom") setCustomRate("");
+                    if (e.target.value !== "custom") {
+                      setCustomRate("");
+                      setCustomDuration("");
+                    }
                   }}
                   className="w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
                 >
                   <option value="0">Free</option>
-                  <option value="1">$1 Fan</option>
-                  <option value="3">$3 Premium</option>
-                  <option value="5">$5 VIP</option>
-                  <option value="10">$10 Creator Pro</option>
+                  <option value="1">$1 — 5 minutes</option>
+                  <option value="5">$5 — 30 minutes</option>
+                  <option value="10">$10 — 90 minutes</option>
                   <option value="custom">Custom</option>
                 </select>
 
                 {rateOption === "custom" && (
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={customRate}
-                    onChange={(e) => setCustomRate(e.target.value)}
-                    placeholder="Enter amount"
-                    className="mt-3 w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
-                  />
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                        Amount ($)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={customRate}
+                        onChange={(e) => setCustomRate(e.target.value)}
+                        placeholder="e.g. 7"
+                        className="w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                        Minutes
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="180"
+                        value={customDuration}
+                        onChange={(e) => setCustomDuration(e.target.value)}
+                        placeholder="e.g. 45"
+                        className="w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
+                      />
+                    </div>
+                  </div>
                 )}
 
                 <div className="mt-5 rounded-2xl border border-gray-800 bg-black p-4">
