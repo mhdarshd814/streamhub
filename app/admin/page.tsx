@@ -290,6 +290,13 @@ export default function AdminHomePage() {
         "Review creator withdrawal requests, approve payouts, reject invalid requests, and mark completed payouts as paid.",
     },
     {
+      href: "/admin/topups",
+      icon: "💰",
+      title: "Top-Up Requests",
+      description:
+        "Review wallet top-up requests with payment proof, approve to credit the user's wallet, or reject invalid requests.",
+    },
+    {
       href: "/admin/audit",
       icon: "🧾",
       title: "Audit Log",
