@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 type AdminStats = {
+  pendingTopups: number;
   totalUsers: number;
   verifiedCreators: number;
   pendingVerifications: number;
@@ -55,6 +55,7 @@ export default function AdminHomePage() {
     totalUsers: 0,
     verifiedCreators: 0,
     pendingVerifications: 0,
+    pendingTopups: 0,
     liveStreams: 0,
     adminBroadcasts: 0,
     liveAdminBroadcasts: 0,
@@ -114,6 +115,7 @@ export default function AdminHomePage() {
       chatResult,
       auditResult,
       payoutResult,
+      topupResult,
       activeSubsResult,
       cancelledSubsResult,
       activeSubsDataResult,
@@ -131,6 +133,7 @@ export default function AdminHomePage() {
       supabase.from("stream_chat").select("id", { count: "exact", head: true }),
       supabase.from("admin_audit_logs").select("id", { count: "exact", head: true }),
       supabase.from("creator_payout_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("wallet_topup_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
       supabase.from("creator_subscriptions").select("id", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("creator_subscriptions").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
       supabase
@@ -207,6 +210,7 @@ export default function AdminHomePage() {
       recentChatMessages: chatResult.count || 0,
       auditLogs: auditResult.count || 0,
       payoutRequests: payoutResult.count || 0,
+      pendingTopups: topupResult.count || 0,
       activeSubscriptions,
       cancelledSubscriptions,
       estimatedSubscriptionRevenue,
@@ -219,6 +223,7 @@ export default function AdminHomePage() {
     { label: "Users", value: stats.totalUsers, color: "text-white" },
     { label: "Verified", value: stats.verifiedCreators, color: "text-blue-400" },
     { label: "Verify Req.", value: stats.pendingVerifications, color: "text-cyan-400" },
+    { label: "Top-Ups", value: stats.pendingTopups, color: "text-green-400" },
     { label: "Live", value: stats.liveStreams, color: "text-green-500" },
     { label: "Broadcasts", value: stats.adminBroadcasts, color: "text-red-400" },
     { label: "Live Bcasts", value: stats.liveAdminBroadcasts, color: "text-red-500" },
@@ -473,14 +478,12 @@ export default function AdminHomePage() {
                   className="rounded-2xl border border-yellow-500/20 bg-black/40 p-4 transition hover:border-yellow-400 hover:bg-yellow-500/10"
                 >
                   <div className="mb-3 flex items-center gap-3">
-                    <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-800">
                       {creator.profile?.avatar_url ? (
-                        <Image
+                        <img
                           src={creator.profile.avatar_url}
                           alt={creator.profile.username || "Creator"}
-                          fill
-                          sizes="40px"
-                          className="object-cover"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
                         "👤"
