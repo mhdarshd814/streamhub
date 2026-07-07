@@ -99,6 +99,46 @@ export default function WatchPage() {
   const [reportDetails, setReportDetails] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
+  async function submitReport() {
+    if (reportSubmitting || !stream?.id) return;
+
+    if (!reportReason) {
+      alert("Please select a reason for this report.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setReportSubmitting(true);
+
+    const { error } = await supabase.from("stream_reports").insert({
+      stream_id: stream.id,
+      reporter_id: user.id,
+      reason: reportReason,
+      details: reportDetails.trim() || null,
+      status: "pending",
+    });
+
+    setReportSubmitting(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setReportOpen(false);
+    setReportReason("");
+    setReportDetails("");
+    alert("Report submitted. Thank you — our team will review this.");
+  }
+
   const [tipOpen, setTipOpen] = useState(false);
   const [selectedTipAmount, setSelectedTipAmount] = useState<number | "custom">(
     10
@@ -2090,6 +2130,15 @@ export default function WatchPage() {
                   />
                 )}
 
+                {stream?.user_id && currentUserId !== stream.user_id && (
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
+                  >
+                    Report
+                  </button>
+                )}
+
                 <button
                   onClick={closeViewerFullscreen}
                   className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
@@ -2098,6 +2147,65 @@ export default function WatchPage() {
                 </button>
               </div>
             </div>
+
+            {reportOpen && (
+              <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/70 p-4">
+                <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-gray-950 p-5">
+                  <h3 className="mb-1 text-lg font-black text-white">Report this stream</h3>
+                  <p className="mb-4 text-sm text-gray-400">
+                    Our team will review this. Reports are anonymous to the creator.
+                  </p>
+
+                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                    Reason
+                  </label>
+                  <select
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="mb-3 w-full rounded-xl border border-gray-800 bg-black p-3 text-white outline-none focus:border-red-500"
+                  >
+                    <option value="">Select a reason</option>
+                    <option value="Nudity or sexual content">Nudity or sexual content</option>
+                    <option value="Harassment or bullying">Harassment or bullying</option>
+                    <option value="Violence or dangerous acts">Violence or dangerous acts</option>
+                    <option value="Hate speech">Hate speech</option>
+                    <option value="Spam or scam">Spam or scam</option>
+                    <option value="Underage user">Underage user</option>
+                    <option value="Other">Other</option>
+                  </select>
+
+                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                    Additional details (optional)
+                  </label>
+                  <textarea
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    placeholder="Anything else we should know?"
+                    className="mb-4 h-20 w-full resize-none rounded-xl border border-gray-800 bg-black p-3 text-sm text-white outline-none focus:border-red-500"
+                  />
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setReportOpen(false);
+                        setReportReason("");
+                        setReportDetails("");
+                      }}
+                      className="flex-1 rounded-full bg-gray-800 px-4 py-3 text-sm font-bold text-white hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitReport}
+                      disabled={reportSubmitting}
+                      className="flex-1 rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-500 disabled:bg-gray-700"
+                    >
+                      {reportSubmitting ? "Submitting..." : "Submit Report"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
