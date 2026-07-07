@@ -8,6 +8,7 @@ import { KeepAwake } from "@capacitor-community/keep-awake";
 import { startAttendanceSession, endAttendanceSession } from "../../../lib/attendance";
 
 type Stream = {
+  call_type?: "video" | "audio" | null;
   id: string;
   title: string;
   category: string;
@@ -2967,6 +2968,61 @@ let receiverPrivateCallChannel: any;
     }
 
     await loadGuestInvites();
+  }
+
+  // Audio-only calls: a lightweight screen instead of the full video
+  // room. Reuses the exact same room/mute/stop logic already built and
+  // hardened tonight - only what's SHOWN changes, nothing about the
+  // underlying connection, billing, or call-state handling.
+  if (stream && stream.call_type === "audio" && stream.visibility === "private") {
+    const audioCallConnected = !!room;
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-between bg-gradient-to-b from-zinc-950 to-black px-6 py-16 text-white">
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.35em] text-white/40">
+            Private Audio Call
+          </p>
+
+          <div className="relative mb-8">
+            {audioCallConnected && (
+              <span className="absolute inset-0 -m-4 animate-ping rounded-full bg-red-600/15" />
+            )}
+            <div className="relative flex h-32 w-32 items-center justify-center rounded-full border-2 border-white/15 bg-zinc-900 text-6xl">
+              🎧
+            </div>
+          </div>
+
+          <h1 className="mb-2 text-2xl font-black">
+            {stream.title || "Private Call"}
+          </h1>
+
+          <p className="text-sm font-semibold text-white/50">
+            {audioCallConnected ? "Connected" : statusText || "Connecting..."}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-6 pb-6">
+          <button
+            onClick={toggleMic}
+            className={`flex h-16 w-16 items-center justify-center rounded-full text-2xl transition ${
+              micOn ? "bg-white/10 hover:bg-white/15" : "bg-white text-black"
+            }`}
+            aria-label={micOn ? "Mute" : "Unmute"}
+          >
+            {micOn ? "🎙️" : "🔇"}
+          </button>
+
+          <button
+            onClick={stopLiveStream}
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-2xl hover:bg-red-500"
+            aria-label="End call"
+          >
+            📞
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!stream || role === "loading") {
