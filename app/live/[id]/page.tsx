@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import { Room, RoomEvent, Track } from "livekit-client";
 import { supabase } from "../../../lib/supabase";
 import { KeepAwake } from "@capacitor-community/keep-awake";
@@ -3068,11 +3067,9 @@ let receiverPrivateCallChannel: any;
               className="overflow-hidden rounded-2xl border border-white/15 bg-black/65 text-white shadow-2xl backdrop-blur-md"
             >
               <div className="flex h-[78px] items-center justify-center bg-white/[0.04] px-2 pt-2 sm:h-[92px]">
-                <Image
+                <img
                   src={request.profiles?.avatar_url || "/default-avatar.png"}
                   alt={requesterName}
-                  width={56}
-                  height={56}
                   className="h-12 w-12 rounded-full border border-white/20 object-cover sm:h-14 sm:w-14"
                 />
               </div>
@@ -3512,7 +3509,7 @@ let receiverPrivateCallChannel: any;
                         )}
                       </div>
                     ) : focusedVideo === "local" ? (
-                      <>
+                      <div className="relative h-full w-full">
                         <div
                           onClick={() => setFocusedVideo("local")}
                           className="relative h-full w-full overflow-hidden rounded-2xl bg-gray-950"
@@ -3556,9 +3553,9 @@ let receiverPrivateCallChannel: any;
                             Waiting
                           </div>
                         )}
-                      </>
+                      </div>
                     ) : (
-                      <>
+                      <div className="relative h-full w-full">
                         {focusedRemoteVideo ? (
                           <RemoteVideoTile
                             track={focusedRemoteVideo.track}
@@ -3617,7 +3614,7 @@ let receiverPrivateCallChannel: any;
                               ))}
                           </div>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
 
@@ -3867,11 +3864,9 @@ let receiverPrivateCallChannel: any;
                             className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
                           >
                             <div className="flex min-w-0 items-center gap-3">
-                              <Image
+                              <img
                                 src={request.profiles?.avatar_url || "/default-avatar.png"}
                                 alt={requesterName}
-                                width={48}
-                                height={48}
                                 className="h-12 w-12 shrink-0 rounded-full object-cover"
                               />
 
@@ -3959,13 +3954,11 @@ let receiverPrivateCallChannel: any;
                               className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-gray-900 p-3 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <div className="flex min-w-0 items-center gap-3">
-                                <Image
+                                <img
                                   src={
                                     profile.avatar_url || "/default-avatar.png"
                                   }
                                   alt={profile.username || "Creator"}
-                                  width={44}
-                                  height={44}
                                   className="h-11 w-11 shrink-0 rounded-full object-cover"
                                 />
 
@@ -4015,14 +4008,12 @@ let receiverPrivateCallChannel: any;
                           className="flex flex-col gap-3 rounded-xl border border-gray-700 bg-gray-800 p-4 sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            <Image
+                            <img
                               src={
                                 invite.profiles?.avatar_url ||
                                 "/default-avatar.png"
                               }
                               alt="Guest"
-                              width={44}
-                              height={44}
                               className="h-11 w-11 shrink-0 rounded-full object-cover"
                             />
 
