@@ -32,6 +32,10 @@ export default function GoLivePage() {
   const [savingRate, setSavingRate] = useState(false);
   const [rateSavedJustNow, setRateSavedJustNow] = useState(false);
 
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(false);
+  const [availableFrom, setAvailableFrom] = useState("18:00");
+  const [availableUntil, setAvailableUntil] = useState("22:00");
+
   useEffect(() => {
     checkAccess();
   }, []);
@@ -48,7 +52,9 @@ export default function GoLivePage() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("is_banned, private_call_rate")
+      .select(
+        "is_banned, private_call_rate, call_availability_enabled, call_available_from, call_available_until"
+      )
       .eq("id", user.id)
       .maybeSingle();
 
@@ -74,6 +80,16 @@ export default function GoLivePage() {
     } else if (rate > 0) {
       setRateOption("custom");
       setCustomRate(String(rate));
+    }
+
+    setAvailabilityEnabled(!!data?.call_availability_enabled);
+    // Postgres `time` columns come back as "HH:MM:SS" - trim to "HH:MM"
+    // for the <input type="time"> fields.
+    if (data?.call_available_from) {
+      setAvailableFrom(String(data.call_available_from).slice(0, 5));
+    }
+    if (data?.call_available_until) {
+      setAvailableUntil(String(data.call_available_until).slice(0, 5));
     }
 
     setCheckingAccess(false);
@@ -226,12 +242,22 @@ export default function GoLivePage() {
       return;
     }
 
+    if (availabilityEnabled && (!availableFrom || !availableUntil)) {
+      alert("Please set both a start and end time for your availability window.");
+      return;
+    }
+
     setSavingRate(true);
     setRateSavedJustNow(false);
 
     const { error } = await supabase
       .from("profiles")
-      .update({ private_call_rate: amount })
+      .update({
+        private_call_rate: amount,
+        call_availability_enabled: availabilityEnabled,
+        call_available_from: availabilityEnabled ? availableFrom : null,
+        call_available_until: availabilityEnabled ? availableUntil : null,
+      })
       .eq("id", currentUserId);
 
     setSavingRate(false);
@@ -365,6 +391,70 @@ export default function GoLivePage() {
                     className="mt-3 w-full rounded-xl border border-red-500/20 bg-black p-3 text-white outline-none focus:border-red-500"
                   />
                 )}
+
+                <div className="mt-5 rounded-2xl border border-gray-800 bg-black p-4">
+                  <label className="flex cursor-pointer items-center justify-between">
+                    <span>
+                      <span className="block text-sm font-black text-white">
+                        Availability Hours
+                      </span>
+                      <span className="mt-0.5 block text-xs text-gray-400">
+                        Only allow calls during set hours. Off means always available.
+                      </span>
+                    </span>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={availabilityEnabled}
+                      onClick={() => setAvailabilityEnabled((current) => !current)}
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+                        availabilityEnabled ? "bg-red-600" : "bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${
+                          availabilityEnabled ? "left-6" : "left-1"
+                        }`}
+                      />
+                    </button>
+                  </label>
+
+                  {availabilityEnabled && (
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                          From
+                        </label>
+                        <input
+                          type="time"
+                          value={availableFrom}
+                          onChange={(e) => setAvailableFrom(e.target.value)}
+                          className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 text-white outline-none focus:border-red-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                          Until
+                        </label>
+                        <input
+                          type="time"
+                          value={availableUntil}
+                          onChange={(e) => setAvailableUntil(e.target.value)}
+                          className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 text-white outline-none focus:border-red-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {availabilityEnabled && (
+                    <p className="mt-3 text-xs leading-5 text-gray-500">
+                      Times are in UTC. A window like 22:00–02:00 correctly
+                      spans past midnight.
+                    </p>
+                  )}
+                </div>
 
                 <button
                   type="button"
