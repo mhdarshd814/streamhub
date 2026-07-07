@@ -95,6 +95,36 @@ export default function LiveRoomPage() {
 
   const [stream, setStream] = useState<Stream | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
+  const smallTileRef = useRef<HTMLDivElement | null>(null);
+
+  // Runtime correction for the floating small video tile: instead of
+  // guessing at CSS, measure its ACTUAL rendered position on this real
+  // device and pull it back inside the screen if it's overflowing -
+  // works regardless of whatever is causing the miscalculation.
+  useEffect(() => {
+    function fixTilePosition() {
+      const el = smallTileRef.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const screenWidth = window.innerWidth;
+      const overflowRight = rect.right - screenWidth;
+
+      if (overflowRight > 0) {
+        const currentLeft = rect.left;
+        el.style.left = `${currentLeft - overflowRight - 16}px`;
+        el.style.right = "auto";
+      }
+    }
+
+    const interval = setInterval(fixTilePosition, 500);
+    window.addEventListener("resize", fixTilePosition);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("resize", fixTilePosition);
+    };
+  });
   const [isLive, setIsLive] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [likes, setLikes] = useState(0);
@@ -3534,6 +3564,7 @@ let receiverPrivateCallChannel: any;
 
                         {visibleRemoteVideos.length > 0 ? (
                           <div
+                            ref={smallTileRef}
                             className="absolute bottom-4 right-4 flex gap-2 overflow-x-auto rounded-3xl bg-black/20 p-1 backdrop-blur"
                             style={{ maxWidth: "calc(100vw - 2rem)" }}
                           >
@@ -3553,6 +3584,7 @@ let receiverPrivateCallChannel: any;
                           </div>
                         ) : (
                           <div
+                            ref={smallTileRef}
                             className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32"
                             style={{ maxWidth: "calc(100vw - 2rem)" }}
                           >
@@ -3580,6 +3612,7 @@ let receiverPrivateCallChannel: any;
                         )}
 
                         <div
+                          ref={smallTileRef}
                           onClick={() => setFocusedVideo("local")}
                           className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36"
                           style={{ maxWidth: "calc(100vw - 2rem)" }}
