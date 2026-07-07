@@ -92,12 +92,12 @@ export default function NewConversationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-[rgba(17,24,39,0.97)] border border-[rgba(127,29,29,0.45)] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <h2 className="text-white font-semibold">New message</h2>
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-hairline-strong bg-surface">
+        <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+          <h2 className="font-semibold text-white">New message</h2>
           <button
             onClick={onClose}
-            className="text-white/50 hover:text-white text-lg leading-none"
+            className="text-lg leading-none text-muted hover:text-white"
           >
             ✕
           </button>
@@ -108,17 +108,17 @@ export default function NewConversationModal({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search people you follow..."
-            className="w-full rounded-full bg-black/40 border border-white/10 px-4 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-[#dc2626]"
+            className="w-full rounded-full border border-hairline bg-canvas/40 px-4 py-2 text-sm text-white placeholder-faint outline-none focus:border-accent"
           />
         </div>
 
         <div className="max-h-80 overflow-y-auto">
           {loading && (
-            <p className="text-white/50 text-sm text-center py-6">Loading...</p>
+            <p className="py-6 text-center text-sm text-muted">Loading...</p>
           )}
 
           {!loading && filtered.length === 0 && (
-            <p className="text-white/50 text-sm text-center py-6 px-4">
+            <p className="px-4 py-6 text-center text-sm text-muted">
               Follow people to start messaging them, or search didn&apos;t match anyone.
             </p>
           )}
@@ -131,7 +131,7 @@ export default function NewConversationModal({
                   key={profile.id}
                   onClick={() => handleSelect(profile.id)}
                   disabled={startingId === profile.id}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors disabled:opacity-50"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-raised disabled:opacity-50"
                 >
                   {profile.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -141,11 +141,11 @@ export default function NewConversationModal({
                       className="h-10 w-10 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-[rgba(127,29,29,0.45)] flex items-center justify-center text-white font-semibold">
+                    <div className="avatar h-10 w-10 font-semibold text-white">
                       {name.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-[#ededed] text-sm font-medium">
+                  <span className="text-sm font-medium text-white">
                     {startingId === profile.id ? "Starting..." : name}
                   </span>
                 </button>

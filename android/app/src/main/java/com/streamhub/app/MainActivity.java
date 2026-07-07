@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Window;
 import android.view.WindowInsetsController;
+import android.content.pm.ApplicationInfo;
 import android.webkit.WebView;
 
 import androidx.core.view.WindowCompat;
@@ -24,6 +25,18 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Only enabled when the installed APK is debuggable - never exposes
+        // WebView debugging (chrome://inspect) on the public Play Store
+        // release. Uses the app's own debuggable flag instead of
+        // BuildConfig, which some Android Gradle Plugin versions don't
+        // auto-generate unless explicitly enabled in build.gradle.
+        boolean isDebuggable =
+                (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+
+        if (isDebuggable) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
 
         maybeRequestFullScreenIntentPermission();
 

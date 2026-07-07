@@ -7,13 +7,96 @@
   --streamhub-red-soft: rgba(220, 38, 38, 0.18);
   --streamhub-panel: rgba(17, 24, 39, 0.92);
   --streamhub-border: rgba(127, 29, 29, 0.45);
+
+  /* =====================================================
+     DESIGN TOKENS — primitive layer
+     "Red/Black Classic": the original StreamHub look
+     (near-black gray-900/800 surfaces, single red brand
+     ramp) restored through the token architecture instead
+     of scattered hardcoded Tailwind colors. Accent (CTAs)
+     and live (on-air badges) are deliberately the same red
+     family, one shade apart, so they read as related, not
+     competing, colors.
+  ===================================================== */
+  --ink-100: #f3f4f6;
+  --ink-200: #e5e7eb;
+  --ink-300: #9ca3af;
+  --ink-400: #6b7280;
+  --ink-500: #4b5563;
+  --ink-600: #374151;
+  --ink-700: #1f2937;
+  --ink-800: #111827;
+  --ink-900: #030712;
+  --ink-950: #000000;
+
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+  --red-800: #991b1b;
+
+  --emerald-500: #10b981;
+  --amber-500: #f59e0b;
+  --blue-500: #3b82f6;
+}
+
+/* Fonts are NOT declared in "@theme inline" below: next/font's
+   --font-inter/--font-space-grotesk only exist via a CSS-Modules-
+   scoped class on <html> at runtime, so the "inline" build-time
+   resolver can't see them and silently drops the var() reference
+   wherever it's used (confirmed by inspecting the compiled body{}
+   rule — the var(--font-sans) segment vanished, leaving only the
+   Arial fallback). A plain @theme block keeps this as a real
+   runtime var() chain instead of a build-time inline substitution. */
+@theme {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* =====================================================
+     DESIGN TOKENS — semantic layer
+     What components actually reference. Point directly at
+     primitives (never at another semantic token's own name) —
+     a self-referencing custom property is invalid and silently
+     resolves to transparent/initial.
+  ===================================================== */
+  --color-canvas: #000000;
+  --color-surface: var(--ink-800);
+  --color-surface-raised: var(--ink-700);
+
+  --color-hairline: rgba(255, 255, 255, 0.08);
+  --color-hairline-strong: rgba(255, 255, 255, 0.16);
+
+  --color-muted: var(--ink-300);
+  --color-faint: var(--ink-400);
+
+  --color-accent: var(--red-600);
+  --color-accent-hover: var(--red-700);
+  --color-accent-active: var(--red-800);
+  --color-accent-soft: rgba(220, 38, 38, 0.14);
+
+  --color-live: var(--red-500);
+  --color-live-soft: rgba(239, 68, 68, 0.16);
+
+  --color-danger: var(--red-600);
+  --color-danger-hover: var(--red-700);
+  --color-danger-soft: rgba(220, 38, 38, 0.14);
+
+  --color-success: var(--emerald-500);
+  --color-success-soft: rgba(16, 185, 129, 0.14);
+
+  --color-warning: var(--amber-500);
+  --color-warning-soft: rgba(245, 158, 11, 0.14);
+
+  --color-info: var(--blue-500);
+  --color-info-soft: rgba(59, 130, 246, 0.14);
+
+  --shadow-glow-accent: 0 4px 14px -4px rgba(220, 38, 38, 0.35);
+  --shadow-glow-live: 0 0 0 1px rgba(239, 68, 68, 0.35), 0 0 16px rgba(239, 68, 68, 0.55);
 }
 
 /* =====================================================
@@ -38,7 +121,7 @@ body {
     radial-gradient(circle at top, rgba(127, 29, 29, 0.18), transparent 34rem),
     #000000;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: none;
 }
@@ -59,7 +142,8 @@ button {
     border-color 160ms ease,
     color 160ms ease,
     opacity 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    filter 160ms ease;
 }
 
 button:active {
@@ -71,6 +155,264 @@ video {
   max-width: 100%;
   height: auto;
 }
+
+/* =====================================================
+   COMPONENT CLASSES
+   Shared building blocks — prefer these over one-off
+   Tailwind color utilities when styling new UI. Layered
+   under "components" so utility classes (e.g. `py-4` next
+   to `btn-primary`) still win, matching Tailwind's own
+   components-then-utilities cascade order.
+===================================================== */
+
+@layer components {
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid var(--color-hairline);
+  background-color: var(--color-surface);
+}
+
+.card-section {
+  border-radius: 1rem;
+  border: 1px solid var(--color-hairline);
+  background-color: var(--color-surface);
+  padding: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .card-section {
+    padding: 1.5rem;
+  }
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: var(--color-accent);
+}
+
+.avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: var(--color-surface-raised);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  background-color: var(--color-accent);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.btn-primary:active {
+  background-color: var(--color-accent-active);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  border: 1px solid var(--color-hairline);
+  background-color: var(--color-surface-raised);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-hairline-strong);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  background-color: var(--color-danger);
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-hover);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.btn-ghost:hover {
+  background-color: var(--color-surface);
+  color: white;
+}
+
+.btn-ghost:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-hairline);
+  background-color: var(--color-canvas);
+  padding: 0.75rem 1rem;
+  color: white;
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: var(--color-faint);
+}
+
+.input-field:focus {
+  border-color: var(--color-accent);
+}
+
+.badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.badge-live {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background-color: var(--color-live-soft);
+  color: var(--color-live);
+  box-shadow: var(--shadow-glow-live);
+}
+
+.badge-success {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.badge-warning {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.badge-danger {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.badge-neutral {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: var(--color-surface-raised);
+  color: var(--color-muted);
+}
+
+} /* end @layer components */
 
 /* =====================================================
    APP-WIDE ANIMATION

@@ -484,18 +484,18 @@ export default function IncomingCallPopup() {
       {audioElement}
 
       {/* Full-screen takeover: the ONLY in-app ringing UI (Phase A1) */}
-      <div className="fixed inset-0 z-[99998] flex flex-col bg-gradient-to-b from-zinc-950 via-zinc-950 to-red-950/60 text-white">
+      <div className="fixed inset-0 z-[99998] flex flex-col bg-gradient-to-b from-canvas via-canvas to-live/12 text-white">
         {/* Top: context */}
         <div className="flex flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)]">
-          <p className="text-xs font-bold uppercase tracking-[0.35em] text-white/50">
+          <p className="text-xs font-bold uppercase tracking-[0.35em] text-muted">
             Incoming private call
           </p>
 
           <span
             className={`mt-3 rounded-full px-4 py-1.5 text-xs font-black ${
               price > 0
-                ? "bg-red-600/20 text-red-300 ring-1 ring-red-500/40"
-                : "bg-white/10 text-white/70 ring-1 ring-white/15"
+                ? "bg-accent-soft text-accent ring-1 ring-accent/40"
+                : "bg-surface-raised text-muted ring-1 ring-hairline"
             }`}
           >
             {price > 0 ? `$${price.toFixed(2)} per call` : "Free call"}
@@ -505,9 +505,9 @@ export default function IncomingCallPopup() {
         {/* Center: caller identity */}
         <div className="flex flex-1 flex-col items-center justify-center px-6">
           <div className="relative">
-            <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-red-600/20" />
-            <span className="absolute inset-0 -m-1.5 rounded-full bg-red-600/25" />
-            <div className="relative flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-4 border-white/20 bg-zinc-900 text-6xl shadow-2xl">
+            <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-live/20" />
+            <span className="absolute inset-0 -m-1.5 rounded-full bg-live/25" />
+            <div className="avatar relative h-36 w-36 border-4 border-hairline-strong text-6xl shadow-2xl">
               {call.caller?.avatar_url ? (
                 <img
                   src={call.caller.avatar_url}
@@ -520,18 +520,18 @@ export default function IncomingCallPopup() {
             </div>
           </div>
 
-          <h2 className="mt-8 max-w-full truncate px-4 text-center text-3xl font-black">
+          <h2 className="font-display mt-8 max-w-full truncate px-4 text-center text-3xl font-black">
             {callerName}
           </h2>
 
-          <p className="mt-2 max-w-full truncate px-4 text-center text-sm font-semibold text-white/60">
+          <p className="mt-2 max-w-full truncate px-4 text-center text-sm font-semibold text-muted">
             {call.stream?.title || "Private video call"}
           </p>
 
           {soundBlocked && (
             <button
               onClick={unlockAndPlayRing}
-              className="mt-6 rounded-full border border-yellow-400/40 bg-yellow-500/10 px-5 py-2.5 text-sm font-bold text-yellow-200 active:bg-yellow-500/25"
+              className="mt-6 rounded-full border border-warning/40 bg-warning-soft px-5 py-2.5 text-sm font-bold text-warning active:bg-warning/25"
             >
               🔊 Tap to enable ringtone
             </button>
@@ -545,7 +545,7 @@ export default function IncomingCallPopup() {
               onClick={() => call && declineCallFor(call, false)}
               disabled={loadingAction}
               aria-label="Decline call"
-              className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-red-600 shadow-lg shadow-red-900/50 transition-transform active:scale-90 disabled:bg-zinc-700"
+              className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-danger shadow-lg shadow-danger/40 transition-transform active:scale-90 disabled:bg-surface-raised"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -555,7 +555,7 @@ export default function IncomingCallPopup() {
                 <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.24.2 2.45.57 3.57a1 1 0 0 1-.24 1.02l-2.21 2.2z" />
               </svg>
             </button>
-            <span className="text-xs font-bold text-white/60">Decline</span>
+            <span className="text-xs font-bold text-muted">Decline</span>
           </div>
 
           <div className="flex flex-col items-center gap-3">
@@ -563,7 +563,7 @@ export default function IncomingCallPopup() {
               onClick={() => call && acceptCallFor(call)}
               disabled={loadingAction}
               aria-label={price > 0 ? `Accept and pay $${price.toFixed(2)}` : "Accept call"}
-              className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-green-600 shadow-lg shadow-green-900/50 transition-transform active:scale-90 disabled:bg-zinc-700"
+              className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-success shadow-lg shadow-success/40 transition-transform active:scale-90 disabled:bg-surface-raised"
             >
               {loadingAction ? (
                 <span className="h-7 w-7 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
@@ -573,7 +573,7 @@ export default function IncomingCallPopup() {
                 </svg>
               )}
             </button>
-            <span className="text-xs font-bold text-white/60">
+            <span className="text-xs font-bold text-muted">
               {loadingAction ? "Opening..." : price > 0 ? `Accept · $${price.toFixed(2)}` : "Accept"}
             </span>
           </div>

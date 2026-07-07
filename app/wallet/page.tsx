@@ -312,42 +312,36 @@ export default function WalletPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black px-4 py-6 text-white">
-        <p className="text-gray-400">Loading wallet...</p>
+      <main className="min-h-screen bg-canvas px-4 py-6 text-white">
+        <p className="text-muted">Loading wallet...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 pb-32 pt-5 text-white sm:px-6 lg:px-8 lg:pb-10 lg:pt-10">
+    <main className="min-h-screen bg-canvas px-4 pb-32 pt-5 text-white sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="mb-2 text-sm font-semibold text-red-400">
+            <p className="eyebrow mb-1.5">
               Creator Wallet
             </p>
 
-            <h1 className="text-3xl font-black sm:text-5xl">
-              Earnings <span className="text-red-500">Wallet</span>
+            <h1 className="font-display text-2xl font-black sm:text-3xl">
+              Earnings <span className="text-accent">Wallet</span>
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Mobile-first wallet with balance, payouts, tips and private call earnings.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={loadWallet}
-              className="rounded-xl bg-gray-800 px-5 py-3 text-sm font-bold hover:bg-gray-700"
-            >
+            <button onClick={loadWallet} className="btn-secondary">
               Refresh
             </button>
 
-            <Link
-              href="/dashboard"
-              className="rounded-xl bg-gray-800 px-5 py-3 text-center text-sm font-bold hover:bg-gray-700"
-            >
+            <Link href="/dashboard" className="btn-secondary text-center">
               Dashboard
             </Link>
           </div>
@@ -357,25 +351,25 @@ export default function WalletPage() {
           <Stat
             label="Available"
             value={`$${formatMoney(wallet?.available_balance_usd || 0)}`}
-            color="text-green-400"
+            color="text-success"
           />
 
           <Stat
             label="Pending"
             value={`$${formatMoney(wallet?.pending_balance_usd || 0)}`}
-            color="text-yellow-400"
+            color="text-warning"
           />
 
           <Stat
             label="Lifetime"
             value={`$${formatMoney(wallet?.lifetime_earnings_usd || 0)}`}
-            color="text-red-400"
+            color="text-accent"
           />
 
           <Stat
             label="Withdrawn"
             value={`$${formatMoney(stats.totalWithdrawn)}`}
-            color="text-purple-300"
+            color="text-info"
           />
         </div>
 
@@ -386,16 +380,16 @@ export default function WalletPage() {
           <MiniStat label="Pending Payouts" value={`$${formatMoney(stats.pendingWithdrawal)}`} />
         </div>
 
-        <section className="mb-8 rounded-2xl border border-green-500/20 bg-green-500/10 p-5 sm:p-6">
-          <h2 className="mb-2 text-2xl font-black">Add Funds</h2>
+        <section className="mb-8 rounded-2xl border border-success/20 bg-success-soft p-5 sm:p-6">
+          <h2 className="font-display mb-1.5 text-xl font-black">Add Funds</h2>
 
-          <p className="mb-5 text-sm leading-6 text-gray-400">
+          <p className="mb-4 text-sm leading-6 text-muted">
             Send payment externally (bank transfer, crypto, etc.), then submit
             a request below with proof of payment. Our team will review and
             credit your wallet.
           </p>
 
-          <label className="mb-2 block text-sm font-bold text-gray-300">
+          <label className="mb-2 block text-sm font-bold text-muted">
             Amount USD
           </label>
 
@@ -405,10 +399,10 @@ export default function WalletPage() {
             value={topupAmount}
             onChange={(e) => setTopupAmount(e.target.value)}
             placeholder="Example: 20"
-            className="mb-4 w-full rounded-xl border border-gray-800 bg-black px-4 py-3 text-white outline-none focus:border-green-500"
+            className="mb-4 w-full rounded-xl border border-hairline bg-canvas px-4 py-3 text-white outline-none focus:border-success"
           />
 
-          <label className="mb-2 block text-sm font-bold text-gray-300">
+          <label className="mb-2 block text-sm font-bold text-muted">
             Payment proof / note
           </label>
 
@@ -417,26 +411,26 @@ export default function WalletPage() {
             onChange={(e) => setTopupNote(e.target.value)}
             placeholder="e.g. Bank transfer ref #12345, or crypto tx hash..."
             rows={3}
-            className="mb-5 w-full resize-none rounded-xl border border-gray-800 bg-black px-4 py-3 text-white outline-none focus:border-green-500"
+            className="mb-5 w-full resize-none rounded-xl border border-hairline bg-canvas px-4 py-3 text-white outline-none focus:border-success"
           />
 
           <button
             onClick={submitTopupRequest}
             disabled={topupSubmitting}
-            className="w-full rounded-xl bg-green-600 px-5 py-3 font-bold hover:bg-green-700 disabled:bg-gray-700"
+            className="w-full rounded-xl bg-success px-5 py-3 font-bold hover:opacity-90 disabled:bg-surface-raised disabled:opacity-100"
           >
             {topupSubmitting ? "Submitting..." : "Submit Top-Up Request"}
           </button>
         </section>
 
-        <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
-          <h2 className="mb-2 text-2xl font-black">Request Payout</h2>
+        <section className="card-section mb-8">
+          <h2 className="font-display mb-1.5 text-xl font-black">Request Payout</h2>
 
-          <p className="mb-5 text-sm leading-6 text-gray-400">
+          <p className="mb-4 text-sm leading-6 text-muted">
             Request payout from your available balance.
           </p>
 
-          <label className="mb-2 block text-sm font-bold text-gray-300">
+          <label className="mb-2 block text-sm font-bold text-muted">
             Amount USD
           </label>
 
@@ -446,10 +440,10 @@ export default function WalletPage() {
             value={payoutAmount}
             onChange={(e) => setPayoutAmount(e.target.value)}
             placeholder="Example: 100"
-            className="mb-4 w-full rounded-xl border border-gray-800 bg-black px-4 py-3 text-white outline-none focus:border-red-600"
+            className="input-field mb-4"
           />
 
-          <label className="mb-2 block text-sm font-bold text-gray-300">
+          <label className="mb-2 block text-sm font-bold text-muted">
             Note
           </label>
 
@@ -458,23 +452,23 @@ export default function WalletPage() {
             onChange={(e) => setPayoutNote(e.target.value)}
             placeholder="Optional payout note..."
             rows={3}
-            className="mb-5 w-full resize-none rounded-xl border border-gray-800 bg-black px-4 py-3 text-white outline-none focus:border-red-600"
+            className="input-field mb-5 resize-none"
           />
 
           <button
             onClick={requestPayout}
             disabled={submitting}
-            className="w-full rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700 disabled:bg-gray-700"
+            className="btn-primary w-full"
           >
             {submitting ? "Submitting..." : "Request Payout"}
           </button>
         </section>
 
-        <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
-          <h2 className="mb-4 text-2xl font-black">Private Call Earnings</h2>
+        <section className="mb-8 rounded-2xl border border-info/20 bg-info-soft p-5 sm:p-6">
+          <h2 className="font-display mb-4 text-xl font-black">Private Call Earnings</h2>
 
           {privateCallPayments.length === 0 ? (
-            <p className="rounded-xl border border-purple-500/10 bg-black/30 p-5 text-center text-gray-400">
+            <p className="rounded-xl border border-info/10 bg-canvas/30 p-5 text-center text-muted">
               No paid private calls yet.
             </p>
           ) : (
@@ -488,7 +482,7 @@ export default function WalletPage() {
                 return (
                   <div
                     key={payment.id}
-                    className="rounded-xl border border-purple-500/10 bg-black/30 p-4"
+                    className="rounded-xl border border-info/10 bg-canvas/30 p-4"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
@@ -496,13 +490,13 @@ export default function WalletPage() {
                           {payment.streams?.title || "Private call"}
                         </p>
 
-                        <p className="mt-1 text-sm text-gray-400">
+                        <p className="mt-1 text-sm text-muted">
                           Paid by {callerName} •{" "}
                           {new Date(payment.created_at).toLocaleString()}
                         </p>
                       </div>
 
-                      <p className="text-xl font-black text-purple-300">
+                      <p className="text-xl font-black text-info">
                         USD {formatMoney(payment.amount_usd || 0)}
                       </p>
                     </div>
@@ -513,17 +507,17 @@ export default function WalletPage() {
           )}
         </section>
 
-        <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
-          <h2 className="mb-4 text-2xl font-black">Recent Tips</h2>
+        <section className="card-section mb-8">
+          <h2 className="font-display mb-4 text-xl font-black">Recent Tips</h2>
 
           {tips.length === 0 ? (
-            <p className="text-gray-400">No tips received yet.</p>
+            <p className="text-muted">No tips received yet.</p>
           ) : (
             <div className="space-y-3">
               {tips.map((tip) => (
                 <div
                   key={tip.id}
-                  className="rounded-xl border border-gray-800 bg-black p-4"
+                  className="rounded-xl border border-hairline bg-canvas p-4"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -531,26 +525,26 @@ export default function WalletPage() {
                         {tip.streams?.title || "Stream Tip"}
                       </p>
 
-                      <p className="mt-1 text-sm text-gray-400">
+                      <p className="mt-1 text-sm text-muted">
                         {tip.message || "No message"}
                       </p>
 
-                      <p className="mt-2 text-xs text-gray-500">
+                      <p className="mt-2 text-xs text-faint">
                         {new Date(tip.created_at).toLocaleString()} •{" "}
                         {tip.provider}
                       </p>
                     </div>
 
                     <div className="shrink-0 text-left sm:text-right">
-                      <p className="text-xl font-black text-green-400">
+                      <p className="text-xl font-black text-success">
                         USD {formatMoney(tip.creator_amount_usd || 0)}
                       </p>
 
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-faint">
                         Fee USD {formatMoney(tip.platform_fee_usd || 0)}
                       </p>
 
-                      <span className="mt-2 inline-block rounded-full bg-gray-800 px-3 py-1 text-xs font-bold text-gray-300">
+                      <span className="badge-neutral mt-2">
                         {tip.status}
                       </span>
                     </div>
@@ -561,17 +555,17 @@ export default function WalletPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
-          <h2 className="mb-4 text-2xl font-black">Payout History</h2>
+        <section className="card-section">
+          <h2 className="font-display mb-4 text-xl font-black">Payout History</h2>
 
           {payouts.length === 0 ? (
-            <p className="text-gray-400">No payout requests yet.</p>
+            <p className="text-muted">No payout requests yet.</p>
           ) : (
             <div className="space-y-3">
               {payouts.map((payout) => (
                 <div
                   key={payout.id}
-                  className="rounded-xl border border-gray-800 bg-black p-4"
+                  className="rounded-xl border border-hairline bg-canvas p-4"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -579,17 +573,17 @@ export default function WalletPage() {
                         USD {formatMoney(payout.amount_usd || 0)}
                       </p>
 
-                      <p className="mt-1 text-sm text-gray-400">
+                      <p className="mt-1 text-sm text-muted">
                         {payout.payout_note || "No note"}
                       </p>
 
                       {payout.admin_note && (
-                        <p className="mt-1 text-sm text-yellow-300">
+                        <p className="mt-1 text-sm text-warning">
                           Admin: {payout.admin_note}
                         </p>
                       )}
 
-                      <p className="mt-2 text-xs text-gray-500">
+                      <p className="mt-2 text-xs text-faint">
                         {new Date(payout.created_at).toLocaleString()}
                       </p>
                     </div>
@@ -618,9 +612,9 @@ function Stat({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-      <p className="mb-2 text-sm text-gray-400">{label}</p>
-      <h2 className={`break-words text-2xl font-black sm:text-4xl ${color}`}>
+    <div className="card-section">
+      <p className="mb-2 text-sm text-muted">{label}</p>
+      <h2 className={`font-display break-words text-2xl font-black sm:text-4xl ${color}`}>
         {value}
       </h2>
     </div>
@@ -629,9 +623,9 @@ function Stat({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
-      <p className="mb-2 text-xs text-gray-400 sm:text-sm">{label}</p>
-      <h3 className="break-words text-xl font-black">{value}</h3>
+    <div className="card-section">
+      <p className="mb-2 text-xs text-muted sm:text-sm">{label}</p>
+      <h3 className="font-display break-words text-xl font-black">{value}</h3>
     </div>
   );
 }
@@ -648,14 +642,14 @@ function getPayoutStatusClass(status: string) {
   const safeStatus = String(status || "").toLowerCase();
 
   if (["approved", "paid", "completed", "success", "succeeded"].includes(safeStatus)) {
-    return "w-fit rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400";
+    return "badge-success";
   }
 
   if (["rejected", "declined", "cancelled", "canceled"].includes(safeStatus)) {
-    return "w-fit rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold text-red-400";
+    return "badge-danger";
   }
 
-  return "w-fit rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-400";
+  return "badge-warning";
 }
 
 function formatMoney(value: number) {

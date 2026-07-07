@@ -126,6 +126,24 @@ export default function LiveFeedPage() {
     void loadFeed();
   }, [loadFeed]);
 
+  // TikTok-style edge-to-edge feed: only while the real snap-scroll feed
+  // is showing (not during loading or the empty-state list), escape the
+  // app-shell padding so cards run full-bleed behind the floating bottom
+  // nav. See the "streamhub-feed-mode" CSS block in app/layout.tsx.
+  const showFeed = !loading && items.length > 0;
+
+  useEffect(() => {
+    if (!showFeed) return;
+
+    document.documentElement.classList.add("streamhub-feed-mode");
+    document.body.classList.add("streamhub-feed-mode");
+
+    return () => {
+      document.documentElement.classList.remove("streamhub-feed-mode");
+      document.body.classList.remove("streamhub-feed-mode");
+    };
+  }, [showFeed]);
+
   async function toggleFollow(hostId: string) {
     if (!currentUserId || hostId === currentUserId) return;
 
@@ -158,10 +176,10 @@ export default function LiveFeedPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+      <main className="flex min-h-screen items-center justify-center bg-canvas text-white">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-red-500" />
-          <p className="text-sm text-white/60">Finding what's live...</p>
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-accent" />
+          <p className="text-sm text-muted">Finding what's live...</p>
         </div>
       </main>
     );
@@ -169,33 +187,33 @@ export default function LiveFeedPage() {
 
   if (items.length === 0) {
     return (
-      <main className="min-h-screen bg-black px-5 py-8 text-white">
+      <main className="min-h-screen bg-canvas px-5 py-8 text-white">
         <div className="mx-auto max-w-xl text-center">
           <p className="mb-3 text-6xl">📡</p>
-          <h1 className="mb-2 text-2xl font-black">No one's live right now</h1>
-          <p className="mb-8 text-sm text-gray-400">
+          <h1 className="font-display mb-2 text-2xl font-black">No one's live right now</h1>
+          <p className="mb-8 text-sm text-muted">
             Check back soon, or follow some creators so you never miss when
             they go live.
           </p>
 
           <button
             onClick={() => router.push("/go-live")}
-            className="mb-8 w-full rounded-2xl bg-red-600 py-4 text-lg font-black hover:bg-red-700"
+            className="btn-primary mb-8 w-full py-4 text-lg"
           >
             Go Live Yourself
           </button>
 
           {suggested.length > 0 && (
             <div className="text-left">
-              <h2 className="mb-4 text-lg font-black">Creators to follow</h2>
+              <h2 className="font-display mb-4 text-lg font-black">Creators to follow</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {suggested.map((creator) => (
                   <button
                     key={creator.id}
                     onClick={() => router.push(`/profile/${creator.id}`)}
-                    className="flex items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 p-3 text-left hover:border-red-600"
+                    className="card flex items-center gap-3 p-3 text-left hover:border-accent"
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                    <div className="avatar h-12 w-12">
                       {creator.avatar_url ? (
                         <img
                           src={creator.avatar_url}
@@ -210,7 +228,7 @@ export default function LiveFeedPage() {
                       <p className="truncate text-sm font-bold">
                         {creator.display_name || creator.username || "User"}
                       </p>
-                      <p className="truncate text-xs text-gray-500">
+                      <p className="truncate text-xs text-faint">
                         {creator.followers || 0} followers
                       </p>
                     </div>
@@ -227,7 +245,7 @@ export default function LiveFeedPage() {
   return (
     <div
       ref={containerRef}
-      className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll bg-black"
+      className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll bg-canvas"
       style={{ scrollbarWidth: "none" }}
     >
       {items.map((item) => {
@@ -253,7 +271,7 @@ export default function LiveFeedPage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-gray-900 to-black">
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-surface to-canvas">
                   <span className="text-7xl">📺</span>
                 </div>
               )}
@@ -261,10 +279,11 @@ export default function LiveFeedPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/50" />
             </button>
 
-            {/* LIVE badge + viewer count, top */}
+            {/* LIVE badge + viewer count, top — the top nav is hidden in
+                feed mode, so this just needs the device safe-area inset. */}
             <div className="pointer-events-none absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+1rem)] flex items-center justify-between">
-              <span className="flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black text-white">
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              <span className="badge-live backdrop-blur">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                 LIVE
               </span>
 
@@ -273,15 +292,17 @@ export default function LiveFeedPage() {
               </span>
             </div>
 
-            {/* Host row + tap-to-join hint, bottom */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+            {/* Host row + tap-to-join hint, bottom — padded clear of the
+                floating bottom nav (~76px + safe-area) since content now
+                runs full-bleed behind it instead of the nav pushing layout. */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-[calc(env(safe-area-inset-bottom)+6rem)]">
               <div className="pointer-events-auto flex items-center gap-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     if (item.host?.id) router.push(`/profile/${item.host.id}`);
                   }}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white/40 bg-gray-700"
+                  className="avatar h-12 w-12 border-2 border-white/40"
                 >
                   {item.host?.avatar_url ? (
                     <img
@@ -313,7 +334,7 @@ export default function LiveFeedPage() {
                     className={
                       item.isFollowing
                         ? "shrink-0 rounded-full border border-white/40 bg-black/40 px-4 py-2 text-xs font-black text-white backdrop-blur disabled:opacity-50"
-                        : "shrink-0 rounded-full bg-red-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50"
+                        : "shrink-0 rounded-full bg-accent px-4 py-2 text-xs font-black text-white disabled:opacity-50"
                     }
                   >
                     {followBusyId === item.host?.id

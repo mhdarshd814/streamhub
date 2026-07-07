@@ -321,26 +321,26 @@ export default function Navbar() {
       toast.error("Failed to logout");
     }
   }
-  
+
   return (
     <>
-      <nav className="sticky top-0 z-50 hidden border-b border-red-900/40 bg-gray-950/95 shadow-lg shadow-red-950/20 backdrop-blur-xl xl:block">
+      <nav className="sticky top-0 z-50 hidden border-b border-accent/20 bg-canvas/95 shadow-lg shadow-accent/10 backdrop-blur-xl xl:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <button
             type="button"
             onClick={() => goTo(loggedIn ? "/live-feed" : "/signup")}
             className="flex cursor-pointer items-center gap-3"
           >
-            <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-red-600/30">
+            <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-lg shadow-accent/30">
               <img src="/icon-512.png" alt="StreamHub" className="h-full w-full object-cover" />
             </div>
 
             <div className="text-left leading-none">
-              <h1 className="text-4xl font-black tracking-tight">
+              <h1 className="font-display text-4xl font-black tracking-tight">
                 <span className="text-white">Stream</span>
-                <span className="text-red-500">Hub</span>
+                <span className="text-accent">Hub</span>
               </h1>
-              <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">
+              <p className="mt-1 text-xs uppercase tracking-widest text-muted">
                 Live First
               </p>
             </div>
@@ -351,13 +351,13 @@ export default function Navbar() {
             <DesktopLink label="Discover" href="/explore" goTo={goTo} />
             <DesktopLink label="Dashboard" href="/dashboard" goTo={goTo} />
             <DesktopLink label="Messages" href="/messages" goTo={goTo} badge={unreadMessages} />
-            
+
             {loggedIn ? (
               <>
                 <button
                   type="button"
                   onClick={() => goTo("/go-live")}
-                  className="rounded-xl bg-red-600 px-5 py-3 font-black text-white shadow-lg shadow-red-600/20 hover:bg-red-700"
+                  className="btn-primary"
                 >
                   + Go Live
                 </button>
@@ -371,7 +371,7 @@ export default function Navbar() {
                       setNotificationOpen(!notificationOpen);
                       setMenuOpen(false);
                     }}
-                    className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-800 bg-gray-900 text-xl hover:border-red-600"
+                    className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-hairline bg-surface text-xl hover:border-accent"
                   >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -382,18 +382,18 @@ export default function Navbar() {
                         <path d="M12 2a6 6 0 00-6 6v3.59L4.29 14.3A1 1 0 005 16h14a1 1 0 00.71-1.7L18 11.59V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
                         </svg>
                     {unreadNotifications > 0 && (
-                      <span className="absolute -right-2 -top-2 min-w-[22px] animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+                      <span className="absolute -right-2 -top-2 min-w-[22px] animate-pulse rounded-full bg-accent px-2 py-0.5 text-xs font-black text-white">
                         {unreadNotifications}
                       </span>
                     )}
                   </button>
 
                   {notificationOpen && (
-                    <div className="scale-in absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
-                      <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
+                    <div className="scale-in absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40">
+                      <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
                         <div>
                           <h3 className="font-black text-white">Notifications</h3>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-muted">
                             {unreadNotifications} unread
                           </p>
                         </div>
@@ -402,7 +402,7 @@ export default function Navbar() {
                           <button
                             type="button"
                             onClick={markAllNotificationsRead}
-                            className="text-xs font-bold text-red-400"
+                            className="text-xs font-bold text-accent"
                           >
                             Mark all read
                           </button>
@@ -411,7 +411,7 @@ export default function Navbar() {
 
                       <div className="max-h-96 overflow-auto">
                         {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-gray-400">
+                          <div className="p-6 text-center text-muted">
                             No notifications yet.
                           </div>
                         ) : (
@@ -422,14 +422,14 @@ export default function Navbar() {
                               onClick={() => openNotification(notification)}
                               className={
                                 notification.is_read
-                                  ? "w-full border-b border-gray-800 px-5 py-4 text-left hover:bg-gray-800"
-                                  : "w-full border-b border-gray-800 bg-red-600/10 px-5 py-4 text-left hover:bg-gray-800"
+                                  ? "w-full border-b border-hairline px-5 py-4 text-left hover:bg-surface-raised"
+                                  : "w-full border-b border-hairline bg-accent-soft px-5 py-4 text-left hover:bg-surface-raised"
                               }
                             >
                               <p className="font-bold text-white">
                                 {notification.title}
                               </p>
-                              <p className="mt-1 text-sm text-gray-400">
+                              <p className="mt-1 text-sm text-muted">
                                 {notification.message || "New notification"}
                               </p>
                             </button>
@@ -440,7 +440,7 @@ export default function Navbar() {
                       <button
                         type="button"
                         onClick={() => goTo("/notifications")}
-                        className="w-full bg-gray-950 px-5 py-3 text-sm font-bold text-white hover:bg-red-600"
+                        className="w-full bg-canvas px-5 py-3 text-sm font-bold text-white hover:bg-accent"
                       >
                         Open Notifications
                       </button>
@@ -455,9 +455,9 @@ export default function Navbar() {
                       setMenuOpen(!menuOpen);
                       setNotificationOpen(false);
                     }}
-                    className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900 px-4 py-2 hover:border-red-600"
+                    className="flex items-center gap-3 rounded-xl border border-hairline bg-surface px-4 py-2 hover:border-accent"
                   >
-                    <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+                    <div className="avatar h-9 w-9">
                       {profile?.avatar_url ? (
                         <img
                           src={profile.avatar_url}
@@ -475,8 +475,8 @@ export default function Navbar() {
                   </button>
 
                   {menuOpen && (
-                    <div className="scale-in absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/40">
-                      <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />                                            
+                    <div className="scale-in absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-hairline bg-surface shadow-2xl shadow-black/40">
+                      <MenuItem label="My Profile" href={profilePath()} goTo={goTo} />
                       <MenuItem label="Wallet" href="/wallet" goTo={goTo} />
                       <MenuItem label="Invites" href="/notifications" goTo={goTo} badge={pendingInvites} />
                       <MenuItem label="Privacy Policy" href="/privacy" goTo={goTo} />
@@ -487,7 +487,7 @@ export default function Navbar() {
                         <button
                           type="button"
                           onClick={() => goTo("/admin")}
-                          className="w-full bg-gray-900 px-5 py-3 text-left font-black text-yellow-300 hover:bg-yellow-500 hover:text-black"
+                          className="w-full bg-surface px-5 py-3 text-left font-black text-warning hover:bg-warning hover:text-black"
                         >
                           Admin Dashboard
                         </button>
@@ -496,7 +496,7 @@ export default function Navbar() {
                       <button
                         type="button"
                         onClick={logout}
-                        className="w-full bg-gray-900 px-5 py-3 text-left font-bold text-white hover:bg-red-600"
+                        className="w-full bg-surface px-5 py-3 text-left font-bold text-white hover:bg-accent"
                       >
                         Logout
                       </button>
@@ -510,7 +510,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => goTo("/signup")}
-                  className="rounded-xl bg-red-600 px-5 py-3 font-bold hover:bg-red-700"
+                  className="btn-primary"
                 >
                   Sign Up
                 </button>
@@ -521,7 +521,7 @@ export default function Navbar() {
       </nav>
 
       <nav
-        className="mobile-top-nav fixed inset-x-0 top-0 z-[9997] flex items-center border-b border-red-900/40 bg-gray-950/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-gray-950/80 xl:hidden"
+        className="mobile-top-nav fixed inset-x-0 top-0 z-[9997] flex items-center border-b border-accent/20 bg-canvas/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-canvas/80 xl:hidden"
         style={{
           height: "calc(64px + var(--app-status-top, 0px))",
           paddingTop: "var(--app-status-top, 0px)",
@@ -538,9 +538,9 @@ export default function Navbar() {
             </div>
 
             <div className="text-left leading-none">
-              <h1 className="text-2xl font-black tracking-tight">
+              <h1 className="font-display text-2xl font-black tracking-tight">
                 <span className="text-white">Stream</span>
-                <span className="text-red-500">Hub</span>
+                <span className="text-accent">Hub</span>
               </h1>
             </div>
           </button>
@@ -549,7 +549,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => goTo("/notifications")}
-              className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xl"
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-hairline bg-white/5 text-xl"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -561,7 +561,7 @@ export default function Navbar() {
               </svg>
 
               {unreadNotifications > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
+                <span className="absolute -right-1 -top-1 min-w-[20px] animate-pulse rounded-full bg-accent px-1.5 text-xs font-black text-white">
                   {unreadNotifications}
                 </span>
               )}
@@ -570,7 +570,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => goTo("/signup")}
-              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-red-600/20"
+              className="btn-primary text-sm"
             >
               Sign Up
             </button>
@@ -579,7 +579,7 @@ export default function Navbar() {
       </nav>
 
       {authReady && loggedIn && (
-  <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-red-900/40 bg-gray-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gray-950/80 xl:hidden">
+        <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[9997] border-t border-accent/20 bg-canvas/95 backdrop-blur-xl supports-[backdrop-filter]:bg-canvas/80 xl:hidden">
           <div
             className="relative mx-auto grid max-w-5xl grid-cols-5 items-center px-2"
             style={{
@@ -593,7 +593,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => goTo("/go-live")}
-              className="absolute left-1/2 top-0 z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-red-600 text-white shadow-2xl shadow-red-600/40 active:scale-95"
+              className="btn-primary absolute left-1/2 top-0 z-10 h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col rounded-full p-0 active:scale-95"
             >
               <span className="text-3xl font-black leading-none">+</span>
               <span className="mt-[-2px] text-[10px] font-black uppercase tracking-wide">
@@ -608,7 +608,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={openMobileMenu}
-              className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
+              className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-muted active:bg-white/5"
             >
               <span className="flex h-7 items-center justify-center text-2xl">
                 {profile?.avatar_url ? (
@@ -624,7 +624,7 @@ export default function Navbar() {
               <span className="text-[11px]">Me</span>
 
               {(pendingInvites > 0 || unreadNotifications > 0) && (
-                <span className="absolute right-4 top-2 h-2.5 w-2.5 rounded-full bg-red-600" />
+                <span className="absolute right-4 top-2 h-2.5 w-2.5 rounded-full bg-accent" />
               )}
             </button>
           </div>
@@ -637,14 +637,14 @@ export default function Navbar() {
           onClick={closeMobileMenu}
         >
           <div
-            className="slide-up absolute bottom-0 left-0 right-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-red-900/40 bg-gray-950 p-5 text-white shadow-2xl"
+            className="slide-up absolute bottom-0 left-0 right-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-accent/20 bg-canvas p-5 text-white shadow-2xl"
             style={{ paddingBottom: "calc(20px + env(safe-area-inset-bottom))" }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-gray-700" />
+            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-surface-raised" />
 
             <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+              <div className="avatar h-14 w-14">
                 {profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -660,7 +660,7 @@ export default function Navbar() {
                 <p className="truncate text-lg font-black">
                   {profile?.display_name || profile?.username || "My Account"}
                 </p>
-                <p className="truncate text-sm text-gray-400">
+                <p className="truncate text-sm text-muted">
                   @{profile?.username || "streamhub"}
                 </p>
               </div>
@@ -683,7 +683,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={logout}
-                className="rounded-2xl bg-red-600 px-4 py-4 text-left text-sm font-black text-white active:scale-95"
+                className="rounded-2xl bg-accent px-4 py-4 text-left text-sm font-black text-white active:scale-95"
               >
                 Logout
               </button>
@@ -710,11 +710,11 @@ function DesktopLink({
     <button
       type="button"
       onClick={() => goTo(href)}
-      className="relative font-bold text-gray-100 hover:text-red-400"
+      className="relative font-bold text-gray-100 hover:text-accent"
     >
       {label}
       {!!badge && badge > 0 && (
-        <span className="absolute -right-4 -top-3 min-w-[18px] rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
+        <span className="absolute -right-4 -top-3 min-w-[18px] rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
           {badge > 99 ? "99+" : badge}
         </span>
       )}
@@ -737,11 +737,11 @@ function MenuItem({
     <button
       type="button"
       onClick={() => goTo(href)}
-      className="flex w-full items-center justify-between bg-gray-900 px-5 py-3 text-left text-white hover:bg-red-600"
+      className="flex w-full items-center justify-between bg-surface px-5 py-3 text-left text-white hover:bg-accent"
     >
       <span>{label}</span>
       {!!badge && badge > 0 && (
-        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">
+        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-black text-white">
           {badge}
         </span>
       )}
@@ -766,7 +766,7 @@ function MobileItem({
     <button
       type="button"
       onClick={() => goTo(href)}
-      className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-zinc-400 active:bg-white/5"
+      className="relative flex h-full flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold text-muted active:bg-white/5"
     >
       <span className="flex h-7 items-center justify-center">
         {typeof icon === "string" ? <MobileNavIcon name={icon} /> : icon}
@@ -774,7 +774,7 @@ function MobileItem({
       <span className="text-[11px]">{label}</span>
 
       {!!badge && badge > 0 && (
-        <span className="absolute right-4 top-2 min-w-[20px] animate-pulse rounded-full bg-red-600 px-1.5 text-xs font-black text-white">
+        <span className="absolute right-4 top-2 min-w-[20px] animate-pulse rounded-full bg-accent px-1.5 text-xs font-black text-white">
           {badge}
         </span>
       )}
@@ -830,8 +830,8 @@ function MobileSheetItem({
       onClick={() => goTo(href)}
       className={
         strong
-          ? "flex items-center justify-between rounded-2xl bg-red-600 px-4 py-4 text-left text-sm font-black text-white active:scale-95"
-          : "flex items-center justify-between rounded-2xl bg-gray-800 px-4 py-4 text-left text-sm font-bold text-white active:scale-95"
+          ? "flex items-center justify-between rounded-2xl bg-accent px-4 py-4 text-left text-sm font-black text-white active:scale-95"
+          : "flex items-center justify-between rounded-2xl bg-surface-raised px-4 py-4 text-left text-sm font-bold text-white active:scale-95"
       }
     >
       <span>{label}</span>

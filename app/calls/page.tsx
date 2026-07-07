@@ -538,8 +538,8 @@ export default function CallsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black px-4 py-6 text-white">
-        <p className="text-gray-400">Loading private calls...</p>
+      <main className="min-h-screen bg-canvas px-4 py-6 text-white">
+        <p className="text-muted">Loading private calls...</p>
       </main>
     );
   }
@@ -552,47 +552,41 @@ export default function CallsPage() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 lg:px-8 lg:py-10">
+    <main className="min-h-screen bg-canvas px-4 py-6 text-white sm:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="mb-2 text-sm font-bold text-purple-300">
+            <p className="eyebrow mb-1.5">
               Private Video Calling
             </p>
 
-            <h1 className="text-4xl font-black sm:text-5xl">
-              One-on-One <span className="text-purple-400">Calls</span>
+            <h1 className="font-display text-2xl font-black sm:text-3xl">
+              One-on-One <span className="text-accent">Calls</span>
             </h1>
 
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Connect with creators and viewers through private one-on-one video calls.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={loadCalls}
-              className="rounded-xl bg-gray-800 px-5 py-3 font-bold hover:bg-gray-700"
-            >
+            <button onClick={loadCalls} className="btn-secondary">
               Refresh
             </button>
 
-            <Link
-              href="/wallet"
-              className="rounded-xl bg-gray-800 px-5 py-3 text-center font-bold hover:bg-gray-700"
-            >
+            <Link href="/wallet" className="btn-secondary text-center">
               Wallet
             </Link>
           </div>
         </div>
 
-        <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
-          <div className="mb-5">
-            <p className="mb-2 text-sm font-bold text-purple-300">
+        <section className="mb-8 rounded-2xl border border-accent/20 bg-accent-soft p-5 sm:p-6">
+          <div className="mb-4">
+            <p className="eyebrow mb-1.5">
               Call Mutual Followers
             </p>
-            <h2 className="text-2xl font-black">One-on-One Calls</h2>
-            <p className="mt-2 text-sm leading-6 text-gray-400">
+            <h2 className="font-display text-xl font-black">One-on-One Calls</h2>
+            <p className="mt-1.5 text-sm leading-6 text-muted">
               Search mutual followers and start a private one-on-one video call.
             </p>
           </div>
@@ -601,18 +595,18 @@ export default function CallsPage() {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder="Search username or display name..."
-            className="w-full rounded-2xl border border-purple-500/20 bg-black px-4 py-4 text-white outline-none placeholder:text-gray-500 focus:border-purple-500"
+            className="w-full rounded-2xl border border-accent/20 bg-canvas px-4 py-4 text-white outline-none placeholder:text-faint focus:border-accent"
           />
 
           <div className="mt-4 space-y-3">
             {searching && (
-              <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
                 Searching...
               </div>
             )}
 
             {!searching && searchText.trim().length >= 2 && results.length === 0 && (
-              <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
                 No mutual followers found.
               </div>
             )}
@@ -624,10 +618,10 @@ export default function CallsPage() {
               return (
                 <div
                   key={profile.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-gray-800 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 rounded-2xl border border-hairline bg-canvas/40 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                    <div className="avatar h-12 w-12">
                       {profile.avatar_url ? (
                         <img
                           src={profile.avatar_url}
@@ -641,13 +635,11 @@ export default function CallsPage() {
 
                     <div className="min-w-0">
                       <p className="truncate text-lg font-black">{name}</p>
-                      <p className="truncate text-sm text-gray-400">
+                      <p className="truncate text-sm text-muted">
                         @{profile.username || "streamhub"}
                       </p>
                       {profile.is_admin && (
-                        <p className="mt-1 w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-black text-yellow-300">
-                          ADMIN
-                        </p>
+                        <p className="badge-warning mt-1">ADMIN</p>
                       )}
                     </div>
                   </div>
@@ -655,7 +647,7 @@ export default function CallsPage() {
                   <button
                     onClick={() => startQuickCall(profile)}
                     disabled={!!callingId}
-                    className="rounded-xl bg-green-600 px-5 py-3 text-sm font-black hover:bg-green-700 disabled:bg-gray-700"
+                    className="rounded-xl bg-success px-5 py-3 text-sm font-black hover:opacity-90 disabled:bg-surface-raised disabled:opacity-100"
                   >
                     {callingId === profile.id ? "Calling..." : "Call"}
                   </button>
@@ -665,13 +657,13 @@ export default function CallsPage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
-          <div className="mb-5">
-            <p className="mb-2 text-sm font-bold text-red-300">
+        <section className="card-section mb-8">
+          <div className="mb-4">
+            <p className="eyebrow mb-1.5">
               Find People
             </p>
-            <h2 className="text-2xl font-black">Build Your Call Network</h2>
-            <p className="mt-2 text-sm leading-6 text-gray-400">
+            <h2 className="font-display text-xl font-black">Build Your Call Network</h2>
+            <p className="mt-1.5 text-sm leading-6 text-muted">
               Search StreamHub users, follow them, and wait for a follow back to unlock private calls.
             </p>
           </div>
@@ -680,12 +672,12 @@ export default function CallsPage() {
             value={peopleSearchText}
             onChange={(e) => setPeopleSearchText(e.target.value)}
             placeholder="Search StreamHub users to follow..."
-            className="w-full rounded-2xl border border-gray-700 bg-black px-4 py-4 text-white outline-none placeholder:text-gray-500 focus:border-red-500"
+            className="input-field"
           />
 
           <div className="mt-4 space-y-3">
             {peopleSearching && (
-              <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+              <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
                 Searching people...
               </div>
             )}
@@ -693,7 +685,7 @@ export default function CallsPage() {
             {!peopleSearching &&
               peopleSearchText.trim().length >= 2 &&
               peopleResults.length === 0 && (
-                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                <div className="rounded-xl border border-hairline bg-canvas/30 p-4 text-sm text-muted">
                   No users found.
                 </div>
               )}
@@ -706,10 +698,10 @@ export default function CallsPage() {
               return (
                 <div
                   key={profile.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-gray-800 bg-black/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 rounded-2xl border border-hairline bg-canvas/40 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+                    <div className="avatar h-12 w-12">
                       {profile.avatar_url ? (
                         <img
                           src={profile.avatar_url}
@@ -723,22 +715,17 @@ export default function CallsPage() {
 
                     <div className="min-w-0">
                       <p className="truncate text-lg font-black">{name}</p>
-                      <p className="truncate text-sm text-gray-400">
+                      <p className="truncate text-sm text-muted">
                         @{profile.username || "streamhub"}
                       </p>
                       {profile.is_admin && (
-                        <p className="mt-1 w-fit rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs font-black text-yellow-300">
-                          ADMIN
-                        </p>
+                        <p className="badge-warning mt-1">ADMIN</p>
                       )}
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/profile/${profile.id}?from=calls`}
-                      className="rounded-xl bg-gray-800 px-5 py-3 text-sm font-black hover:bg-gray-700"
-                    >
+                    <Link href={`/profile/${profile.id}?from=calls`} className="btn-secondary text-sm">
                       View Profile
                     </Link>
 
@@ -747,8 +734,8 @@ export default function CallsPage() {
                       disabled={isFollowingUser || followUpdatingId === profile.id}
                       className={
                         isFollowingUser
-                          ? "rounded-xl bg-gray-700 px-5 py-3 text-sm font-black text-gray-300"
-                          : "rounded-xl bg-red-600 px-5 py-3 text-sm font-black hover:bg-red-700 disabled:bg-gray-700"
+                          ? "rounded-xl bg-surface-raised px-5 py-3 text-sm font-black text-muted"
+                          : "btn-primary text-sm"
                       }
                     >
                       {followUpdatingId === profile.id
@@ -765,14 +752,14 @@ export default function CallsPage() {
         </section>
 
         <section className="mb-8 grid gap-4 sm:grid-cols-4">
-          <Stat label="Incoming" value={incoming.length} color="text-purple-300" />
-          <Stat label="Outgoing" value={outgoing.length} color="text-blue-400" />
-          <Stat label="Pending" value={pending.length} color="text-yellow-300" />
-          <Stat label="Paid Calls" value={paidCalls} color="text-green-400" />
+          <Stat label="Incoming" value={incoming.length} color="text-accent" />
+          <Stat label="Outgoing" value={outgoing.length} color="text-info" />
+          <Stat label="Pending" value={pending.length} color="text-warning" />
+          <Stat label="Paid Calls" value={paidCalls} color="text-success" />
         </section>
 
-        <section className="mb-8 rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5 sm:p-6">
-          <h2 className="mb-5 text-2xl font-black">Incoming Calls</h2>
+        <section className="mb-8 rounded-2xl border border-accent/20 bg-accent-soft p-5 sm:p-6">
+          <h2 className="font-display mb-4 text-xl font-black">Incoming Calls</h2>
 
           {incoming.length === 0 ? (
             <EmptyState text="No incoming private call requests." />
@@ -793,8 +780,8 @@ export default function CallsPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
-          <h2 className="mb-5 text-2xl font-black">Outgoing Calls</h2>
+        <section className="card-section">
+          <h2 className="font-display mb-4 text-xl font-black">Outgoing Calls</h2>
 
           {outgoing.length === 0 ? (
             <EmptyState text="No outgoing private call requests." />
@@ -840,10 +827,10 @@ function CallCard({
   const name = otherPerson?.display_name || otherPerson?.username || "Unknown user";
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-black/40 p-4">
+    <div className="rounded-2xl border border-hairline bg-canvas/40 p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-800">
+          <div className="avatar h-12 w-12">
             {otherPerson?.avatar_url ? (
               <img
                 src={otherPerson.avatar_url}
@@ -858,16 +845,16 @@ function CallCard({
           <div className="min-w-0">
             <p className="truncate text-lg font-black">{name}</p>
 
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-muted">
               {isIncoming ? "Incoming call request" : "Outgoing call request"}
             </p>
 
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-faint">
               {new Date(call.created_at).toLocaleString()}
             </p>
 
             {call.stream && (
-              <p className="mt-2 text-sm font-bold text-purple-300">
+              <p className="mt-2 text-sm font-bold text-accent">
                 {call.stream.title} - {price > 0 ? `$${price.toFixed(2)}` : "Free"}
               </p>
             )}
@@ -877,21 +864,19 @@ function CallCard({
         <div className="flex flex-col gap-2 sm:items-end">
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <span
-              className={`w-fit rounded-full px-3 py-1 text-xs font-black ${
+              className={
                 call.status === "accepted"
-                  ? "bg-green-500/10 text-green-400"
-                  : call.status === "declined"
-                  ? "bg-red-500/10 text-red-300"
-                  : call.status === "missed"
-                  ? "bg-red-500/10 text-red-300"
-                  : "bg-yellow-500/10 text-yellow-300"
-              }`}
+                  ? "badge-success"
+                  : call.status === "declined" || call.status === "missed"
+                  ? "badge-danger"
+                  : "badge-warning"
+              }
             >
               {call.status.toUpperCase()}
             </span>
 
             {price > 0 && (
-              <span className="w-fit rounded-full bg-green-500/10 px-3 py-1 text-xs font-black text-green-300">
+              <span className="badge-success">
                 {call.is_paid ? "PAID" : "PAYMENT REQUIRED"}
               </span>
             )}
@@ -903,7 +888,7 @@ function CallCard({
                 <button
                   onClick={onAccept}
                   disabled={updatingId === call.id}
-                  className="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold hover:bg-green-700 disabled:bg-gray-700"
+                  className="rounded-xl bg-success px-4 py-2 text-sm font-bold hover:opacity-90 disabled:bg-surface-raised disabled:opacity-100"
                 >
                   {updatingId === call.id
                     ? price > 0
@@ -917,7 +902,7 @@ function CallCard({
                 <button
                   onClick={onDecline}
                   disabled={updatingId === call.id}
-                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700 disabled:bg-gray-700"
+                  className="btn-danger py-2 text-sm"
                 >
                   Decline
                 </button>
@@ -927,7 +912,7 @@ function CallCard({
             {call.stream_id && call.status === "accepted" && (
               <Link
                 href={`/live/${call.stream_id}`}
-                className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-bold hover:bg-purple-700"
+                className="rounded-xl bg-accent px-4 py-2 text-sm font-bold hover:bg-accent-hover"
               >
                 Join Room
               </Link>
@@ -936,7 +921,7 @@ function CallCard({
             {call.status === "missed" && (
               <button
                 onClick={onCallBack}
-                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold hover:bg-green-700"
+                className="rounded-xl bg-success px-4 py-2 text-sm font-bold hover:opacity-90"
               >
                 Call Back
               </button>
@@ -946,14 +931,14 @@ function CallCard({
               <>
                 <Link
                   href={`/live/${call.stream_id}`}
-                  className="rounded-xl bg-gray-800 px-4 py-2 text-sm font-bold hover:bg-gray-700"
+                  className="btn-secondary py-2 text-sm"
                 >
                   Open Waiting Room
                 </Link>
 
                 <button
                   onClick={() => cancelCall(call.id, call.stream_id)}
-                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-700"
+                  className="btn-danger py-2 text-sm"
                 >
                   Cancel Call
                 </button>
@@ -976,9 +961,9 @@ function Stat({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-      <p className="mb-2 text-sm text-gray-400">{label}</p>
-      <h2 className={`text-3xl font-black ${color}`}>{value}</h2>
+    <div className="card-section">
+      <p className="mb-2 text-sm text-muted">{label}</p>
+      <h2 className={`font-display text-3xl font-black ${color}`}>{value}</h2>
     </div>
   );
 }
@@ -1011,7 +996,7 @@ async function cancelCall(callId: string, streamId?: string | null) {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-black/30 p-6 text-center text-gray-400">
+    <div className="rounded-xl border border-hairline bg-canvas/30 p-6 text-center text-muted">
       {text}
     </div>
   );

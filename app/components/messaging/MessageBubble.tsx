@@ -62,8 +62,8 @@ export default function MessageBubble({ message, isOwn, status }: MessageBubbleP
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${
           isOwn
-            ? "bg-[#dc2626] text-white rounded-br-sm"
-            : "bg-[rgba(17,24,39,0.92)] text-[#ededed] border border-[rgba(127,29,29,0.35)] rounded-bl-sm"
+            ? "bg-accent text-white rounded-br-sm"
+            : "bg-surface text-white border border-hairline rounded-bl-sm"
         }`}
       >
         {message.is_deleted ? (
@@ -74,7 +74,7 @@ export default function MessageBubble({ message, isOwn, status }: MessageBubbleP
 
         <div
           className={`mt-1 flex items-center gap-1 text-[10px] ${
-            isOwn ? "text-white/70 justify-end" : "text-white/40"
+            isOwn ? "text-white/70 justify-end" : "text-faint"
           }`}
         >
           <span>{formatTime(message.created_at)}</span>

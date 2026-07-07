@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Room,
@@ -1782,18 +1782,18 @@ export default function WatchPage() {
 
   if (blockedAccess) {
     return (
-      <main className="min-h-screen bg-[#050505] text-white">
+      <main className="min-h-screen bg-canvas text-white">
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-          <div className="w-full max-w-xl rounded-[28px] border border-red-500/20 bg-red-950/20 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
+          <div className="w-full max-w-xl rounded-[28px] border border-danger/20 bg-danger-soft p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-danger/20 bg-danger-soft text-3xl sm:h-20 sm:w-20 sm:text-4xl">
               â›”
             </div>
 
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-red-400 sm:text-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-accent sm:text-sm">
               Access Restricted
             </p>
 
-            <h1 className="text-3xl font-black sm:text-4xl">
+            <h1 className="font-display text-3xl font-black sm:text-4xl">
               {stream?.is_suspended
                 ? "Stream Suspended"
                 : "You Cannot Watch This Stream"}
@@ -1815,18 +1815,18 @@ export default function WatchPage() {
 
   if (subscriberBlocked) {
     return (
-      <main className="min-h-screen bg-[#050505] text-white">
+      <main className="min-h-screen bg-canvas text-white">
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-          <div className="w-full max-w-xl rounded-[28px] border border-yellow-500/20 bg-yellow-950/10 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-yellow-500/20 bg-yellow-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
-              â­
+          <div className="w-full max-w-xl rounded-[28px] border border-warning/20 bg-warning-soft p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-warning/20 bg-warning-soft text-3xl sm:h-20 sm:w-20 sm:text-4xl">
+              â­
             </div>
 
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-yellow-300 sm:text-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-warning sm:text-sm">
               Subscribers Only
             </p>
 
-            <h1 className="text-3xl font-black sm:text-4xl">
+            <h1 className="font-display text-3xl font-black sm:text-4xl">
               {stream?.title || "Premium Stream"}
             </h1>
 
@@ -1836,7 +1836,7 @@ export default function WatchPage() {
               {stream?.user_id && (
                 <button
                   onClick={() => router.push(`/profile/${stream.user_id}`)}
-                  className="rounded-2xl bg-yellow-500 px-6 py-3 font-black text-black hover:bg-yellow-400"
+                  className="rounded-2xl bg-warning px-6 py-3 font-black text-black hover:brightness-90"
                 >
                   Subscribe to Watch
                 </button>
@@ -1857,32 +1857,32 @@ export default function WatchPage() {
 
   if (privateBlocked) {
     return (
-      <main className="min-h-screen bg-[#050505] text-white">
+      <main className="min-h-screen bg-canvas text-white">
         <div className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-          <div className="w-full max-w-xl rounded-[28px] border border-purple-500/20 bg-purple-950/10 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-purple-500/20 bg-purple-500/10 text-3xl sm:h-20 sm:w-20 sm:text-4xl">
+          <div className="w-full max-w-xl rounded-[28px] border border-accent/20 bg-accent-soft p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent-soft text-3xl sm:h-20 sm:w-20 sm:text-4xl">
               ðŸ”’
             </div>
 
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-purple-400 sm:text-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-accent sm:text-sm">
               Paid Private Video Call
             </p>
 
-            <h1 className="text-3xl font-black sm:text-4xl">
+            <h1 className="font-display text-3xl font-black sm:text-4xl">
               {stream?.title || "Private Stream"}
             </h1>
 
             <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
               <p className="text-sm text-white/45">Call Price</p>
-              <p className="mt-1 text-3xl font-black text-purple-300">
+              <p className="font-display mt-1 text-3xl font-black text-accent">
                 {privateCallPrice > 0 ? `$${privateCallPrice}` : "Free"}
               </p>
 
               <p
                 className={
                   privatePaymentCompleted
-                    ? "mt-3 text-sm font-bold text-green-400"
-                    : "mt-3 text-sm font-bold text-yellow-300"
+                    ? "mt-3 text-sm font-bold text-success"
+                    : "mt-3 text-sm font-bold text-warning"
                 }
               >
                 {privatePaymentCompleted
@@ -1898,7 +1898,7 @@ export default function WatchPage() {
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button
                 onClick={() => router.push("/calls")}
-                className="rounded-2xl bg-purple-600 px-6 py-3 font-black text-white hover:bg-purple-500"
+                className="rounded-2xl bg-accent px-6 py-3 font-black text-white hover:bg-accent-hover"
               >
                 Open Calls
               </button>
@@ -1917,13 +1917,13 @@ export default function WatchPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white">
+    <main className="min-h-screen bg-canvas text-white">
       {isViewerFullscreen && (
-        <div className="fixed inset-0 z-[2147483647] bg-black text-white">
-          <div className="relative h-[100dvh] w-screen overflow-hidden bg-black">
+        <div className="fixed inset-0 z-[2147483647] bg-canvas text-white">
+          <div className="relative h-[100dvh] w-screen overflow-hidden bg-canvas">
             <div
               ref={fullscreenVideoContainerRef}
-              className="absolute inset-0 flex h-full w-full items-center justify-center bg-black"
+              className="absolute inset-0 flex h-full w-full items-center justify-center bg-canvas"
             >
               <div className="px-5 text-center">
                 <p className="text-base font-semibold text-white/80 sm:text-lg">
@@ -1935,26 +1935,33 @@ export default function WatchPage() {
               </div>
             </div>
 
-            <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/85 to-transparent px-4 pb-16 pt-[calc(18px+env(safe-area-inset-top))]">
-              <div className="pointer-events-auto flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-bold uppercase tracking-wide text-red-400">
-                    Live Viewer Mode
-                  </p>
-                  <h2 className="truncate text-lg font-black sm:text-2xl">
-                    {stream?.title || "Live Stream"}
-                  </h2>
-                  <p className="truncate text-xs text-white/55">
-                    {hostName} . {connected ? "Connected" : "Reconnecting"}
-                  </p>
-                </div>
-
+            {/* Top bar: minimal, TikTok-style — just an exit/back button and
+                the viewer count. Title/host status live in the bottom-left
+                caption block below, next to the video, not up here. */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[calc(12px+env(safe-area-inset-top))]">
+              <div className="pointer-events-auto flex items-center justify-between">
                 <button
                   onClick={closeViewerFullscreen}
-                  className="shrink-0 rounded-full bg-white/10 px-4 py-2 text-sm font-black backdrop-blur hover:bg-white/20"
+                  aria-label="Exit stream"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur hover:bg-black/60"
                 >
-                  Exit
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5"
+                  >
+                    <path d="M15 18L9 12L15 6" />
+                  </svg>
                 </button>
+
+                <span className="rounded-full bg-black/40 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
+                  {viewerCount.toLocaleString()} watching
+                </span>
               </div>
             </div>
 
@@ -1962,7 +1969,7 @@ export default function WatchPage() {
               joinRequest?.status === "pending" ||
               joinRequest?.status === "accepted" ||
               joinRequest?.status === "declined") && (
-              <div className="pointer-events-none absolute right-3 top-[calc(92px+env(safe-area-inset-top))] z-[75] sm:right-5 sm:top-[calc(104px+env(safe-area-inset-top))]">
+              <div className="pointer-events-none absolute right-3 top-[calc(68px+env(safe-area-inset-top))] z-[75] sm:right-5 sm:top-[calc(76px+env(safe-area-inset-top))]">
                 <button
                   onClick={() => {
                     if (joinRequest?.status === "accepted") {
@@ -1996,7 +2003,7 @@ export default function WatchPage() {
                   // regardless of how many messages arrive. Kept small on
                   // purpose so it covers as little of the video as possible.
                   height: "220px",
-                  bottom: "calc(160px + env(safe-area-inset-bottom))",
+                  bottom: "calc(220px + env(safe-area-inset-bottom))",
                   overflow: "hidden",
                 }}
               >
@@ -2018,7 +2025,7 @@ export default function WatchPage() {
                   ) : (
                     messages.slice(-40).map((msg) => (
                       <div key={msg.id} className="max-w-[92%] rounded-2xl bg-black/35 px-2.5 py-1.5">
-                        <span className="mr-1.5 text-xs font-bold text-red-400">
+                        <span className="mr-1.5 text-xs font-bold text-accent">
                           {msg.username}
                         </span>
                         <span className="break-words text-sm leading-5 text-white/90">
@@ -2038,13 +2045,13 @@ export default function WatchPage() {
                     }}
                     placeholder={chatDisabled ? "Chat unavailable" : "Type a message..."}
                     disabled={chatDisabled}
-                    className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none backdrop-blur-md placeholder:text-white/40 focus:border-red-500 disabled:text-white/30"
+                    className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white outline-none backdrop-blur-md placeholder:text-white/40 focus:border-accent disabled:text-white/30"
                   />
 
                   <button
                     onClick={sendMessage}
                     disabled={chatDisabled}
-                    className="shrink-0 rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold hover:bg-red-500 disabled:bg-white/10 disabled:text-white/35"
+                    className="shrink-0 rounded-2xl bg-accent px-4 py-2 text-sm font-bold hover:bg-accent-hover disabled:bg-white/10 disabled:text-white/35"
                   >
                     Send
                   </button>
@@ -2052,73 +2059,109 @@ export default function WatchPage() {
               </div>
             )}
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-16">
-              <div className="pointer-events-auto mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
+            {/* Bottom: TikTok-style caption (bottom-left, title/host/live
+                badge) + a vertical action rail on the right edge (avatar
+                with follow badge, like, tip, chat, audio, block, report).
+                Same handlers/state as before — layout only. */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/90 via-black/30 to-transparent px-4 pb-[calc(18px+env(safe-area-inset-bottom))] pt-24">
+              <div className="pointer-events-auto min-w-0 flex-1">
+                <span className="badge-live mb-2 inline-flex backdrop-blur">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                  Live
+                </span>
+                <h2 className="font-display truncate text-lg font-black sm:text-2xl">
+                  {stream?.title || "Live Stream"}
+                </h2>
+                <p className="mt-1 truncate text-sm text-white/70">
+                  {hostName} · {connected ? "Connected" : "Reconnecting"}
+                </p>
+              </div>
+
+              <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-4 pb-2">
                 {showFollowButton && (
-                  <button
-                    onClick={toggleFollowHost}
-                    disabled={followLoading}
-                    className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur transition ${
-                      isFollowingHost
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-purple-600 text-white hover:bg-purple-500"
-                    } disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35`}
-                  >
-                    {followLoading
-                      ? "Wait..."
-                      : isFollowingHost
-                      ? "Following ✓"
-                      : "Follow +"}
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={openHostProfile}
+                      aria-label={`View ${hostName}'s profile`}
+                      className="avatar h-12 w-12 border-2 border-white/60"
+                    >
+                      {host?.avatar_url ? (
+                        <img
+                          src={host.avatar_url}
+                          alt={hostName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-xl">👤</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={toggleFollowHost}
+                      disabled={followLoading}
+                      aria-label={isFollowingHost ? "Unfollow" : "Follow"}
+                      className={`absolute -bottom-2 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full text-xs font-black text-white disabled:opacity-50 ${
+                        isFollowingHost ? "bg-success" : "bg-accent"
+                      }`}
+                    >
+                      {isFollowingHost ? "✓" : "+"}
+                    </button>
+                  </div>
                 )}
 
-                <button
+                <RailButton
                   onClick={toggleLike}
                   disabled={streamStatus !== "live" || blockedAccess}
-                  className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur ${
-                    liked
-                      ? "bg-white text-black hover:bg-white/90"
-                      : "bg-red-600 text-white hover:bg-red-500"
-                  } disabled:bg-white/10 disabled:text-white/35`}
-                >
-                  {liked ? "Liked" : "Like"}
-                </button>
+                  active={liked}
+                  label={likes > 0 ? String(likes) : "Like"}
+                  ariaLabel={liked ? "Unlike" : "Like"}
+                  icon={
+                    <svg viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-7-4.35-9.5-8.5C.8 8.7 2.6 5 6.2 5c2 0 3.6 1.2 4.1 2.6.5-1.4 2.1-2.6 4.1-2.6 3.6 0 5.4 3.7 3.7 7.5C19 16.65 12 21 12 21z" />
+                    </svg>
+                  }
+                />
 
                 {stream?.user_id &&
                   currentUserId !== stream.user_id &&
                   stream.visibility !== "private" && (
-                    <button
+                    <RailButton
                       onClick={() => setTipOpen(true)}
                       disabled={streamStatus !== "live" || !connected || blockedAccess}
-                      className={`rounded-full px-4 py-3 text-sm font-black backdrop-blur transition ${
-                        streamStatus === "live" && connected && !blockedAccess
-                          ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                          : "cursor-not-allowed bg-white/10 text-white/35"
-                      }`}
-                    >
-                      Tip
-                    </button>
+                      label="Tip"
+                      ariaLabel="Send a tip"
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                          <rect x="3" y="8" width="18" height="13" rx="1.5" />
+                          <path d="M3 12h18M12 21V8M7.5 8a2.5 2.5 0 010-5C10.5 3 12 8 12 8s1.5-5 4.5-5a2.5 2.5 0 010 5" />
+                        </svg>
+                      }
+                    />
                   )}
 
-                <button
+                <RailButton
                   onClick={() => setFullscreenChatOpen((current) => !current)}
-                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
-                >
-                  Chat {messages.length > 0 ? `(${messages.length})` : ""}
-                </button>
+                  label={messages.length > 0 ? String(messages.length) : "Chat"}
+                  ariaLabel="Toggle live chat"
+                  icon={
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                    </svg>
+                  }
+                />
 
                 {audioBlocked && (
-                  <button
+                  <RailButton
                     onClick={enableAudioManually}
-                    className="rounded-full bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500"
-                  >
-                    Audio
-                  </button>
+                    label="Audio"
+                    ariaLabel="Enable audio"
+                    icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                        <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+                      </svg>
+                    }
+                  />
                 )}
-
-                <div className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
-                  Viewers {viewerCount}
-                </div>
 
                 {stream?.user_id && currentUserId !== stream.user_id && (
                   <BlockUserButton
@@ -2131,38 +2174,36 @@ export default function WatchPage() {
                 )}
 
                 {stream?.user_id && currentUserId !== stream.user_id && (
-                  <button
+                  <RailButton
                     onClick={() => setReportOpen(true)}
-                    className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
-                  >
-                    Report
-                  </button>
+                    label="Report"
+                    ariaLabel="Report this stream"
+                    icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                        <line x1="4" y1="22" x2="4" y2="15" />
+                      </svg>
+                    }
+                  />
                 )}
-
-                <button
-                  onClick={closeViewerFullscreen}
-                  className="rounded-full bg-white/10 px-4 py-3 text-sm font-black backdrop-blur hover:bg-white/20"
-                >
-                  Exit
-                </button>
               </div>
             </div>
 
             {reportOpen && (
               <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/70 p-4">
-                <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-gray-950 p-5">
+                <div className="w-full max-w-sm rounded-3xl border border-hairline-strong bg-surface p-5">
                   <h3 className="mb-1 text-lg font-black text-white">Report this stream</h3>
-                  <p className="mb-4 text-sm text-gray-400">
+                  <p className="mb-4 text-sm text-muted">
                     Our team will review this. Reports are anonymous to the creator.
                   </p>
 
-                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                  <label className="mb-1.5 block text-xs font-bold text-muted">
                     Reason
                   </label>
                   <select
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
-                    className="mb-3 w-full rounded-xl border border-gray-800 bg-black p-3 text-white outline-none focus:border-red-500"
+                    className="mb-3 w-full rounded-xl border border-hairline bg-canvas p-3 text-white outline-none focus:border-accent"
                   >
                     <option value="">Select a reason</option>
                     <option value="Nudity or sexual content">Nudity or sexual content</option>
@@ -2174,14 +2215,14 @@ export default function WatchPage() {
                     <option value="Other">Other</option>
                   </select>
 
-                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                  <label className="mb-1.5 block text-xs font-bold text-muted">
                     Additional details (optional)
                   </label>
                   <textarea
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
                     placeholder="Anything else we should know?"
-                    className="mb-4 h-20 w-full resize-none rounded-xl border border-gray-800 bg-black p-3 text-sm text-white outline-none focus:border-red-500"
+                    className="mb-4 h-20 w-full resize-none rounded-xl border border-hairline bg-canvas p-3 text-sm text-white outline-none focus:border-accent"
                   />
 
                   <div className="flex gap-2">
@@ -2191,14 +2232,14 @@ export default function WatchPage() {
                         setReportReason("");
                         setReportDetails("");
                       }}
-                      className="flex-1 rounded-full bg-gray-800 px-4 py-3 text-sm font-bold text-white hover:bg-gray-700"
+                      className="btn-secondary flex-1 rounded-full"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={submitReport}
                       disabled={reportSubmitting}
-                      className="flex-1 rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-500 disabled:bg-gray-700"
+                      className="btn-danger flex-1 rounded-full"
                     >
                       {reportSubmitting ? "Submitting..." : "Submit Report"}
                     </button>
@@ -2213,13 +2254,13 @@ export default function WatchPage() {
       <div className="relative mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
         {tipOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-            <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#111827] p-5 shadow-2xl sm:p-6">
+            <div className="w-full max-w-md rounded-3xl border border-hairline-strong bg-surface p-5 shadow-2xl sm:p-6">
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <p className="mb-1 text-sm font-bold text-yellow-400">
+                  <p className="eyebrow mb-1">
                     Support Creator
                   </p>
-                  <h2 className="text-2xl font-black">Send a Tip</h2>
+                  <h2 className="font-display text-2xl font-black">Send a Tip</h2>
                 </div>
 
                 <button
@@ -2237,8 +2278,8 @@ export default function WatchPage() {
                     onClick={() => setSelectedTipAmount(amount)}
                     className={`rounded-xl px-3 py-3 text-sm font-black ${
                       selectedTipAmount === amount
-                        ? "bg-yellow-500 text-black"
-                        : "bg-black/40 text-white hover:bg-white/10"
+                        ? "bg-warning text-black"
+                        : "bg-canvas/40 text-white hover:bg-surface-raised"
                     }`}
                   >
                     USD {amount}
@@ -2250,8 +2291,8 @@ export default function WatchPage() {
                 onClick={() => setSelectedTipAmount("custom")}
                 className={`mb-3 w-full rounded-xl px-4 py-3 text-sm font-black ${
                   selectedTipAmount === "custom"
-                    ? "bg-yellow-500 text-black"
-                    : "bg-black/40 text-white hover:bg-white/10"
+                    ? "bg-warning text-black"
+                    : "bg-canvas/40 text-white hover:bg-surface-raised"
                 }`}
               >
                 Custom Amount
@@ -2265,7 +2306,7 @@ export default function WatchPage() {
                   value={customTipAmount}
                   onChange={(e) => setCustomTipAmount(e.target.value)}
                   placeholder="Enter amount in USD"
-                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none focus:border-yellow-500"
+                  className="mb-4 w-full rounded-xl border border-hairline bg-canvas/40 px-4 py-3 text-white outline-none focus:border-warning"
                 />
               )}
 
@@ -2274,13 +2315,13 @@ export default function WatchPage() {
                 onChange={(e) => setTipMessage(e.target.value)}
                 placeholder="Optional message to creator..."
                 rows={3}
-                className="mb-5 w-full resize-none rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none placeholder:text-white/30 focus:border-yellow-500"
+                className="mb-5 w-full resize-none rounded-xl border border-hairline bg-canvas/40 px-4 py-3 text-white outline-none placeholder:text-faint focus:border-warning"
               />
 
               <button
                 onClick={sendTip}
                 disabled={tipSubmitting}
-                className="w-full rounded-xl bg-yellow-500 px-5 py-3 font-black text-black hover:bg-yellow-400 disabled:bg-white/10 disabled:text-white/35"
+                className="w-full rounded-xl bg-warning px-5 py-3 font-black text-black shadow-lg shadow-warning/30 hover:brightness-90 disabled:bg-white/10 disabled:text-white/35"
               >
                 {tipSubmitting ? "Submitting..." : "Send Tip"}
               </button>
@@ -2293,7 +2334,7 @@ export default function WatchPage() {
             <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black shadow-2xl sm:rounded-[28px]">
               <div
                 ref={videoContainerRef}
-                className="relative flex h-[100dvh] items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black"
+                className="relative flex h-[100dvh] items-center justify-center bg-gradient-to-br from-surface via-surface-raised to-canvas"
               >
                 <div className="relative px-5 text-center">
                   <p className="text-base font-semibold text-white/80 sm:text-lg">
@@ -2349,11 +2390,11 @@ export default function WatchPage() {
 
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      <p className="truncate font-bold hover:text-red-400">
+                      <p className="truncate font-bold hover:text-accent">
                         {hostName}
                       </p>
                       {host?.is_verified && (
-                        <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-black">
+                        <span className="shrink-0 rounded-full bg-info px-2 py-0.5 text-xs font-black">
                           ✓
                         </span>
                       )}
@@ -2372,7 +2413,7 @@ export default function WatchPage() {
                       className={`rounded-2xl px-4 py-3 text-sm font-bold transition sm:px-6 ${
                         isFollowingHost
                           ? "bg-white text-black hover:bg-white/90"
-                          : "bg-purple-600 text-white hover:bg-purple-500"
+                          : "bg-accent text-white hover:bg-accent-hover"
                       } disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35`}
                     >
                       {followLoading
@@ -2396,7 +2437,7 @@ export default function WatchPage() {
                   {audioBlocked && (
                     <button
                       onClick={enableAudioManually}
-                      className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-500 sm:px-6"
+                      className="rounded-2xl bg-info px-4 py-3 text-sm font-bold text-white transition hover:brightness-90 sm:px-6"
                     >
                       Enable Audio
                     </button>
@@ -2418,7 +2459,7 @@ export default function WatchPage() {
                         joinRequest?.status === "pending" ||
                         joinRequest?.status === "accepted"
                       }
-                      className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-6"
+                      className="rounded-2xl bg-success px-4 py-3 text-sm font-black text-white transition hover:brightness-90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-6"
                     >
                       {joinRequestButtonLabel}
                     </button>
@@ -2431,7 +2472,7 @@ export default function WatchPage() {
                       streamStatus === "live" && !blockedAccess
                         ? liked
                           ? "bg-white text-black hover:bg-white/90"
-                          : "bg-red-600 text-white hover:bg-red-500"
+                          : "bg-accent text-white hover:bg-accent-hover"
                         : "cursor-not-allowed bg-white/10 text-white/35"
                     }`}
                   >
@@ -2452,7 +2493,7 @@ export default function WatchPage() {
                           streamStatus === "live" &&
                           connected &&
                           !blockedAccess
-                            ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                            ? "bg-warning text-black shadow-lg shadow-warning/30 hover:brightness-90"
                             : "cursor-not-allowed bg-white/10 text-white/35"
                         }`}
                       >
@@ -2472,7 +2513,7 @@ export default function WatchPage() {
           <aside className="flex h-[560px] flex-col rounded-[22px] border border-white/10 bg-white/[0.04] p-4 shadow-2xl backdrop-blur-xl sm:rounded-[28px] sm:p-5 lg:h-[720px]">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black sm:text-3xl lg:text-2xl">
+                <h2 className="font-display text-2xl font-black sm:text-3xl lg:text-2xl">
                   Live Chat
                 </h2>
                 <p className="text-xs text-white/45 sm:text-sm">
@@ -2513,7 +2554,7 @@ export default function WatchPage() {
                     className="rounded-2xl border border-white/10 bg-white/[0.04] p-3"
                   >
                     <div className="mb-1 flex items-center justify-between gap-3">
-                      <p className="truncate text-sm font-bold text-red-400">
+                      <p className="truncate text-sm font-bold text-accent">
                         {msg.username}
                       </p>
 
@@ -2548,13 +2589,13 @@ export default function WatchPage() {
                     : "Chat is available when stream is live and connected"
                 }
                 disabled={chatDisabled}
-                className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-red-500 disabled:cursor-not-allowed disabled:text-white/30"
+                className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-accent disabled:cursor-not-allowed disabled:text-white/30"
               />
 
               <button
                 onClick={sendMessage}
                 disabled={chatDisabled}
-                className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-bold transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-5"
+                className="rounded-2xl bg-accent px-4 py-3 text-sm font-bold transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:px-5"
               >
                 Send
               </button>
@@ -2566,5 +2607,36 @@ export default function WatchPage() {
   );
 }
 
-
-
+function RailButton({
+  onClick,
+  disabled,
+  active,
+  label,
+  ariaLabel,
+  icon,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  label: string;
+  ariaLabel: string;
+  icon: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className="flex flex-col items-center gap-1 disabled:opacity-40"
+    >
+      <span
+        className={`flex h-12 w-12 items-center justify-center rounded-full backdrop-blur ${
+          active ? "bg-accent text-white" : "bg-black/40 text-white hover:bg-black/60"
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="text-xs font-bold text-white drop-shadow">{label}</span>
+    </button>
+  );
+}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -122,24 +122,24 @@ export default function MessagesPage() {
   }, [userId, loadInbox]);
 
   return (
-    <div className="min-h-screen bg-black text-[#ededed]">
+    <div className="min-h-screen bg-canvas text-white">
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/10 sticky top-0 bg-black/90 backdrop-blur z-10">
+        <div className="flex items-center justify-between border-b border-hairline bg-canvas/90 px-4 py-4 sticky top-0 backdrop-blur z-10">
           <h1 className="text-xl font-semibold">Messages</h1>
           <button
             onClick={() => setShowNewConversation(true)}
-            className="rounded-full bg-[#dc2626] px-4 py-2 text-sm font-medium text-white"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             New message
           </button>
         </div>
 
         {loading && (
-          <p className="text-white/50 text-sm text-center py-10">Loading conversations...</p>
+          <p className="text-muted text-sm text-center py-10">Loading conversations...</p>
         )}
 
         {!loading && debugError && (
-          <div className="m-4 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-100">
+          <div className="m-4 rounded-xl border border-danger/40 bg-danger-soft p-4 text-sm text-white">
             <p className="font-semibold">Messages failed to load</p>
             <p className="mt-2 break-words">{debugError}</p>
           </div>
@@ -147,7 +147,7 @@ export default function MessagesPage() {
 
         {!loading && !debugError && items.length === 0 && (
           <div className="text-center py-16 px-6">
-            <p className="text-white/50 text-sm">
+            <p className="text-muted text-sm">
               No conversations yet. Start one with someone you follow.
             </p>
           </div>

@@ -43,7 +43,7 @@ export default function MessageInput({
 
   return (
     <div
-      className="flex items-end gap-2 border-t border-[rgba(127,29,29,0.35)] bg-black/90 px-3 pt-3"
+      className="flex items-end gap-2 border-t border-hairline bg-canvas/90 px-3 pt-3"
       style={{
         paddingBottom: "max(8px, env(safe-area-inset-bottom))",
       }}
@@ -59,14 +59,22 @@ export default function MessageInput({
         rows={1}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1 resize-none rounded-2xl border border-[rgba(127,29,29,0.35)] bg-[rgba(17,24,39,0.92)] px-4 py-2 text-sm text-[#ededed] placeholder-white/40 outline-none max-h-32 focus:border-[#dc2626]"
+        className="flex-1 resize-none rounded-2xl border border-hairline bg-surface px-4 py-2 text-sm text-white placeholder-faint outline-none max-h-32 focus:border-accent"
       />
       <button
         onClick={handleSend}
         disabled={disabled || sending || !value.trim()}
-        className="shrink-0 rounded-full bg-[#dc2626] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+        aria-label="Send message"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Send
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="h-5 w-5 translate-x-[-1px]"
+        >
+          <path d="M2.94 2.94a1.5 1.5 0 011.6-.34l17 6.5a1.5 1.5 0 010 2.8l-17 6.5a1.5 1.5 0 01-1.98-1.83L4.5 12 2.56 4.77a1.5 1.5 0 01.38-1.83z" />
+        </svg>
       </button>
     </div>
   );

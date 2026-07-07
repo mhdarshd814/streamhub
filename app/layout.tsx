@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 
 import Navbar from "./components/Navbar";
@@ -12,6 +13,16 @@ import AndroidBackButton from "./components/AndroidBackButton";
 import ToastProvider from "./components/ToastProvider";
 import NativeDialogBlocker from "./components/NativeDialogBlocker";
 import AuthRouteGuard from "./components/AuthRouteGuard";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "StreamHub",
@@ -49,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable}`}>
     <head>
       <script
         async
@@ -57,7 +68,7 @@ export default function RootLayout({
         crossOrigin="anonymous"
         />
     </head>
-      <body className="min-h-screen bg-black text-white antialiased">
+      <body className="min-h-screen bg-canvas text-white antialiased">
         <ToastProvider />
         <NativeDialogBlocker />
         <CapacitorStatusBar />
@@ -75,7 +86,7 @@ export default function RootLayout({
                 overflow: hidden !important;
                 overscroll-behavior: none !important;
                 touch-action: none !important;
-                background: #000 !important;
+                background: #000000 !important;
               }
 
               /* Hide ALL StreamHub chrome bars during fullscreen video:
@@ -94,6 +105,35 @@ export default function RootLayout({
               }
 
               body.streamhub-theater-mode .page-enter {
+                animation: none !important;
+                transform: none !important;
+                transition: none !important;
+              }
+
+              /* TikTok-style feed mode (live-feed page): unlike theater
+                 mode, the bottom nav stays visible as a floating overlay
+                 (it already has bg-canvas/95 + backdrop-blur, so it reads
+                 as a translucent bar over the content) — only the top
+                 chrome is hidden so feed cards run edge-to-edge. */
+              html.streamhub-feed-mode,
+              body.streamhub-feed-mode {
+                overflow: hidden !important;
+                background: #000000 !important;
+              }
+
+              body.streamhub-feed-mode nav:not(.mobile-bottom-nav) {
+                display: none !important;
+              }
+
+              body.streamhub-feed-mode .app-shell {
+                padding: 0 !important;
+                margin: 0 !important;
+                min-height: 100dvh !important;
+                height: 100dvh !important;
+                overflow: hidden !important;
+              }
+
+              body.streamhub-feed-mode .page-enter {
                 animation: none !important;
                 transform: none !important;
                 transition: none !important;
