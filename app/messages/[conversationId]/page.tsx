@@ -20,31 +20,6 @@ import MessageInput from "../../components/messaging/MessageInput";
 import { startPrivateCallRequest, getPrivateCallRate } from "../../../lib/privateCalls";
 import { usePresenceFor, formatPresenceLabel } from "../../../hooks/usePresence";
 
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-// WhatsApp-style date divider label: "Today" / "Yesterday" / a full date.
-function formatDayLabel(iso: string) {
-  const date = new Date(iso);
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-
-  if (isSameDay(date, now)) return "Today";
-  if (isSameDay(date, yesterday)) return "Yesterday";
-
-  return date.toLocaleDateString([], {
-    month: "long",
-    day: "numeric",
-    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
-  });
-}
-
 export default function MessageThreadPage() {
   const router = useRouter();
   const params = useParams<{ conversationId: string }>();
@@ -72,16 +47,22 @@ export default function MessageThreadPage() {
   const [startingCall, setStartingCall] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const handleStartCall = async () => {
+  const [callMenuOpen, setCallMenuOpen] = useState(false);
+
+  const handleStartCall = async (callType: "video" | "audio") => {
     if (!userId || !otherProfile || startingCall) return;
 
+    setCallMenuOpen(false);
     setStartingCall(true);
 
-    const toastId = toast.loading("Calling...");
+    const toastId = toast.loading(
+      callType === "audio" ? "Calling (audio)..." : "Calling..."
+    );
 
     const result = await startPrivateCallRequest({
       callerId: userId,
       target: otherProfile,
+      callType,
     });
 
     toast.dismiss(toastId);
@@ -353,8 +334,8 @@ export default function MessageThreadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center">
-        <p className="text-muted text-sm">Loading conversation...</p>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-white/50 text-sm">Loading conversation...</p>
       </div>
     );
   }
@@ -362,12 +343,12 @@ export default function MessageThreadPage() {
   const name = displayNameFor(otherProfile);
 
   return (
-    <div className="flex h-[calc(100dvh-env(safe-area-inset-top)-4rem)] flex-col bg-canvas text-white">
-      <div className="sticky top-[calc(64px+var(--app-status-top,0px))] z-30 flex items-center gap-3 border-b border-hairline bg-canvas/95 px-4 py-3 backdrop-blur xl:top-0">
+    <div className="flex h-[calc(100dvh-env(safe-area-inset-top)-4rem)] flex-col bg-black text-[#ededed]">
+      <div className="sticky top-[calc(64px+var(--app-status-top,0px))] z-30 flex items-center gap-3 border-b border-white/10 bg-black/95 px-4 py-3 backdrop-blur xl:top-0">
         <button
           type="button"
           onClick={() => router.push("/messages")}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
           aria-label="Back to messages"
         >
           <svg
@@ -391,7 +372,7 @@ export default function MessageThreadPage() {
             className="h-9 w-9 rounded-full object-cover"
           />
         ) : (
-          <div className="avatar h-9 w-9 text-sm font-semibold text-white">
+          <div className="h-9 w-9 rounded-full bg-[rgba(127,29,29,0.45)] flex items-center justify-center text-white font-semibold text-sm">
             {name.charAt(0).toUpperCase()}
           </div>
         )}
@@ -399,7 +380,7 @@ export default function MessageThreadPage() {
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{name}</div>
           {otherIsTyping ? (
-            <div className="truncate text-xs font-semibold text-success">
+            <div className="truncate text-xs font-semibold text-green-400">
               typing...
             </div>
           ) : (
@@ -407,10 +388,10 @@ export default function MessageThreadPage() {
               <div
                 className={
                   otherPresence.isOnCall
-                    ? "truncate text-xs font-semibold text-live"
+                    ? "truncate text-xs font-semibold text-red-400"
                     : otherPresence.isOnline
-                    ? "truncate text-xs font-semibold text-success"
-                    : "truncate text-xs text-faint"
+                    ? "truncate text-xs font-semibold text-green-400"
+                    : "truncate text-xs text-white/40"
                 }
               >
                 {formatPresenceLabel(otherPresence)}
@@ -419,63 +400,70 @@ export default function MessageThreadPage() {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleStartCall}
-          disabled={startingCall}
-          className="flex h-9 items-center gap-1.5 rounded-full px-3 text-muted transition-colors hover:bg-surface-raised hover:text-white disabled:opacity-50"
-          aria-label="Start call"
-          title={otherCallRate > 0 ? `Call · $${otherCallRate.toFixed(2)}` : "Free call"}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-5 w-5 shrink-0"
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setCallMenuOpen((open) => !open)}
+            disabled={startingCall}
+            className="flex h-9 items-center gap-1.5 rounded-full px-3 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+            aria-label="Start call"
+            title={otherCallRate > 0 ? `Call · $${otherCallRate.toFixed(2)}` : "Free call"}
           >
-            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.21 2.2z" />
-          </svg>
-          <span className="text-xs font-bold">
-            {otherCallRate > 0 ? `$${otherCallRate.toFixed(2)}` : "Free"}
-          </span>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="h-5 w-5 shrink-0"
+            >
+              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.21 2.2z" />
+            </svg>
+
+            <span className="text-xs font-bold">
+              {otherCallRate > 0 ? `$${otherCallRate.toFixed(2)}` : "Free"}
+            </span>
+          </button>
+
+          {callMenuOpen && (
+            <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl shadow-black/60">
+              <button
+                type="button"
+                onClick={() => handleStartCall("video")}
+                className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+              >
+                🎥 Video Call
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStartCall("audio")}
+                className="flex w-full items-center gap-2 border-t border-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+              >
+                🎧 Audio Call
+              </button>
+            </div>
+          )}
+        </div>
+
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
         {messages.length === 0 && (
-          <p className="text-faint text-sm text-center py-10">
+          <p className="text-white/40 text-sm text-center py-10">
             Say hello to start the conversation
           </p>
         )}
 
-        {messages.map((message, index) => {
-          const previous = messages[index - 1];
-          const showDivider =
-            !previous ||
-            !isSameDay(new Date(previous.created_at), new Date(message.created_at));
-
-          return (
-            <div key={message.id}>
-              {showDivider && (
-                <div className="sticky top-0 z-10 flex justify-center py-2">
-                  <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-muted shadow">
-                    {formatDayLabel(message.created_at)}
-                  </span>
-                </div>
-              )}
-
-              <MessageBubble
-                message={message}
-                isOwn={message.sender_id === userId}
-                status={
-                  message.sender_id === userId
-                    ? tickStatusByMessageId[message.id] || "sent"
-                    : undefined
-                }
-              />
-            </div>
-          );
-        })}
+        {messages.map((message) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            isOwn={message.sender_id === userId}
+            status={
+              message.sender_id === userId
+                ? tickStatusByMessageId[message.id] || "sent"
+                : undefined
+            }
+          />
+        ))}
         <div ref={messagesEndRef} />
       </div>
 
@@ -483,3 +471,5 @@ export default function MessageThreadPage() {
     </div>
   );
 }
+
+
