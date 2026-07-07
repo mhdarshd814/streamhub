@@ -52,6 +52,10 @@ export default function WalletPage() {
   const [privateCallPayments, setPrivateCallPayments] = useState<PrivateCallPayment[]>([]);
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutNote, setPayoutNote] = useState("");
+
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupNote, setTopupNote] = useState("");
+  const [topupSubmitting, setTopupSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -161,6 +165,62 @@ export default function WalletPage() {
     setPrivateCallPayments((callPaymentData || []) as PrivateCallPayment[]);
 
     setLoading(false);
+  }
+
+  async function submitTopupRequest() {
+    const amount = Number(topupAmount);
+
+    if (!amount || amount <= 0) {
+      alert("Enter a valid top-up amount.");
+      return;
+    }
+
+    if (amount > 5000) {
+      alert("Top-up requests over $5000 aren't supported yet. Please contact support.");
+      return;
+    }
+
+    if (!topupNote.trim()) {
+      alert(
+        "Please add a note describing how you sent the funds (e.g. bank transfer reference, crypto transaction ID)."
+      );
+      return;
+    }
+
+    const confirmed = confirm(
+      `Submit a top-up request for USD ${amount}? This will be reviewed by our team before your wallet is credited.`
+    );
+    if (!confirmed) return;
+
+    setTopupSubmitting(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setTopupSubmitting(false);
+      window.location.href = "/login";
+      return;
+    }
+
+    const { error } = await supabase.from("wallet_topup_requests").insert({
+      user_id: user.id,
+      amount_usd: amount,
+      topup_note: topupNote.trim(),
+      status: "pending",
+    });
+
+    setTopupSubmitting(false);
+
+    if (error) {
+      alert(error.message || "Failed to submit top-up request.");
+      return;
+    }
+
+    setTopupAmount("");
+    setTopupNote("");
+    alert("Top-up request submitted. Your wallet will be credited once reviewed.");
   }
 
   async function requestPayout() {
@@ -325,6 +385,49 @@ export default function WalletPage() {
           <MiniStat label="Platform Fees" value={`$${formatMoney(stats.tipFees)}`} />
           <MiniStat label="Pending Payouts" value={`$${formatMoney(stats.pendingWithdrawal)}`} />
         </div>
+
+        <section className="mb-8 rounded-2xl border border-green-500/20 bg-green-500/10 p-5 sm:p-6">
+          <h2 className="mb-2 text-2xl font-black">Add Funds</h2>
+
+          <p className="mb-5 text-sm leading-6 text-gray-400">
+            Send payment externally (bank transfer, crypto, etc.), then submit
+            a request below with proof of payment. Our team will review and
+            credit your wallet.
+          </p>
+
+          <label className="mb-2 block text-sm font-bold text-gray-300">
+            Amount USD
+          </label>
+
+          <input
+            type="number"
+            min="1"
+            value={topupAmount}
+            onChange={(e) => setTopupAmount(e.target.value)}
+            placeholder="Example: 20"
+            className="mb-4 w-full rounded-xl border border-gray-800 bg-black px-4 py-3 text-white outline-none focus:border-green-500"
+          />
+
+          <label className="mb-2 block text-sm font-bold text-gray-300">
+            Payment proof / note
+          </label>
+
+          <textarea
+            value={topupNote}
+            onChange={(e) => setTopupNote(e.target.value)}
+            placeholder="e.g. Bank transfer ref #12345, or crypto tx hash..."
+            rows={3}
+            className="mb-5 w-full resize-none rounded-xl border border-gray-800 bg-black px-4 py-3 text-white outline-none focus:border-green-500"
+          />
+
+          <button
+            onClick={submitTopupRequest}
+            disabled={topupSubmitting}
+            className="w-full rounded-xl bg-green-600 px-5 py-3 font-bold hover:bg-green-700 disabled:bg-gray-700"
+          >
+            {topupSubmitting ? "Submitting..." : "Submit Top-Up Request"}
+          </button>
+        </section>
 
         <section className="mb-8 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-6">
           <h2 className="mb-2 text-2xl font-black">Request Payout</h2>
