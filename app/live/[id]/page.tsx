@@ -3533,7 +3533,10 @@ let receiverPrivateCallChannel: any;
                         </div>
 
                         {visibleRemoteVideos.length > 0 ? (
-                          <div className="absolute bottom-4 right-4 flex max-w-[86vw] gap-2 overflow-x-auto rounded-3xl bg-black/20 p-1 backdrop-blur sm:max-w-none">
+                          <div
+                            className="absolute bottom-4 right-4 flex gap-2 overflow-x-auto rounded-3xl bg-black/20 p-1 backdrop-blur"
+                            style={{ maxWidth: "calc(100vw - 2rem)" }}
+                          >
                             {visibleRemoteVideos.map((video, index) => (
                               <div
                                 key={video.id}
@@ -3549,7 +3552,10 @@ let receiverPrivateCallChannel: any;
                             ))}
                           </div>
                         ) : (
-                          <div className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32">
+                          <div
+                            className="absolute bottom-4 right-4 flex h-36 w-28 items-center justify-center rounded-3xl border border-white/10 bg-gray-950 text-center text-xs text-gray-500 shadow-2xl sm:h-40 sm:w-32"
+                            style={{ maxWidth: "calc(100vw - 2rem)" }}
+                          >
                             Waiting
                           </div>
                         )}
@@ -3576,6 +3582,7 @@ let receiverPrivateCallChannel: any;
                         <div
                           onClick={() => setFocusedVideo("local")}
                           className="absolute bottom-4 right-4 h-36 w-28 overflow-hidden rounded-3xl border-2 border-white/25 bg-black shadow-2xl sm:h-44 sm:w-36"
+                          style={{ maxWidth: "calc(100vw - 2rem)" }}
                         >
                           <video
                             ref={localVideoRef}
