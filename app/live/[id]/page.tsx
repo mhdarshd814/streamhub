@@ -811,6 +811,7 @@ let receiverPrivateCallChannel: any;
 
         if (updatedCall.status === "accepted") {
           setStatusText("Call accepted. Connecting...");
+          setOutgoingCallReceiver(null);
           await loadGuestInvites();
           await startLiveStream();
           return;
@@ -2316,6 +2317,7 @@ let receiverPrivateCallChannel: any;
         roomRef.current = null;
         setRoom(null);
         setRemoteVideos([]);
+        setOutgoingCallReceiver(null);
         guestAutoJoinStartedRef.current = false;
       });
 
@@ -2459,6 +2461,7 @@ let receiverPrivateCallChannel: any;
 
     setRoom(null);
     setRemoteVideos([]);
+    setOutgoingCallReceiver(null);
 
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
