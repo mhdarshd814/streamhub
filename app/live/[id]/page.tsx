@@ -158,6 +158,7 @@ export default function LiveRoomPage() {
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
   const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
+  const [outgoingCallReceiver, setOutgoingCallReceiver] = useState<{ name: string } | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -615,6 +616,33 @@ let receiverPrivateCallChannel: any;
         setStatusText("Host studio ready.");
         await loadGuestInvites();
         await loadJoinRequests();
+
+        if (data.visibility === "private") {
+          const { data: outgoingCall } = await supabase
+            .from("private_call_requests")
+            .select("id, receiver:receiver_id(display_name, username)")
+            .eq("stream_id", streamId)
+            .eq("caller_id", user.id)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const receiverProfile = outgoingCall?.receiver as
+            | { display_name: string | null; username: string | null }
+            | { display_name: string | null; username: string | null }[]
+            | null;
+
+          const receiver = Array.isArray(receiverProfile)
+            ? receiverProfile[0]
+            : receiverProfile;
+
+          if (receiver) {
+            setOutgoingCallReceiver({
+              name: receiver.display_name || receiver.username || "them",
+            });
+          }
+        }
       } else {
         const { data: invite } = await supabase
           .from("stream_guests")
@@ -2140,7 +2168,7 @@ let receiverPrivateCallChannel: any;
   }
 
   async function startLiveStream() {
-    if (!stream || starting) return;
+    if (!stream || starting || roomRef.current) return;
 
     const allowed = await checkCurrentUserStillAllowed();
     if (!allowed) return;
@@ -2285,6 +2313,7 @@ let receiverPrivateCallChannel: any;
       newRoom.on(RoomEvent.Disconnected, () => {
         void endLiveAttendance();
         setStatusText("Disconnected from LiveKit room. Tap Join Stream to reconnect.");
+        roomRef.current = null;
         setRoom(null);
         setRemoteVideos([]);
         guestAutoJoinStartedRef.current = false;
@@ -3717,56 +3746,81 @@ let receiverPrivateCallChannel: any;
 
                   {!room && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
-                      <div className="max-w-md text-center">
-                        <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                          <span className="inline-flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z" /></svg></span>
-                        </div>
+                      {role === "host" && isPrivate && outgoingCallReceiver ? (
+                        <div className="max-w-md text-center">
+                          <div className="relative mx-auto mb-5 flex h-24 w-24 items-center justify-center">
+                            <span className="absolute inset-0 animate-ping rounded-full bg-red-500/20" />
+                            <span className="absolute inset-0 -m-1.5 rounded-full bg-red-500/20" />
+                            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z" /></svg></div>
+                          </div>
 
-                        <h2 className="mb-3 text-3xl font-black sm:text-4xl">
-                          {role === "host"
-                            ? isPrivate
-                              ? "Ready to Start Private Call?"
-                              : isSubscribersOnly
-                                ? "Ready to Start Subscriber Stream?"
-                                : "Ready to Go Live?"
-                            : "Ready to Join?"}
-                        </h2>
+                          <h2 className="mb-2 text-3xl font-black sm:text-4xl">
+                            Calling {outgoingCallReceiver.name}...
+                          </h2>
 
-                        <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
-                          {role === "host"
-                            ? isPrivate
-                              ? "Start your private video call. Only invited guests can join."
-                              : isSubscribersOnly
-                                ? "Start your premium stream. Active subscribers will be notified."
-                                : "Start your camera and microphone to begin broadcasting."
-                            : "Join with your camera and microphone as guest streamer."}
-                        </p>
+                          <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
+                            Waiting for them to answer.
+                          </p>
 
-                        <div className="flex flex-col gap-3 sm:items-center">
                           <button
-                            onClick={startLiveStream}
-                            disabled={starting}
-                            className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
+                            onClick={cancelOutgoingPrivateCall}
+                            className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
                           >
-                            {starting
-                              ? "Starting..."
-                              : role === "host"
-                                ? isPrivate
-                                  ? "Start Private Call"
-                                  : "Start Live Stream"
-                                : "Join Stream"}
+                            Cancel Call
                           </button>
-
-                          {role === "host" && isPrivate && !room && (
-                            <button
-                              onClick={cancelOutgoingPrivateCall}
-                              className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
-                            >
-                              Cancel Call
-                            </button>
-                          )}
                         </div>
-                      </div>
+                      ) : (
+                        <div className="max-w-md text-center">
+                          <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
+                            <span className="inline-flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z" /></svg></span>
+                          </div>
+
+                          <h2 className="mb-3 text-3xl font-black sm:text-4xl">
+                            {role === "host"
+                              ? isPrivate
+                                ? "Ready to Start Private Call?"
+                                : isSubscribersOnly
+                                  ? "Ready to Start Subscriber Stream?"
+                                  : "Ready to Go Live?"
+                              : "Ready to Join?"}
+                          </h2>
+
+                          <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
+                            {role === "host"
+                              ? isPrivate
+                                ? "Start your private video call. Only invited guests can join."
+                                : isSubscribersOnly
+                                  ? "Start your premium stream. Active subscribers will be notified."
+                                  : "Start your camera and microphone to begin broadcasting."
+                              : "Join with your camera and microphone as guest streamer."}
+                          </p>
+
+                          <div className="flex flex-col gap-3 sm:items-center">
+                            <button
+                              onClick={startLiveStream}
+                              disabled={starting}
+                              className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
+                            >
+                              {starting
+                                ? "Starting..."
+                                : role === "host"
+                                  ? isPrivate
+                                    ? "Start Private Call"
+                                    : "Start Live Stream"
+                                  : "Join Stream"}
+                            </button>
+
+                            {role === "host" && isPrivate && !room && (
+                              <button
+                                onClick={cancelOutgoingPrivateCall}
+                                className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
+                              >
+                                Cancel Call
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

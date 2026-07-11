@@ -73,7 +73,7 @@ export default function MessageThreadPage() {
       return;
     }
 
-    window.location.href = `/live/${result.streamId}`;
+    router.push(`/live/${result.streamId}`);
   };
 
   useEffect(() => {

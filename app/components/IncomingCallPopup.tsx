@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
@@ -35,6 +36,7 @@ type CallRequest = {
 };
 
 export default function IncomingCallPopup() {
+  const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [call, setCall] = useState<CallRequest | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -433,7 +435,8 @@ export default function IncomingCallPopup() {
 
     stopRing();
     activeCallIdRef.current = null;
-    window.location.replace(`/live/${target.stream_id}?autojoin=1`);
+    setCall(null);
+    router.replace(`/live/${target.stream_id}?autojoin=1`);
   }
 
   async function declineCallFor(target: CallRequest, silent: boolean) {
