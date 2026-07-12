@@ -167,6 +167,21 @@ export default function LiveRoomPage() {
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
   const guestAutoJoinStartedRef = useRef(false);
   const attendanceSessionIdRef = useRef<string | null>(null);
+  // Mirrors of `stream`/`role` state for code paths reached through
+  // handleCallerCallUpdate's realtime/poll closure (set up once in a
+  // [streamId, router] effect at mount) — that closure never sees state
+  // updates that happen after it was created, so startLiveStream() must
+  // read the live value via ref there instead of the closed-over state.
+  const streamRef = useRef<Stream | null>(null);
+  const roleRef = useRef<"host" | "guest" | "blocked" | "loading">("loading");
+
+  useEffect(() => {
+    streamRef.current = stream;
+  }, [stream]);
+
+  useEffect(() => {
+    roleRef.current = role;
+  }, [role]);
 
   async function getSafeDisplayName(user: any, fallback = "Viewer") {
     if (!user?.id) return fallback;
@@ -2223,19 +2238,29 @@ let receiverPrivateCallChannel: any;
 
   async function startLiveStream() {
     console.log("[CALLER-JOIN] startLiveStream() entered", {
-      hasStream: !!stream,
+      hasStream: !!streamRef.current,
       starting,
       hasRoomRef: !!roomRef.current,
     });
 
-    if (!stream || starting || roomRef.current) {
+    if (!streamRef.current || starting || roomRef.current) {
       console.log("[CALLER-JOIN] startLiveStream() bailing on guard", {
-        hasStream: !!stream,
+        hasStream: !!streamRef.current,
         starting,
         hasRoomRef: !!roomRef.current,
       });
       return;
     }
+
+    // Read via ref, not the closed-over `stream`/`role` state: this
+    // function can be called from handleCallerCallUpdate's realtime/poll
+    // closure (set up once at mount), which never observes state updates
+    // that happened after that one-time effect ran. Everything below this
+    // line already refers to `stream`/`role` by name, so shadowing them
+    // with the fresh ref values here is enough to fix every use in this
+    // function without touching each call site individually.
+    const stream = streamRef.current;
+    const role = roleRef.current;
 
     const allowed = await checkCurrentUserStillAllowed();
     console.log("[CALLER-JOIN] checkCurrentUserStillAllowed() ->", allowed);
