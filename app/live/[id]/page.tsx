@@ -618,29 +618,47 @@ let receiverPrivateCallChannel: any;
         await loadJoinRequests();
 
         if (data.visibility === "private") {
-          const { data: outgoingCall } = await supabase
-            .from("private_call_requests")
-            .select("id, receiver:receiver_id(display_name, username)")
-            .eq("stream_id", streamId)
-            .eq("caller_id", user.id)
-            .eq("status", "pending")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          try {
+            // private_call_requests has two FKs to profiles (caller_id and
+            // receiver_id) — the embed must be hinted with the FK column,
+            // otherwise PostgREST can't resolve which relationship to use
+            // and returns a 400 (which previously went unhandled here).
+            const { data: outgoingCall, error: outgoingCallError } = await supabase
+              .from("private_call_requests")
+              .select("id, receiver:profiles!receiver_id(display_name, username)")
+              .eq("stream_id", streamId)
+              .eq("caller_id", user.id)
+              .eq("status", "pending")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
 
-          const receiverProfile = outgoingCall?.receiver as
-            | { display_name: string | null; username: string | null }
-            | { display_name: string | null; username: string | null }[]
-            | null;
-
-          const receiver = Array.isArray(receiverProfile)
-            ? receiverProfile[0]
-            : receiverProfile;
-
-          if (receiver) {
-            setOutgoingCallReceiver({
-              name: receiver.display_name || receiver.username || "them",
+            console.log("[CALLER-JOIN] outgoingCall lookup", {
+              hasData: !!outgoingCall,
+              error: outgoingCallError?.message,
             });
+
+            if (outgoingCallError) throw outgoingCallError;
+
+            const receiverProfile = outgoingCall?.receiver as
+              | { display_name: string | null; username: string | null }
+              | { display_name: string | null; username: string | null }[]
+              | null;
+
+            const receiver = Array.isArray(receiverProfile)
+              ? receiverProfile[0]
+              : receiverProfile;
+
+            if (receiver) {
+              setOutgoingCallReceiver({
+                name: receiver.display_name || receiver.username || "them",
+              });
+            }
+          } catch (outgoingCallLookupError) {
+            // Never let this lookup (cosmetic: it only powers the "Calling
+            // {name}..." label) block the realtime subscription/polling
+            // setup below that the caller's auto-join depends on.
+            console.warn("Outgoing call receiver lookup failed:", outgoingCallLookupError);
           }
         }
       } else {
@@ -803,17 +821,32 @@ let receiverPrivateCallChannel: any;
       const processedCallerStatusRef = { current: "" };
 
       const handleCallerCallUpdate = async (updatedCall: PrivateCallRequest) => {
-        if (updatedCall.stream_id !== streamId) return;
+        console.log("[CALLER-JOIN] handleCallerCallUpdate fired", {
+          updatedCallStreamId: updatedCall.stream_id,
+          thisStreamId: streamId,
+          status: updatedCall.status,
+          ringStatus: updatedCall.ring_status,
+        });
+
+        if (updatedCall.stream_id !== streamId) {
+          console.log("[CALLER-JOIN] bailing: stream_id mismatch");
+          return;
+        }
 
         const statusKey = `${updatedCall.status}:${updatedCall.ring_status || ""}`;
-        if (processedCallerStatusRef.current === statusKey) return;
+        if (processedCallerStatusRef.current === statusKey) {
+          console.log("[CALLER-JOIN] bailing: statusKey already processed", statusKey);
+          return;
+        }
         processedCallerStatusRef.current = statusKey;
 
         if (updatedCall.status === "accepted") {
+          console.log("[CALLER-JOIN] status=accepted, calling startLiveStream()");
           setStatusText("Call accepted. Connecting...");
           setOutgoingCallReceiver(null);
           await loadGuestInvites();
           await startLiveStream();
+          console.log("[CALLER-JOIN] startLiveStream() call returned");
           return;
         }
 
@@ -873,6 +906,8 @@ let receiverPrivateCallChannel: any;
         }
       };
 
+      console.log("[CALLER-JOIN] subscribing privateCallChannel", { userId: user.id, streamId });
+
       privateCallChannel = supabase
         .channel("studio-private-calls-" + channelKey)
         .on(
@@ -884,27 +919,38 @@ let receiverPrivateCallChannel: any;
             filter: `caller_id=eq.${user.id}`,
           },
           async (payload) => {
+            console.log("[CALLER-JOIN] realtime UPDATE received", payload.new);
             await handleCallerCallUpdate(payload.new as PrivateCallRequest);
           },
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log("[CALLER-JOIN] privateCallChannel subscribe status:", status);
+        });
 
       // Polling fallback: only runs while this is a private call still
       // waiting on an answer (status has not yet been processed as
       // accepted/declined/missed). Stops itself once resolved.
       callerPollTimer = setInterval(async () => {
         if (processedCallerStatusRef.current) {
+          console.log("[CALLER-JOIN] poll: already processed, clearing interval");
           if (callerPollTimer) clearInterval(callerPollTimer);
           return;
         }
 
-        const { data: latestCall } = await supabase
+        const { data: latestCall, error: pollError } = await supabase
           .from("private_call_requests")
           .select("*")
           .eq("stream_id", streamId)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+
+        console.log("[CALLER-JOIN] poll tick", {
+          found: !!latestCall,
+          status: latestCall?.status,
+          ringStatus: latestCall?.ring_status,
+          pollError: pollError?.message,
+        });
 
         if (latestCall) {
           await handleCallerCallUpdate(latestCall as PrivateCallRequest);
@@ -2169,9 +2215,23 @@ let receiverPrivateCallChannel: any;
   }
 
   async function startLiveStream() {
-    if (!stream || starting || roomRef.current) return;
+    console.log("[CALLER-JOIN] startLiveStream() entered", {
+      hasStream: !!stream,
+      starting,
+      hasRoomRef: !!roomRef.current,
+    });
+
+    if (!stream || starting || roomRef.current) {
+      console.log("[CALLER-JOIN] startLiveStream() bailing on guard", {
+        hasStream: !!stream,
+        starting,
+        hasRoomRef: !!roomRef.current,
+      });
+      return;
+    }
 
     const allowed = await checkCurrentUserStillAllowed();
+    console.log("[CALLER-JOIN] checkCurrentUserStillAllowed() ->", allowed);
     if (!allowed) return;
 
     try {
@@ -2338,6 +2398,7 @@ let receiverPrivateCallChannel: any;
       attachLocalVideoTrack(newRoom);
       setTimeout(() => attachLocalVideoTrack(newRoom), 500);
 
+      console.log("[CALLER-JOIN] LiveKit connected, setting room state");
       roomRef.current = newRoom;
       (window as any).__streamhubActiveCall = true;
       setRoom(newRoom);
