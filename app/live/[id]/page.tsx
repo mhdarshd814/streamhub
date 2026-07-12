@@ -619,13 +619,14 @@ let receiverPrivateCallChannel: any;
 
         if (data.visibility === "private") {
           try {
-            // private_call_requests has two FKs to profiles (caller_id and
-            // receiver_id) — the embed must be hinted with the FK column,
-            // otherwise PostgREST can't resolve which relationship to use
-            // and returns a 400 (which previously went unhandled here).
+            // private_call_requests.receiver_id has no declared foreign key
+            // to profiles (confirmed via the PostgREST schema cache), so it
+            // can't be embedded in one query — fetch it as a separate
+            // lookup, same as every other caller/receiver profile fetch in
+            // this codebase (see IncomingCallPopup.tsx's loadSingleCall).
             const { data: outgoingCall, error: outgoingCallError } = await supabase
               .from("private_call_requests")
-              .select("id, receiver:profiles!receiver_id(display_name, username)")
+              .select("id, receiver_id")
               .eq("stream_id", streamId)
               .eq("caller_id", user.id)
               .eq("status", "pending")
@@ -640,19 +641,25 @@ let receiverPrivateCallChannel: any;
 
             if (outgoingCallError) throw outgoingCallError;
 
-            const receiverProfile = outgoingCall?.receiver as
-              | { display_name: string | null; username: string | null }
-              | { display_name: string | null; username: string | null }[]
-              | null;
+            if (outgoingCall?.receiver_id) {
+              const { data: receiver, error: receiverError } = await supabase
+                .from("profiles")
+                .select("display_name, username")
+                .eq("id", outgoingCall.receiver_id)
+                .maybeSingle();
 
-            const receiver = Array.isArray(receiverProfile)
-              ? receiverProfile[0]
-              : receiverProfile;
-
-            if (receiver) {
-              setOutgoingCallReceiver({
-                name: receiver.display_name || receiver.username || "them",
+              console.log("[CALLER-JOIN] outgoingCall receiver profile lookup", {
+                hasData: !!receiver,
+                error: receiverError?.message,
               });
+
+              if (receiverError) throw receiverError;
+
+              if (receiver) {
+                setOutgoingCallReceiver({
+                  name: receiver.display_name || receiver.username || "them",
+                });
+              }
             }
           } catch (outgoingCallLookupError) {
             // Never let this lookup (cosmetic: it only powers the "Calling
