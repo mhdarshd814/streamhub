@@ -3,9 +3,13 @@
 import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 export default function SignupPage() {
+  const searchParams = useSearchParams();
+
+  const [checkingSession, setCheckingSession] = useState(true);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,6 +17,58 @@ export default function SignupPage() {
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "short" | "checking" | "available" | "taken">("idle");
   const [passwordStrength, setPasswordStrength] = useState<"idle" | "weak" | "medium" | "strong">("idle");
+
+  useEffect(() => {
+    async function checkExistingSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user?.id) {
+        const nextRoute = await getNextRoute(session.user.id);
+        window.location.replace(nextRoute);
+        return;
+      }
+
+      setCheckingSession(false);
+    }
+
+    checkExistingSession();
+  }, []);
+
+  function safeNextRoute(value: string | null) {
+    if (value && value.startsWith("/") && !value.startsWith("//")) {
+      return value;
+    }
+    return null;
+  }
+
+  async function getNextRoute(userId: string) {
+    const next = safeNextRoute(searchParams.get("next"));
+    if (next) return next;
+
+    try {
+      const profileQuery = supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const timeout = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 2500)
+      );
+
+      const result: any = await Promise.race([profileQuery, timeout]);
+      const data = result?.data || null;
+
+      const hasBasicProfile =
+        !!data?.username && (!!data?.display_name || !!data?.avatar_url);
+
+      return hasBasicProfile ? "/live-feed" : "/profile/edit";
+    } catch {
+      return "/live-feed";
+    }
+  }
 
   function evaluatePasswordStrength(value: string): "idle" | "weak" | "medium" | "strong" {
     if (!value) return "idle";
