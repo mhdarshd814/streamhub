@@ -473,6 +473,32 @@ export default function LiveRoomPage() {
     }
   }
 
+  // Camera/mic acquisition can legitimately take up to ~15s per attempt
+  // when LiveKit's engine is waiting for a dropped signal connection to
+  // recover (see PublishTrackError investigation) — without this, the
+  // screen just sits on whatever status text was last set, looking frozen.
+  async function withSlowConnectionFeedback<T>(promise: Promise<T>): Promise<T> {
+    const timer = setTimeout(() => {
+      setStatusText("Connecting... this is taking longer than usual.");
+    }, 4000);
+
+    try {
+      return await promise;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // NotAllowedError/NotReadableError are genuine local device problems
+  // (permission denied, camera held by another app) with an accurate fix
+  // action for the user. Anything else observed in practice (in
+  // particular PublishTrackError, thrown when LiveKit's signal connection
+  // hasn't recovered from a drop within its own internal wait) is a
+  // network issue, not a device issue, and needs different guidance.
+  function isDeviceMediaError(error: any): boolean {
+    return error?.name === "NotAllowedError" || error?.name === "NotReadableError";
+  }
+
   async function enableCameraSafely(
     targetRoom: Room,
     facingMode: "user" | "environment" = "user",
@@ -490,9 +516,11 @@ export default function LiveRoomPage() {
     for (let i = 0; i < attempts.length; i++) {
       const options = attempts[i];
       try {
-        await targetRoom.localParticipant.setCameraEnabled(
-          true,
-          options as any,
+        await withSlowConnectionFeedback(
+          targetRoom.localParticipant.setCameraEnabled(
+            true,
+            options as any,
+          ),
         );
         console.log("[RECEIVER-DISCONNECT] enableCameraSafely succeeded", {
           role: roleRef.current,
@@ -534,15 +562,12 @@ export default function LiveRoomPage() {
       erroredNames,
     });
 
-    // TEMPORARY DIAGNOSTIC — no way to chrome://inspect the guest device
-    // tonight, so the real error is surfaced directly in the on-screen
-    // alert instead of only the console. Remove this [Debug: ...] suffix
-    // once the actual camera/mic failure cause is identified and fixed.
-    alert(
-      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.\n\n" +
-      `[Debug: ${lastError?.name || "UnknownError"} — ${lastError?.message || "no message"}] ` +
-      `(tried ${attempts.length}/${attempts.length} attempts)`,
-    );
+    const cameraFailureMessage = isDeviceMediaError(lastError)
+      ? "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin."
+      : "Your connection was unstable and the call could not connect. Please check your network and try again.";
+
+    alert(cameraFailureMessage);
+    setStatusText(cameraFailureMessage);
     return false;
   }
 
@@ -559,9 +584,11 @@ export default function LiveRoomPage() {
     for (let i = 0; i < attempts.length; i++) {
       const options = attempts[i];
       try {
-        await targetRoom.localParticipant.setMicrophoneEnabled(
-          true,
-          options as any,
+        await withSlowConnectionFeedback(
+          targetRoom.localParticipant.setMicrophoneEnabled(
+            true,
+            options as any,
+          ),
         );
         console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely succeeded", {
           role: roleRef.current,
@@ -602,15 +629,12 @@ export default function LiveRoomPage() {
       erroredNames,
     });
 
-    // TEMPORARY DIAGNOSTIC — no way to chrome://inspect the guest device
-    // tonight, so the real error is surfaced directly in the on-screen
-    // alert instead of only the console. Remove this [Debug: ...] suffix
-    // once the actual camera/mic failure cause is identified and fixed.
-    alert(
-      "Microphone could not start on this device. Please check microphone permission, then rejoin.\n\n" +
-      `[Debug: ${lastError?.name || "UnknownError"} — ${lastError?.message || "no message"}] ` +
-      `(tried ${attempts.length}/${attempts.length} attempts)`,
-    );
+    const microphoneFailureMessage = isDeviceMediaError(lastError)
+      ? "Microphone could not start on this device. Please check microphone permission, then rejoin."
+      : "Your connection was unstable and the call could not connect. Please check your network and try again.";
+
+    alert(microphoneFailureMessage);
+    setStatusText(microphoneFailureMessage);
     return false;
   }
 
