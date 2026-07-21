@@ -517,6 +517,15 @@ export default function LiveRoomPage() {
         try {
           await targetRoom.localParticipant.setCameraEnabled(false);
         } catch { }
+
+        // Fast-failing errors (NotReadableError, OverconstrainedError) reject
+        // near-instantly with no wait at all, unlike PublishTrackError which
+        // already gets an internal ~15s grace period from the SDK. Give the
+        // device/OS a brief moment before hammering the same not-ready state
+        // again on the next fallback attempt.
+        if (i < attempts.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
     }
 
@@ -578,6 +587,13 @@ export default function LiveRoomPage() {
         try {
           await targetRoom.localParticipant.setMicrophoneEnabled(false);
         } catch { }
+
+        // Same reasoning as enableCameraSafely: give a fast-failing device
+        // state a brief moment before the next fallback attempt instead of
+        // retrying instantly back-to-back.
+        if (i < attempts.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
     }
 
