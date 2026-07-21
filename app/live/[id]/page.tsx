@@ -479,6 +479,7 @@ export default function LiveRoomPage() {
   ) {
     const attempts = getFallbackVideoProfiles(facingMode);
     const erroredNames: string[] = [];
+    let lastError: any = null;
 
     console.log("[RECEIVER-DISCONNECT] enableCameraSafely starting", {
       role: roleRef.current,
@@ -502,6 +503,7 @@ export default function LiveRoomPage() {
         setTimeout(() => attachLocalVideoTrack(targetRoom), 500);
         return true;
       } catch (error: any) {
+        lastError = error;
         erroredNames.push(error?.name || "UnknownError");
         console.warn("Camera enable attempt failed. Trying fallback.", error);
         console.log("[RECEIVER-DISCONNECT] enableCameraSafely attempt failed", {
@@ -523,8 +525,14 @@ export default function LiveRoomPage() {
       erroredNames,
     });
 
+    // TEMPORARY DIAGNOSTIC — no way to chrome://inspect the guest device
+    // tonight, so the real error is surfaced directly in the on-screen
+    // alert instead of only the console. Remove this [Debug: ...] suffix
+    // once the actual camera/mic failure cause is identified and fixed.
     alert(
-      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.",
+      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.\n\n" +
+      `[Debug: ${lastError?.name || "UnknownError"} — ${lastError?.message || "no message"}] ` +
+      `(tried ${attempts.length}/${attempts.length} attempts)`,
     );
     return false;
   }
@@ -532,6 +540,7 @@ export default function LiveRoomPage() {
   async function enableMicrophoneSafely(targetRoom: Room) {
     const attempts = [getMediaAudioConstraints(), true];
     const erroredNames: string[] = [];
+    let lastError: any = null;
 
     console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely starting", {
       role: roleRef.current,
@@ -552,6 +561,7 @@ export default function LiveRoomPage() {
         });
         return true;
       } catch (error: any) {
+        lastError = error;
         erroredNames.push(error?.name || "UnknownError");
         console.warn(
           "Microphone enable attempt failed. Trying fallback.",
@@ -576,8 +586,14 @@ export default function LiveRoomPage() {
       erroredNames,
     });
 
+    // TEMPORARY DIAGNOSTIC — no way to chrome://inspect the guest device
+    // tonight, so the real error is surfaced directly in the on-screen
+    // alert instead of only the console. Remove this [Debug: ...] suffix
+    // once the actual camera/mic failure cause is identified and fixed.
     alert(
-      "Microphone could not start on this device. Please check microphone permission, then rejoin.",
+      "Microphone could not start on this device. Please check microphone permission, then rejoin.\n\n" +
+      `[Debug: ${lastError?.name || "UnknownError"} — ${lastError?.message || "no message"}] ` +
+      `(tried ${attempts.length}/${attempts.length} attempts)`,
     );
     return false;
   }
