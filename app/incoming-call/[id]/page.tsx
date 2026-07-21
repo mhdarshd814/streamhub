@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "../../../lib/supabase";
+import { startPrivateCallRequest } from "../../../lib/privateCalls";
 
 type Profile = {
   id: string;
@@ -52,6 +53,7 @@ export default function IncomingCallPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [callingBack, setCallingBack] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -492,6 +494,33 @@ export default function IncomingCallPage() {
     startAutoRedirect();
   }
 
+  async function callBack() {
+    if (!userId || !call?.caller || callingBack) return;
+
+    setCallingBack(true);
+    clearRedirect();
+
+    const result = await startPrivateCallRequest({
+      callerId: userId,
+      target: call.caller,
+    });
+
+    setCallingBack(false);
+
+    if (!result.ok) {
+      if (result.redirectTo) {
+        window.location.href = result.redirectTo;
+        return;
+      }
+
+      toast.error(result.message);
+      startAutoRedirect();
+      return;
+    }
+
+    window.location.href = `/live/${result.streamId}`;
+  }
+
   const callerName =
     call?.caller?.display_name || call?.caller?.username || "StreamHub Caller";
 
@@ -539,10 +568,22 @@ export default function IncomingCallPage() {
           <p className="mt-3 text-sm text-gray-500">
             Redirecting to calls in {redirectSeconds}s...
           </p>
+
+          {call.caller && (
+            <button
+              type="button"
+              onClick={callBack}
+              disabled={callingBack}
+              className="mt-7 flex w-full items-center justify-center rounded-full bg-green-600 px-6 py-4 font-black disabled:bg-gray-700"
+            >
+              {callingBack ? "Calling..." : `Call ${callerName} Back`}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => (window.location.href = "/calls")}
-            className="mt-7 rounded-full bg-red-600 px-6 py-4 font-black"
+            className="mt-3 rounded-full bg-red-600 px-6 py-4 font-black"
           >
             Open Calls
           </button>
