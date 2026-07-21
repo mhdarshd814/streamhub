@@ -849,6 +849,22 @@ let receiverPrivateCallChannel: any;
           status: updatedCall.status,
           ringStatus: updatedCall.ring_status,
         });
+        // NOTE: this handler is wired up unconditionally in this effect
+        // regardless of whether the current tab's user is the caller or
+        // the receiver — callerPollTimer below polls the row with no
+        // caller/receiver filter at all. If roleRef.current is "guest"
+        // here, this is running on the RECEIVER's page, which would be
+        // unexpected and is exactly the kind of "incorrectly matching"
+        // trigger we're trying to catch.
+        console.log("[RECEIVER-DISCONNECT] handleCallerCallUpdate fired", {
+          role: roleRef.current,
+          hasRoom: !!roomRef.current,
+          updatedCallId: updatedCall.id,
+          updatedCallStreamId: updatedCall.stream_id,
+          thisStreamId: streamId,
+          status: updatedCall.status,
+          ringStatus: updatedCall.ring_status,
+        });
 
         if (updatedCall.stream_id !== streamId) {
           console.log("[CALLER-JOIN] bailing: stream_id mismatch");
@@ -873,6 +889,10 @@ let receiverPrivateCallChannel: any;
         }
 
         if (updatedCall.status === "declined") {
+          console.log("[RECEIVER-DISCONNECT] handleCallerCallUpdate tearing down room: status=declined", {
+            role: roleRef.current,
+          });
+          console.trace("[RECEIVER-DISCONNECT] handleCallerCallUpdate declined-branch stack");
           setStatusText("Private call declined.");
 
           cleanupRemoteAudio();
@@ -910,6 +930,12 @@ let receiverPrivateCallChannel: any;
           // The guest left after connecting (or the call was cancelled
           // after being accepted). The caller's room must exit too,
           // matching what the receiver-side handler already does.
+          console.log("[RECEIVER-DISCONNECT] handleCallerCallUpdate tearing down room: status/ring=cancelled", {
+            role: roleRef.current,
+            status: updatedCall.status,
+            ringStatus: updatedCall.ring_status,
+          });
+          console.trace("[RECEIVER-DISCONNECT] handleCallerCallUpdate cancelled-branch stack");
           setStatusText("Private call ended.");
 
           cleanupRemoteAudio();
@@ -973,6 +999,15 @@ let receiverPrivateCallChannel: any;
           ringStatus: latestCall?.ring_status,
           pollError: pollError?.message,
         });
+        // This poll has no caller/receiver filter — it runs identically
+        // whether the current tab belongs to the caller or the receiver.
+        console.log("[RECEIVER-DISCONNECT] callerPollTimer tick", {
+          role: roleRef.current,
+          hasRoom: !!roomRef.current,
+          latestCallId: (latestCall as any)?.id,
+          status: latestCall?.status,
+          ringStatus: latestCall?.ring_status,
+        });
 
         if (latestCall) {
           await handleCallerCallUpdate(latestCall as PrivateCallRequest);
@@ -993,7 +1028,20 @@ let receiverPrivateCallChannel: any;
           async (payload) => {
             const updatedCall = payload.new as PrivateCallRequest;
 
-            if (updatedCall.stream_id !== streamId) return;
+            console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel UPDATE received", {
+              role: roleRef.current,
+              updatedCallId: updatedCall.id,
+              updatedCallStreamId: updatedCall.stream_id,
+              thisStreamId: streamId,
+              status: updatedCall.status,
+              ringStatus: updatedCall.ring_status,
+              hasRoom: !!roomRef.current,
+            });
+
+            if (updatedCall.stream_id !== streamId) {
+              console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel bailing: stream_id mismatch");
+              return;
+            }
 
             const ended =
               updatedCall.status === "cancelled" ||
@@ -1002,7 +1050,15 @@ let receiverPrivateCallChannel: any;
               updatedCall.ring_status === "cancelled" ||
               updatedCall.ring_status === "expired";
 
+            console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel ended check ->", ended);
+
             if (!ended) return;
+
+            console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel tearing down room", {
+              status: updatedCall.status,
+              ringStatus: updatedCall.ring_status,
+            });
+            console.trace("[RECEIVER-DISCONNECT] receiverPrivateCallChannel teardown stack");
 
             cleanupRemoteAudio();
 
@@ -1020,7 +1076,9 @@ let receiverPrivateCallChannel: any;
             router.replace("/calls");
           },
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel subscribe status:", status);
+        });
 
       joinRequestChannel = supabase
         .channel("studio-join-requests-" + channelKey)
@@ -1050,6 +1108,15 @@ let receiverPrivateCallChannel: any;
             filter: `receiver_id=eq.${user.id}`,
           },
           async (payload) => {
+            const newCallLog = payload.new as PrivateCallRequest;
+            console.log("[RECEIVER-DISCONNECT] busyCallChannel INSERT received", {
+              role: roleRef.current,
+              hasRoom: !!roomRef.current,
+              newCallId: newCallLog.id,
+              newCallStreamId: newCallLog.stream_id,
+              status: newCallLog.status,
+            });
+
             // Only intercept if currently in an active room
             if (!roomRef.current) return;
 
@@ -1205,11 +1272,21 @@ let receiverPrivateCallChannel: any;
 
       const data = await response.json().catch(() => null);
 
+      console.log("[RECEIVER-DISCONNECT] expireStalePrivateCalls tick", {
+        role: roleRef.current,
+        hasRoom: !!roomRef.current,
+        expired: data?.expired,
+        closedStreamIds: data?.closedStreamIds,
+        thisStreamId: streamId,
+      });
+
       if (
         data?.expired > 0 &&
         Array.isArray(data?.closedStreamIds) &&
         data.closedStreamIds.includes(streamId)
       ) {
+        console.log("[RECEIVER-DISCONNECT] expireStalePrivateCalls tearing down room (closedStreamIds match)");
+        console.trace("[RECEIVER-DISCONNECT] expireStalePrivateCalls teardown stack");
         try {
           await KeepAwake.allowSleep();
         } catch { }
@@ -2391,11 +2468,26 @@ let receiverPrivateCallChannel: any;
         console.log("Local track published:", publication.kind);
       });
 
+      (newRoom as any).on((RoomEvent as any).SignalReconnecting, () => {
+        console.log("[RECEIVER-DISCONNECT] RoomEvent.SignalReconnecting", {
+          role,
+          streamId: stream?.id,
+        });
+      });
+
       (newRoom as any).on((RoomEvent as any).Reconnecting, () => {
+        console.log("[RECEIVER-DISCONNECT] RoomEvent.Reconnecting", {
+          role,
+          streamId: stream?.id,
+        });
         setStatusText("Connection unstable. Reconnecting...");
       });
 
       (newRoom as any).on((RoomEvent as any).Reconnected, () => {
+        console.log("[RECEIVER-DISCONNECT] RoomEvent.Reconnected", {
+          role,
+          streamId: stream?.id,
+        });
         setStatusText(
           role === "host"
             ? "You are live as host."
@@ -2403,7 +2495,13 @@ let receiverPrivateCallChannel: any;
         );
       });
 
-      newRoom.on(RoomEvent.Disconnected, () => {
+      newRoom.on(RoomEvent.Disconnected, (reason) => {
+        console.log("[RECEIVER-DISCONNECT] RoomEvent.Disconnected", {
+          role,
+          streamId: stream?.id,
+          reason,
+        });
+        console.trace("[RECEIVER-DISCONNECT] RoomEvent.Disconnected stack");
         void endLiveAttendance();
         setStatusText("Disconnected from LiveKit room. Tap Join Stream to reconnect.");
         roomRef.current = null;
@@ -2468,6 +2566,16 @@ let receiverPrivateCallChannel: any;
 
 
   useEffect(() => {
+    console.log("[RECEIVER-DISCONNECT] guest-auto-join effect ran", {
+      streamId: stream?.id,
+      role,
+      pendingInvite: !!pendingInvite,
+      hasRoomRef: !!roomRef.current,
+      hasRoomState: !!room,
+      starting,
+      alreadyStarted: guestAutoJoinStartedRef.current,
+    });
+
     if (!stream?.id) return;
     if (role !== "guest") return;
     if (pendingInvite) return;
@@ -2485,7 +2593,10 @@ let receiverPrivateCallChannel: any;
       });
     }, 700);
 
-    return () => clearTimeout(timer);
+    return () => {
+      console.log("[RECEIVER-DISCONNECT] guest-auto-join effect cleanup (timer cleared)");
+      clearTimeout(timer);
+    };
   }, [stream?.id, role, pendingInvite, room, starting]);
 
   // Fixed-price call duration: the package price was already charged in
@@ -2499,6 +2610,13 @@ let receiverPrivateCallChannel: any;
   useEffect(() => {
     const isPrivateCall = stream?.visibility === "private";
     const durationMinutes = Number(stream?.private_call_duration_minutes || 0);
+
+    console.log("[RECEIVER-DISCONNECT] call-duration effect ran", {
+      role: roleRef.current,
+      hasRoom: !!room,
+      isPrivateCall,
+      durationMinutes,
+    });
 
     if (!room || !isPrivateCall || durationMinutes <= 0) {
       return;
@@ -2524,16 +2642,33 @@ let receiverPrivateCallChannel: any;
 
       if (elapsed >= durationMs) {
         clearInterval(countdownTimer);
+        console.log("[RECEIVER-DISCONNECT] call-duration effect tearing down room: time expired", {
+          role: roleRef.current,
+          elapsed,
+          durationMs,
+        });
         alert("Call ended: your purchased call time has been used up.");
         await stopLiveStream();
       }
     }, 5000);
 
-    return () => clearInterval(countdownTimer);
+    return () => {
+      console.log("[RECEIVER-DISCONNECT] call-duration effect cleanup (interval cleared)", {
+        role: roleRef.current,
+      });
+      clearInterval(countdownTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, stream?.visibility, stream?.private_call_duration_minutes]);
 
   async function stopLiveStream() {
+    console.log("[RECEIVER-DISCONNECT] stopLiveStream() called", {
+      role: roleRef.current,
+      hasRoom: !!roomRef.current,
+      streamId: streamRef.current?.id,
+    });
+    console.trace("[RECEIVER-DISCONNECT] stopLiveStream() call stack");
+
     (window as any).__streamhubActiveCall = false;
 
     try {
