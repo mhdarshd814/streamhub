@@ -1512,6 +1512,11 @@ let receiverPrivateCallChannel: any;
       .eq("stream_id", streamId)
       .order("created_at", { ascending: false });
 
+    console.log("[RECEIVER-DISCONNECT] loadGuestInvites -> setGuestInvites", {
+      role: roleRef.current,
+      count: (data || []).length,
+    });
+
     setGuestInvites((data || []) as StreamGuest[]);
   }
 
@@ -2439,6 +2444,15 @@ let receiverPrivateCallChannel: any;
              participant.identity,
              participant.name
     );
+          console.log("[RECEIVER-DISCONNECT] TrackSubscribed", {
+            role,
+            trackKind: track.kind,
+            trackSid: (track as any).sid,
+            participantIdentity: participant.identity,
+            publicationIsSubscribed: (_publication as any)?.isSubscribed,
+            attachedElementsBefore: (track as any).attachedElements?.length,
+          });
+          console.trace("[RECEIVER-DISCONNECT] TrackSubscribed stack");
 
      if (track.kind === Track.Kind.Audio) {
       attachRemoteAudio(track);
@@ -2450,9 +2464,17 @@ let receiverPrivateCallChannel: any;
      }
      },
      );
-         
 
-      newRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
+
+      newRoom.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+        console.log("[RECEIVER-DISCONNECT] RoomEvent.TrackUnsubscribed", {
+          role,
+          trackKind: track.kind,
+          trackSid: (track as any).sid,
+          participantIdentity: participant?.identity,
+        });
+        console.trace("[RECEIVER-DISCONNECT] TrackUnsubscribed stack");
+
         try {
           if (track.kind === Track.Kind.Video) {
             removeRemoteVideo(track);
@@ -4540,8 +4562,23 @@ function RemoteVideoTile({
   onClick?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2, 8));
+  const mountedAtRef = useRef(Date.now());
+
+  console.log("[RECEIVER-DISCONNECT] RemoteVideoTile render", {
+    instanceId: instanceIdRef.current,
+    identity,
+    trackSid: (track as any)?.sid,
+  });
 
   useEffect(() => {
+    console.log("[RECEIVER-DISCONNECT] RemoteVideoTile effect run (attach)", {
+      instanceId: instanceIdRef.current,
+      identity,
+      trackSid: (track as any)?.sid,
+      msSinceMount: Date.now() - mountedAtRef.current,
+    });
+
     if (!track || !videoRef.current) return;
 
     track.attach(videoRef.current);
@@ -4553,6 +4590,11 @@ function RemoteVideoTile({
     videoRef.current.play().catch(() => { });
 
     return () => {
+      console.log("[RECEIVER-DISCONNECT] RemoteVideoTile effect cleanup (detach)", {
+        instanceId: instanceIdRef.current,
+        identity,
+        trackSid: (track as any)?.sid,
+      });
       try {
         if (videoRef.current) {
           track.detach(videoRef.current);
