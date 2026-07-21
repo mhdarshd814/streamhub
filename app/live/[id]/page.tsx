@@ -1259,6 +1259,10 @@ let receiverPrivateCallChannel: any;
     loadData();
 
     return () => {
+      console.log("[RECEIVER-DISCONNECT] main mount effect cleanup running (unmount or streamId/router changed)", {
+        role: roleRef.current,
+        hasRoomRef: !!roomRef.current,
+      });
       KeepAwake.allowSleep().catch(() => { });
       void endLiveAttendance();
       document.documentElement.classList.remove("streamhub-theater-mode");
