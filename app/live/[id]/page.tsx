@@ -166,6 +166,7 @@ export default function LiveRoomPage() {
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
   const guestAutoJoinStartedRef = useRef(false);
+  const startLiveStreamAttemptRef = useRef(0);
   const attendanceSessionIdRef = useRef<string | null>(null);
   // Mirrors of `stream`/`role` state for code paths reached through
   // handleCallerCallUpdate's realtime/poll closure (set up once in a
@@ -477,23 +478,50 @@ export default function LiveRoomPage() {
     facingMode: "user" | "environment" = "user",
   ) {
     const attempts = getFallbackVideoProfiles(facingMode);
+    const erroredNames: string[] = [];
 
-    for (const options of attempts) {
+    console.log("[RECEIVER-DISCONNECT] enableCameraSafely starting", {
+      role: roleRef.current,
+      attemptCount: attempts.length,
+      facingMode,
+    });
+
+    for (let i = 0; i < attempts.length; i++) {
+      const options = attempts[i];
       try {
         await targetRoom.localParticipant.setCameraEnabled(
           true,
           options as any,
         );
+        console.log("[RECEIVER-DISCONNECT] enableCameraSafely succeeded", {
+          role: roleRef.current,
+          attemptIndex: i,
+          options,
+        });
         setTimeout(() => attachLocalVideoTrack(targetRoom), 150);
         setTimeout(() => attachLocalVideoTrack(targetRoom), 500);
         return true;
-      } catch (error) {
+      } catch (error: any) {
+        erroredNames.push(error?.name || "UnknownError");
         console.warn("Camera enable attempt failed. Trying fallback.", error);
+        console.log("[RECEIVER-DISCONNECT] enableCameraSafely attempt failed", {
+          role: roleRef.current,
+          attemptIndex: i,
+          options,
+          errorName: error?.name,
+          errorMessage: error?.message,
+          errorConstructor: error?.constructor?.name,
+        });
         try {
           await targetRoom.localParticipant.setCameraEnabled(false);
         } catch { }
       }
     }
+
+    console.log("[RECEIVER-DISCONNECT] enableCameraSafely all attempts exhausted", {
+      role: roleRef.current,
+      erroredNames,
+    });
 
     alert(
       "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.",
@@ -503,24 +531,50 @@ export default function LiveRoomPage() {
 
   async function enableMicrophoneSafely(targetRoom: Room) {
     const attempts = [getMediaAudioConstraints(), true];
+    const erroredNames: string[] = [];
 
-    for (const options of attempts) {
+    console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely starting", {
+      role: roleRef.current,
+      attemptCount: attempts.length,
+    });
+
+    for (let i = 0; i < attempts.length; i++) {
+      const options = attempts[i];
       try {
         await targetRoom.localParticipant.setMicrophoneEnabled(
           true,
           options as any,
         );
+        console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely succeeded", {
+          role: roleRef.current,
+          attemptIndex: i,
+          options,
+        });
         return true;
-      } catch (error) {
+      } catch (error: any) {
+        erroredNames.push(error?.name || "UnknownError");
         console.warn(
           "Microphone enable attempt failed. Trying fallback.",
           error,
         );
+        console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely attempt failed", {
+          role: roleRef.current,
+          attemptIndex: i,
+          options,
+          errorName: error?.name,
+          errorMessage: error?.message,
+          errorConstructor: error?.constructor?.name,
+        });
         try {
           await targetRoom.localParticipant.setMicrophoneEnabled(false);
         } catch { }
       }
     }
+
+    console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely all attempts exhausted", {
+      role: roleRef.current,
+      erroredNames,
+    });
 
     alert(
       "Microphone could not start on this device. Please check microphone permission, then rejoin.",
@@ -2319,10 +2373,14 @@ let receiverPrivateCallChannel: any;
   }
 
   async function startLiveStream() {
+    startLiveStreamAttemptRef.current += 1;
     console.log("[CALLER-JOIN] startLiveStream() entered", {
       hasStream: !!streamRef.current,
       starting,
       hasRoomRef: !!roomRef.current,
+    });
+    console.log("[RECEIVER-DISCONNECT] startLiveStream() attempt #" + startLiveStreamAttemptRef.current, {
+      role: roleRef.current,
     });
 
     if (!streamRef.current || starting || roomRef.current) {
@@ -2530,6 +2588,15 @@ let receiverPrivateCallChannel: any;
         setRoom(null);
         setRemoteVideos([]);
         setOutgoingCallReceiver(null);
+        // This reset is what allows the guest-auto-join effect to fire
+        // startLiveStream() again with no attempt count or backoff. If
+        // camera/mic acquisition fails for an environmental reason (busy
+        // device, revoked permission), every re-attempt fails the same
+        // way, producing an unbounded connect->fail->disconnect->retry
+        // loop that looks like "reconnecting again and again" from the UI.
+        console.log("[RECEIVER-DISCONNECT] resetting guestAutoJoinStartedRef -> auto-join effect may re-fire startLiveStream()", {
+          role,
+        });
         guestAutoJoinStartedRef.current = false;
       });
 
