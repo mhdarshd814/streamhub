@@ -162,6 +162,7 @@ export default function LiveRoomPage() {
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
+  const theaterContainerRef = useRef<HTMLDivElement | null>(null);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
@@ -2389,6 +2390,41 @@ let receiverPrivateCallChannel: any;
     return () => clearTimeout(timer);
   }, [focusedVideo, isCompactStudio, isTheaterMode, remoteVideos.length, room]);
 
+  // TEMPORARY DIAGNOSTIC — checking whether the dvh-sized theater
+  // container's measured height is bouncing/recalculating after mount,
+  // which could be tricking LiveKit's adaptiveStream visibility tracking
+  // into pausing/resuming the subscription. Remove once the fullscreen
+  // disconnect bug is confirmed/ruled out and fixed.
+  useEffect(() => {
+    if (!isTheaterMode) return;
+
+    const logRect = (label: string) => {
+      const rect = theaterContainerRef.current?.getBoundingClientRect();
+      console.log("[FULLSCREEN-DISCONNECT] theater container rect", {
+        label,
+        role: roleRef.current,
+        width: rect?.width,
+        height: rect?.height,
+        innerHeight: window.innerHeight,
+        t: Date.now(),
+      });
+    };
+
+    logRect("mount");
+
+    const timers = [100, 400, 1000, 2000, 4000].map((delay) =>
+      setTimeout(() => logRect("t+" + delay + "ms"), delay),
+    );
+
+    const handleResize = () => logRect("window-resize-event");
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isTheaterMode]);
+
   function enableTheaterChromeLock() {
     document.documentElement.classList.add("streamhub-theater-mode");
     document.body.classList.add("streamhub-theater-mode");
@@ -2406,6 +2442,11 @@ let receiverPrivateCallChannel: any;
   async function enterTheaterMode() {
     if (!roomRef.current) return;
 
+    console.log("[FULLSCREEN-DISCONNECT] enterTheaterMode() tapped", {
+      role: roleRef.current,
+      t: Date.now(),
+    });
+
     // Android WebView is unreliable with browser fullscreen.
     // This app-level theater lock hides global StreamHub chrome, removes layout padding,
     // and lets the fixed overlay own the full viewport.
@@ -2417,6 +2458,11 @@ let receiverPrivateCallChannel: any;
   }
 
   async function exitTheaterMode() {
+    console.log("[FULLSCREEN-DISCONNECT] exitTheaterMode() tapped", {
+      role: roleRef.current,
+      t: Date.now(),
+    });
+
     setIsTheaterMode(false);
     disableTheaterChromeLock();
 
@@ -2571,6 +2617,12 @@ let receiverPrivateCallChannel: any;
             attachedElementsBefore: (track as any).attachedElements?.length,
           });
           console.trace("[RECEIVER-DISCONNECT] TrackSubscribed stack");
+          console.log("[FULLSCREEN-DISCONNECT] TrackSubscribed", {
+            role: roleRef.current,
+            trackKind: track.kind,
+            trackSid: (track as any).sid,
+            t: Date.now(),
+          });
 
      if (track.kind === Track.Kind.Audio) {
       attachRemoteAudio(track);
@@ -2592,6 +2644,12 @@ let receiverPrivateCallChannel: any;
           participantIdentity: participant?.identity,
         });
         console.trace("[RECEIVER-DISCONNECT] TrackUnsubscribed stack");
+        console.log("[FULLSCREEN-DISCONNECT] TrackUnsubscribed", {
+          role: roleRef.current,
+          trackKind: track.kind,
+          trackSid: (track as any).sid,
+          t: Date.now(),
+        });
 
         try {
           if (track.kind === Track.Kind.Video) {
@@ -2613,12 +2671,20 @@ let receiverPrivateCallChannel: any;
           role,
           streamId: stream?.id,
         });
+        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.SignalReconnecting", {
+          role: roleRef.current,
+          t: Date.now(),
+        });
       });
 
       (newRoom as any).on((RoomEvent as any).Reconnecting, () => {
         console.log("[RECEIVER-DISCONNECT] RoomEvent.Reconnecting", {
           role,
           streamId: stream?.id,
+        });
+        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.Reconnecting", {
+          role: roleRef.current,
+          t: Date.now(),
         });
         setStatusText("Connection unstable. Reconnecting...");
       });
@@ -2627,6 +2693,10 @@ let receiverPrivateCallChannel: any;
         console.log("[RECEIVER-DISCONNECT] RoomEvent.Reconnected", {
           role,
           streamId: stream?.id,
+        });
+        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.Reconnected", {
+          role: roleRef.current,
+          t: Date.now(),
         });
         setStatusText(
           role === "host"
@@ -2642,6 +2712,11 @@ let receiverPrivateCallChannel: any;
           reason,
         });
         console.trace("[RECEIVER-DISCONNECT] RoomEvent.Disconnected stack");
+        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.Disconnected", {
+          role: roleRef.current,
+          reason,
+          t: Date.now(),
+        });
         void endLiveAttendance();
         setStatusText("Disconnected from LiveKit room. Tap Join Stream to reconnect.");
         roomRef.current = null;
@@ -3566,7 +3641,10 @@ let receiverPrivateCallChannel: any;
       {!isTheaterMode && hostJoinRequestVideoOverlay}
 
       {room && isTheaterMode && (
-        <div className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white">
+        <div
+          ref={theaterContainerRef}
+          className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white"
+        >
           <div className="relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black">
             {hostJoinRequestVideoOverlay}
             {focusedVideo === "local" ? (
