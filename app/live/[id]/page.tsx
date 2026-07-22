@@ -156,6 +156,10 @@ export default function LiveRoomPage() {
   const [focusedVideo, setFocusedVideo] = useState<"local" | string>("local");
   const [isCompactStudio, setIsCompactStudio] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
+  // dvh is unreliable in this Android WebView (already confirmed and fixed
+  // once before, in the chat panel) — the theater-mode overlay measures
+  // window.innerHeight itself instead of relying on a CSS viewport unit.
+  const [theaterViewportHeight, setTheaterViewportHeight] = useState(0);
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
   const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
   const [outgoingCallReceiver, setOutgoingCallReceiver] = useState<{ name: string } | null>(null);
@@ -163,6 +167,10 @@ export default function LiveRoomPage() {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterContainerRef = useRef<HTMLDivElement | null>(null);
+  // Timestamp of the last enterTheaterMode/exitTheaterMode call — used to
+  // flag a cancelled-status realtime update that arrives suspiciously
+  // close to a fullscreen toggle, in case that connection is ever real.
+  const lastTheaterToggleAtRef = useRef(0);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
@@ -1047,6 +1055,23 @@ let receiverPrivateCallChannel: any;
             ringStatus: updatedCall.ring_status,
           });
           console.trace("[RECEIVER-DISCONNECT] handleCallerCallUpdate cancelled-branch stack");
+          logSuspiciousIfNearTheaterToggle("caller cancelled-status update", updatedCall.id);
+
+          const { stillEnded, freshRow } = await reverifyCallStillEnded(
+            updatedCall.id,
+            (row) => row.status === "cancelled" || row.ring_status === "cancelled",
+          );
+
+          console.log("[FULLSCREEN-DISCONNECT] handleCallerCallUpdate re-verify before teardown", {
+            stillEnded,
+            freshRow,
+          });
+
+          if (!stillEnded) {
+            console.warn("[FULLSCREEN-DISCONNECT] Aborting teardown: fresh query shows call is no longer cancelled (stale/duplicate realtime payload)");
+            return;
+          }
+
           setStatusText("Private call ended.");
 
           cleanupRemoteAudio();
@@ -1170,6 +1195,27 @@ let receiverPrivateCallChannel: any;
               ringStatus: updatedCall.ring_status,
             });
             console.trace("[RECEIVER-DISCONNECT] receiverPrivateCallChannel teardown stack");
+            logSuspiciousIfNearTheaterToggle("receiver ended-status update", updatedCall.id);
+
+            const { stillEnded, freshRow } = await reverifyCallStillEnded(
+              updatedCall.id,
+              (row) =>
+                row.status === "cancelled" ||
+                row.status === "declined" ||
+                row.status === "missed" ||
+                row.ring_status === "cancelled" ||
+                row.ring_status === "expired",
+            );
+
+            console.log("[FULLSCREEN-DISCONNECT] receiverPrivateCallChannel re-verify before teardown", {
+              stillEnded,
+              freshRow,
+            });
+
+            if (!stillEnded) {
+              console.warn("[FULLSCREEN-DISCONNECT] Aborting teardown: fresh query shows call is no longer ended (stale/duplicate realtime payload)");
+              return;
+            }
 
             cleanupRemoteAudio();
 
@@ -1468,6 +1514,43 @@ let receiverPrivateCallChannel: any;
     setIsShadowBanned(!!data?.is_shadow_banned);
 
     return true;
+  }
+
+  // Defensive re-check before tearing down a connected room in response to
+  // a realtime "call ended" update. Realtime payloads can in principle be
+  // stale or duplicated; this re-reads the row directly so a real, current
+  // cancellation is never blocked, while a stale/duplicate signal that no
+  // longer matches the row's actual current state is not acted on blindly.
+  async function reverifyCallStillEnded(
+    callId: string,
+    isEnded: (row: { status: string; ring_status: string | null }) => boolean,
+  ): Promise<{ stillEnded: boolean; freshRow: any }> {
+    const { data: freshRow, error } = await supabase
+      .from("private_call_requests")
+      .select("status, ring_status")
+      .eq("id", callId)
+      .maybeSingle();
+
+    if (error || !freshRow) {
+      // No fresher answer available — fall back to trusting the original
+      // realtime payload rather than blocking a possibly-real teardown.
+      return { stillEnded: true, freshRow: null };
+    }
+
+    return { stillEnded: isEnded(freshRow), freshRow };
+  }
+
+  function logSuspiciousIfNearTheaterToggle(context: string, callId: string) {
+    if (!lastTheaterToggleAtRef.current) return;
+
+    const msSinceTheaterToggle = Date.now() - lastTheaterToggleAtRef.current;
+
+    if (msSinceTheaterToggle < 2000) {
+      console.warn(
+        `[FULLSCREEN-DISCONNECT] SUSPICIOUS: ${context} arrived ${msSinceTheaterToggle}ms after a fullscreen toggle`,
+        { role: roleRef.current, callId, msSinceTheaterToggle },
+      );
+    }
   }
 
   function attachRemoteAudio(track: any) {
@@ -2425,6 +2508,22 @@ let receiverPrivateCallChannel: any;
     };
   }, [isTheaterMode]);
 
+  // Fix for the fullscreen-toggle disconnect: dvh recomputation in this
+  // Android WebView was bouncing the theater container's rendered size,
+  // which is consistent with LiveKit's adaptiveStream visibility tracking
+  // seeing the video element as repeatedly changing/hidden and pausing the
+  // remote subscription. window.innerHeight is a plain synchronous read,
+  // not a viewport-unit recalculation, so it doesn't bounce the same way.
+  useEffect(() => {
+    if (!isTheaterMode) return;
+
+    const measure = () => setTheaterViewportHeight(window.innerHeight);
+    measure();
+
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [isTheaterMode]);
+
   function enableTheaterChromeLock() {
     document.documentElement.classList.add("streamhub-theater-mode");
     document.body.classList.add("streamhub-theater-mode");
@@ -2442,6 +2541,7 @@ let receiverPrivateCallChannel: any;
   async function enterTheaterMode() {
     if (!roomRef.current) return;
 
+    lastTheaterToggleAtRef.current = Date.now();
     console.log("[FULLSCREEN-DISCONNECT] enterTheaterMode() tapped", {
       role: roleRef.current,
       t: Date.now(),
@@ -2458,6 +2558,7 @@ let receiverPrivateCallChannel: any;
   }
 
   async function exitTheaterMode() {
+    lastTheaterToggleAtRef.current = Date.now();
     console.log("[FULLSCREEN-DISCONNECT] exitTheaterMode() tapped", {
       role: roleRef.current,
       t: Date.now(),
@@ -3643,9 +3744,19 @@ let receiverPrivateCallChannel: any;
       {room && isTheaterMode && (
         <div
           ref={theaterContainerRef}
-          className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white"
+          className="fixed inset-0 z-[2147483647] w-screen overflow-hidden bg-black text-white"
+          style={{
+            height: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+            maxHeight: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+          }}
         >
-          <div className="relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black">
+          <div
+            className="relative w-screen overflow-hidden bg-black"
+            style={{
+              height: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+              maxHeight: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+            }}
+          >
             {hostJoinRequestVideoOverlay}
             {focusedVideo === "local" ? (
               <>
@@ -4016,6 +4127,7 @@ let receiverPrivateCallChannel: any;
                             identity={`${video.identity || `Guest ${index + 1}`}`}
                             onClick={() => setFocusedVideo(video.id)}
                             className={`border border-white/10 ${gridTileMinHeight}`}
+                            active={!isTheaterMode}
                           />
                         ))}
 
@@ -4065,6 +4177,7 @@ let receiverPrivateCallChannel: any;
                                   identity={video.identity || `Guest ${index + 1}`}
                                   onClick={() => setFocusedVideo(video.id)}
                                   className="h-full w-full"
+                                  active={!isTheaterMode}
                                 />
                               </div>
                             ))}
@@ -4086,6 +4199,7 @@ let receiverPrivateCallChannel: any;
                             track={focusedRemoteVideo.track}
                             identity={focusedRemoteVideo.identity || "Guest"}
                             className="h-full w-full"
+                            active={!isTheaterMode}
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center rounded-2xl border border-gray-800 bg-gray-950 text-center text-gray-500">
@@ -4136,6 +4250,7 @@ let receiverPrivateCallChannel: any;
                                     identity={video.identity || `Guest ${index + 1}`}
                                     onClick={() => setFocusedVideo(video.id)}
                                     className="h-full w-full"
+                                    active={!isTheaterMode}
                                   />
                                 </div>
                               ))}
@@ -4760,11 +4875,18 @@ function RemoteVideoTile({
   identity,
   className = "",
   onClick,
+  active = true,
 }: {
   track: any;
   identity: string;
   className?: string;
   onClick?: () => void;
+  // The non-theater view stays mounted (hidden via CSS) underneath the
+  // theater-mode overlay rather than unmounting, so without this flag
+  // BOTH the hidden instance and the theater instance would independently
+  // call track.attach() on the same remote track at the same time. Pass
+  // active={false} for the hidden one so only one consumer ever attaches.
+  active?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const instanceIdRef = useRef(Math.random().toString(36).slice(2, 8));
@@ -4774,6 +4896,7 @@ function RemoteVideoTile({
     instanceId: instanceIdRef.current,
     identity,
     trackSid: (track as any)?.sid,
+    active,
   });
 
   useEffect(() => {
@@ -4782,9 +4905,10 @@ function RemoteVideoTile({
       identity,
       trackSid: (track as any)?.sid,
       msSinceMount: Date.now() - mountedAtRef.current,
+      active,
     });
 
-    if (!track || !videoRef.current) return;
+    if (!track || !videoRef.current || !active) return;
 
     track.attach(videoRef.current);
     videoRef.current.autoplay = true;
@@ -4808,7 +4932,7 @@ function RemoteVideoTile({
         console.error(error);
       }
     };
-  }, [track]);
+  }, [track, active]);
 
   return (
     <div
