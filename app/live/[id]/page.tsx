@@ -158,32 +158,14 @@ export default function LiveRoomPage() {
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
   const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
-  const [outgoingCallReceiver, setOutgoingCallReceiver] = useState<{ name: string } | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
-  const theaterContainerRef = useRef<HTMLDivElement | null>(null);
   const chatBoxRef = useRef<HTMLDivElement | null>(null);
   const roomRef = useRef<Room | null>(null);
   const remoteAudioElementsRef = useRef<HTMLAudioElement[]>([]);
   const guestAutoJoinStartedRef = useRef(false);
-  const startLiveStreamAttemptRef = useRef(0);
   const attendanceSessionIdRef = useRef<string | null>(null);
-  // Mirrors of `stream`/`role` state for code paths reached through
-  // handleCallerCallUpdate's realtime/poll closure (set up once in a
-  // [streamId, router] effect at mount) — that closure never sees state
-  // updates that happen after it was created, so startLiveStream() must
-  // read the live value via ref there instead of the closed-over state.
-  const streamRef = useRef<Stream | null>(null);
-  const roleRef = useRef<"host" | "guest" | "blocked" | "loading">("loading");
-
-  useEffect(() => {
-    streamRef.current = stream;
-  }, [stream]);
-
-  useEffect(() => {
-    roleRef.current = role;
-  }, [role]);
 
   async function getSafeDisplayName(user: any, fallback = "Viewer") {
     if (!user?.id) return fallback;
@@ -474,168 +456,59 @@ export default function LiveRoomPage() {
     }
   }
 
-  // Camera/mic acquisition can legitimately take up to ~15s per attempt
-  // when LiveKit's engine is waiting for a dropped signal connection to
-  // recover (see PublishTrackError investigation) — without this, the
-  // screen just sits on whatever status text was last set, looking frozen.
-  async function withSlowConnectionFeedback<T>(promise: Promise<T>): Promise<T> {
-    const timer = setTimeout(() => {
-      setStatusText("Connecting... this is taking longer than usual.");
-    }, 4000);
-
-    try {
-      return await promise;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  // NotAllowedError/NotReadableError are genuine local device problems
-  // (permission denied, camera held by another app) with an accurate fix
-  // action for the user. Anything else observed in practice (in
-  // particular PublishTrackError, thrown when LiveKit's signal connection
-  // hasn't recovered from a drop within its own internal wait) is a
-  // network issue, not a device issue, and needs different guidance.
-  function isDeviceMediaError(error: any): boolean {
-    return error?.name === "NotAllowedError" || error?.name === "NotReadableError";
-  }
-
   async function enableCameraSafely(
     targetRoom: Room,
     facingMode: "user" | "environment" = "user",
   ) {
     const attempts = getFallbackVideoProfiles(facingMode);
-    const erroredNames: string[] = [];
-    let lastError: any = null;
 
-    console.log("[RECEIVER-DISCONNECT] enableCameraSafely starting", {
-      role: roleRef.current,
-      attemptCount: attempts.length,
-      facingMode,
-    });
-
-    for (let i = 0; i < attempts.length; i++) {
-      const options = attempts[i];
+    for (const options of attempts) {
       try {
-        await withSlowConnectionFeedback(
-          targetRoom.localParticipant.setCameraEnabled(
-            true,
-            options as any,
-          ),
+        await targetRoom.localParticipant.setCameraEnabled(
+          true,
+          options as any,
         );
-        console.log("[RECEIVER-DISCONNECT] enableCameraSafely succeeded", {
-          role: roleRef.current,
-          attemptIndex: i,
-          options,
-        });
         setTimeout(() => attachLocalVideoTrack(targetRoom), 150);
         setTimeout(() => attachLocalVideoTrack(targetRoom), 500);
         return true;
-      } catch (error: any) {
-        lastError = error;
-        erroredNames.push(error?.name || "UnknownError");
+      } catch (error) {
         console.warn("Camera enable attempt failed. Trying fallback.", error);
-        console.log("[RECEIVER-DISCONNECT] enableCameraSafely attempt failed", {
-          role: roleRef.current,
-          attemptIndex: i,
-          options,
-          errorName: error?.name,
-          errorMessage: error?.message,
-          errorConstructor: error?.constructor?.name,
-        });
         try {
           await targetRoom.localParticipant.setCameraEnabled(false);
         } catch { }
-
-        // Fast-failing errors (NotReadableError, OverconstrainedError) reject
-        // near-instantly with no wait at all, unlike PublishTrackError which
-        // already gets an internal ~15s grace period from the SDK. Give the
-        // device/OS a brief moment before hammering the same not-ready state
-        // again on the next fallback attempt.
-        if (i < attempts.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
       }
     }
 
-    console.log("[RECEIVER-DISCONNECT] enableCameraSafely all attempts exhausted", {
-      role: roleRef.current,
-      erroredNames,
-    });
-
-    const cameraFailureMessage = isDeviceMediaError(lastError)
-      ? "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin."
-      : "Your connection was unstable and the call could not connect. Please check your network and try again.";
-
-    alert(cameraFailureMessage);
-    setStatusText(cameraFailureMessage);
+    alert(
+      "Camera could not start on this device. Please check camera permission, close other apps using the camera, then rejoin.",
+    );
     return false;
   }
 
   async function enableMicrophoneSafely(targetRoom: Room) {
     const attempts = [getMediaAudioConstraints(), true];
-    const erroredNames: string[] = [];
-    let lastError: any = null;
 
-    console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely starting", {
-      role: roleRef.current,
-      attemptCount: attempts.length,
-    });
-
-    for (let i = 0; i < attempts.length; i++) {
-      const options = attempts[i];
+    for (const options of attempts) {
       try {
-        await withSlowConnectionFeedback(
-          targetRoom.localParticipant.setMicrophoneEnabled(
-            true,
-            options as any,
-          ),
+        await targetRoom.localParticipant.setMicrophoneEnabled(
+          true,
+          options as any,
         );
-        console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely succeeded", {
-          role: roleRef.current,
-          attemptIndex: i,
-          options,
-        });
         return true;
-      } catch (error: any) {
-        lastError = error;
-        erroredNames.push(error?.name || "UnknownError");
+      } catch (error) {
         console.warn(
           "Microphone enable attempt failed. Trying fallback.",
           error,
         );
-        console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely attempt failed", {
-          role: roleRef.current,
-          attemptIndex: i,
-          options,
-          errorName: error?.name,
-          errorMessage: error?.message,
-          errorConstructor: error?.constructor?.name,
-        });
         try {
           await targetRoom.localParticipant.setMicrophoneEnabled(false);
         } catch { }
-
-        // Same reasoning as enableCameraSafely: give a fast-failing device
-        // state a brief moment before the next fallback attempt instead of
-        // retrying instantly back-to-back.
-        if (i < attempts.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
       }
     }
 
-    console.log("[RECEIVER-DISCONNECT] enableMicrophoneSafely all attempts exhausted", {
-      role: roleRef.current,
-      erroredNames,
-    });
-
-    const microphoneFailureMessage = isDeviceMediaError(lastError)
-      ? "Microphone could not start on this device. Please check microphone permission, then rejoin."
-      : "Your connection was unstable and the call could not connect. Please check your network and try again.";
-
-    alert(microphoneFailureMessage);
-    setStatusText(microphoneFailureMessage);
+    alert(
+      "Microphone could not start on this device. Please check microphone permission, then rejoin.",
+    );
     return false;
   }
 
@@ -742,58 +615,6 @@ let receiverPrivateCallChannel: any;
         setStatusText("Host studio ready.");
         await loadGuestInvites();
         await loadJoinRequests();
-
-        if (data.visibility === "private") {
-          try {
-            // private_call_requests.receiver_id has no declared foreign key
-            // to profiles (confirmed via the PostgREST schema cache), so it
-            // can't be embedded in one query — fetch it as a separate
-            // lookup, same as every other caller/receiver profile fetch in
-            // this codebase (see IncomingCallPopup.tsx's loadSingleCall).
-            const { data: outgoingCall, error: outgoingCallError } = await supabase
-              .from("private_call_requests")
-              .select("id, receiver_id")
-              .eq("stream_id", streamId)
-              .eq("caller_id", user.id)
-              .eq("status", "pending")
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            console.log("[CALLER-JOIN] outgoingCall lookup", {
-              hasData: !!outgoingCall,
-              error: outgoingCallError?.message,
-            });
-
-            if (outgoingCallError) throw outgoingCallError;
-
-            if (outgoingCall?.receiver_id) {
-              const { data: receiver, error: receiverError } = await supabase
-                .from("profiles")
-                .select("display_name, username")
-                .eq("id", outgoingCall.receiver_id)
-                .maybeSingle();
-
-              console.log("[CALLER-JOIN] outgoingCall receiver profile lookup", {
-                hasData: !!receiver,
-                error: receiverError?.message,
-              });
-
-              if (receiverError) throw receiverError;
-
-              if (receiver) {
-                setOutgoingCallReceiver({
-                  name: receiver.display_name || receiver.username || "them",
-                });
-              }
-            }
-          } catch (outgoingCallLookupError) {
-            // Never let this lookup (cosmetic: it only powers the "Calling
-            // {name}..." label) block the realtime subscription/polling
-            // setup below that the caller's auto-join depends on.
-            console.warn("Outgoing call receiver lookup failed:", outgoingCallLookupError);
-          }
-        }
       } else {
         const { data: invite } = await supabase
           .from("stream_guests")
@@ -954,56 +775,20 @@ let receiverPrivateCallChannel: any;
       const processedCallerStatusRef = { current: "" };
 
       const handleCallerCallUpdate = async (updatedCall: PrivateCallRequest) => {
-        console.log("[CALLER-JOIN] handleCallerCallUpdate fired", {
-          updatedCallStreamId: updatedCall.stream_id,
-          thisStreamId: streamId,
-          status: updatedCall.status,
-          ringStatus: updatedCall.ring_status,
-        });
-        // NOTE: this handler is wired up unconditionally in this effect
-        // regardless of whether the current tab's user is the caller or
-        // the receiver — callerPollTimer below polls the row with no
-        // caller/receiver filter at all. If roleRef.current is "guest"
-        // here, this is running on the RECEIVER's page, which would be
-        // unexpected and is exactly the kind of "incorrectly matching"
-        // trigger we're trying to catch.
-        console.log("[RECEIVER-DISCONNECT] handleCallerCallUpdate fired", {
-          role: roleRef.current,
-          hasRoom: !!roomRef.current,
-          updatedCallId: updatedCall.id,
-          updatedCallStreamId: updatedCall.stream_id,
-          thisStreamId: streamId,
-          status: updatedCall.status,
-          ringStatus: updatedCall.ring_status,
-        });
-
-        if (updatedCall.stream_id !== streamId) {
-          console.log("[CALLER-JOIN] bailing: stream_id mismatch");
-          return;
-        }
+        if (updatedCall.stream_id !== streamId) return;
 
         const statusKey = `${updatedCall.status}:${updatedCall.ring_status || ""}`;
-        if (processedCallerStatusRef.current === statusKey) {
-          console.log("[CALLER-JOIN] bailing: statusKey already processed", statusKey);
-          return;
-        }
+        if (processedCallerStatusRef.current === statusKey) return;
         processedCallerStatusRef.current = statusKey;
 
         if (updatedCall.status === "accepted") {
-          console.log("[CALLER-JOIN] status=accepted, calling startLiveStream()");
           setStatusText("Call accepted. Connecting...");
-          setOutgoingCallReceiver(null);
           await loadGuestInvites();
           await startLiveStream();
-          console.log("[CALLER-JOIN] startLiveStream() call returned");
           return;
         }
 
         if (updatedCall.status === "declined") {
-          console.log("[RECEIVER-DISCONNECT] handleCallerCallUpdate tearing down room: status=declined", {
-            role: roleRef.current,
-          });
-          console.trace("[RECEIVER-DISCONNECT] handleCallerCallUpdate declined-branch stack");
           setStatusText("Private call declined.");
 
           cleanupRemoteAudio();
@@ -1041,12 +826,6 @@ let receiverPrivateCallChannel: any;
           // The guest left after connecting (or the call was cancelled
           // after being accepted). The caller's room must exit too,
           // matching what the receiver-side handler already does.
-          console.log("[RECEIVER-DISCONNECT] handleCallerCallUpdate tearing down room: status/ring=cancelled", {
-            role: roleRef.current,
-            status: updatedCall.status,
-            ringStatus: updatedCall.ring_status,
-          });
-          console.trace("[RECEIVER-DISCONNECT] handleCallerCallUpdate cancelled-branch stack");
           setStatusText("Private call ended.");
 
           cleanupRemoteAudio();
@@ -1065,8 +844,6 @@ let receiverPrivateCallChannel: any;
         }
       };
 
-      console.log("[CALLER-JOIN] subscribing privateCallChannel", { userId: user.id, streamId });
-
       privateCallChannel = supabase
         .channel("studio-private-calls-" + channelKey)
         .on(
@@ -1078,47 +855,27 @@ let receiverPrivateCallChannel: any;
             filter: `caller_id=eq.${user.id}`,
           },
           async (payload) => {
-            console.log("[CALLER-JOIN] realtime UPDATE received", payload.new);
             await handleCallerCallUpdate(payload.new as PrivateCallRequest);
           },
         )
-        .subscribe((status) => {
-          console.log("[CALLER-JOIN] privateCallChannel subscribe status:", status);
-        });
+        .subscribe();
 
       // Polling fallback: only runs while this is a private call still
       // waiting on an answer (status has not yet been processed as
       // accepted/declined/missed). Stops itself once resolved.
       callerPollTimer = setInterval(async () => {
         if (processedCallerStatusRef.current) {
-          console.log("[CALLER-JOIN] poll: already processed, clearing interval");
           if (callerPollTimer) clearInterval(callerPollTimer);
           return;
         }
 
-        const { data: latestCall, error: pollError } = await supabase
+        const { data: latestCall } = await supabase
           .from("private_call_requests")
           .select("*")
           .eq("stream_id", streamId)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-
-        console.log("[CALLER-JOIN] poll tick", {
-          found: !!latestCall,
-          status: latestCall?.status,
-          ringStatus: latestCall?.ring_status,
-          pollError: pollError?.message,
-        });
-        // This poll has no caller/receiver filter — it runs identically
-        // whether the current tab belongs to the caller or the receiver.
-        console.log("[RECEIVER-DISCONNECT] callerPollTimer tick", {
-          role: roleRef.current,
-          hasRoom: !!roomRef.current,
-          latestCallId: (latestCall as any)?.id,
-          status: latestCall?.status,
-          ringStatus: latestCall?.ring_status,
-        });
 
         if (latestCall) {
           await handleCallerCallUpdate(latestCall as PrivateCallRequest);
@@ -1139,20 +896,7 @@ let receiverPrivateCallChannel: any;
           async (payload) => {
             const updatedCall = payload.new as PrivateCallRequest;
 
-            console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel UPDATE received", {
-              role: roleRef.current,
-              updatedCallId: updatedCall.id,
-              updatedCallStreamId: updatedCall.stream_id,
-              thisStreamId: streamId,
-              status: updatedCall.status,
-              ringStatus: updatedCall.ring_status,
-              hasRoom: !!roomRef.current,
-            });
-
-            if (updatedCall.stream_id !== streamId) {
-              console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel bailing: stream_id mismatch");
-              return;
-            }
+            if (updatedCall.stream_id !== streamId) return;
 
             const ended =
               updatedCall.status === "cancelled" ||
@@ -1161,15 +905,7 @@ let receiverPrivateCallChannel: any;
               updatedCall.ring_status === "cancelled" ||
               updatedCall.ring_status === "expired";
 
-            console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel ended check ->", ended);
-
             if (!ended) return;
-
-            console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel tearing down room", {
-              status: updatedCall.status,
-              ringStatus: updatedCall.ring_status,
-            });
-            console.trace("[RECEIVER-DISCONNECT] receiverPrivateCallChannel teardown stack");
 
             cleanupRemoteAudio();
 
@@ -1187,9 +923,7 @@ let receiverPrivateCallChannel: any;
             router.replace("/calls");
           },
         )
-        .subscribe((status) => {
-          console.log("[RECEIVER-DISCONNECT] receiverPrivateCallChannel subscribe status:", status);
-        });
+        .subscribe();
 
       joinRequestChannel = supabase
         .channel("studio-join-requests-" + channelKey)
@@ -1219,15 +953,6 @@ let receiverPrivateCallChannel: any;
             filter: `receiver_id=eq.${user.id}`,
           },
           async (payload) => {
-            const newCallLog = payload.new as PrivateCallRequest;
-            console.log("[RECEIVER-DISCONNECT] busyCallChannel INSERT received", {
-              role: roleRef.current,
-              hasRoom: !!roomRef.current,
-              newCallId: newCallLog.id,
-              newCallStreamId: newCallLog.stream_id,
-              status: newCallLog.status,
-            });
-
             // Only intercept if currently in an active room
             if (!roomRef.current) return;
 
@@ -1284,10 +1009,6 @@ let receiverPrivateCallChannel: any;
     loadData();
 
     return () => {
-      console.log("[RECEIVER-DISCONNECT] main mount effect cleanup running (unmount or streamId/router changed)", {
-        role: roleRef.current,
-        hasRoomRef: !!roomRef.current,
-      });
       KeepAwake.allowSleep().catch(() => { });
       void endLiveAttendance();
       document.documentElement.classList.remove("streamhub-theater-mode");
@@ -1387,21 +1108,11 @@ let receiverPrivateCallChannel: any;
 
       const data = await response.json().catch(() => null);
 
-      console.log("[RECEIVER-DISCONNECT] expireStalePrivateCalls tick", {
-        role: roleRef.current,
-        hasRoom: !!roomRef.current,
-        expired: data?.expired,
-        closedStreamIds: data?.closedStreamIds,
-        thisStreamId: streamId,
-      });
-
       if (
         data?.expired > 0 &&
         Array.isArray(data?.closedStreamIds) &&
         data.closedStreamIds.includes(streamId)
       ) {
-        console.log("[RECEIVER-DISCONNECT] expireStalePrivateCalls tearing down room (closedStreamIds match)");
-        console.trace("[RECEIVER-DISCONNECT] expireStalePrivateCalls teardown stack");
         try {
           await KeepAwake.allowSleep();
         } catch { }
@@ -1626,11 +1337,6 @@ let receiverPrivateCallChannel: any;
       )
       .eq("stream_id", streamId)
       .order("created_at", { ascending: false });
-
-    console.log("[RECEIVER-DISCONNECT] loadGuestInvites -> setGuestInvites", {
-      role: roleRef.current,
-      count: (data || []).length,
-    });
 
     setGuestInvites((data || []) as StreamGuest[]);
   }
@@ -2390,41 +2096,6 @@ let receiverPrivateCallChannel: any;
     return () => clearTimeout(timer);
   }, [focusedVideo, isCompactStudio, isTheaterMode, remoteVideos.length, room]);
 
-  // TEMPORARY DIAGNOSTIC — checking whether the dvh-sized theater
-  // container's measured height is bouncing/recalculating after mount,
-  // which could be tricking LiveKit's adaptiveStream visibility tracking
-  // into pausing/resuming the subscription. Remove once the fullscreen
-  // disconnect bug is confirmed/ruled out and fixed.
-  useEffect(() => {
-    if (!isTheaterMode) return;
-
-    const logRect = (label: string) => {
-      const rect = theaterContainerRef.current?.getBoundingClientRect();
-      console.log("[FULLSCREEN-DISCONNECT] theater container rect", {
-        label,
-        role: roleRef.current,
-        width: rect?.width,
-        height: rect?.height,
-        innerHeight: window.innerHeight,
-        t: Date.now(),
-      });
-    };
-
-    logRect("mount");
-
-    const timers = [100, 400, 1000, 2000, 4000].map((delay) =>
-      setTimeout(() => logRect("t+" + delay + "ms"), delay),
-    );
-
-    const handleResize = () => logRect("window-resize-event");
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      timers.forEach((timer) => clearTimeout(timer));
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [isTheaterMode]);
-
   function enableTheaterChromeLock() {
     document.documentElement.classList.add("streamhub-theater-mode");
     document.body.classList.add("streamhub-theater-mode");
@@ -2442,11 +2113,6 @@ let receiverPrivateCallChannel: any;
   async function enterTheaterMode() {
     if (!roomRef.current) return;
 
-    console.log("[FULLSCREEN-DISCONNECT] enterTheaterMode() tapped", {
-      role: roleRef.current,
-      t: Date.now(),
-    });
-
     // Android WebView is unreliable with browser fullscreen.
     // This app-level theater lock hides global StreamHub chrome, removes layout padding,
     // and lets the fixed overlay own the full viewport.
@@ -2458,11 +2124,6 @@ let receiverPrivateCallChannel: any;
   }
 
   async function exitTheaterMode() {
-    console.log("[FULLSCREEN-DISCONNECT] exitTheaterMode() tapped", {
-      role: roleRef.current,
-      t: Date.now(),
-    });
-
     setIsTheaterMode(false);
     disableTheaterChromeLock();
 
@@ -2479,37 +2140,9 @@ let receiverPrivateCallChannel: any;
   }
 
   async function startLiveStream() {
-    startLiveStreamAttemptRef.current += 1;
-    console.log("[CALLER-JOIN] startLiveStream() entered", {
-      hasStream: !!streamRef.current,
-      starting,
-      hasRoomRef: !!roomRef.current,
-    });
-    console.log("[RECEIVER-DISCONNECT] startLiveStream() attempt #" + startLiveStreamAttemptRef.current, {
-      role: roleRef.current,
-    });
-
-    if (!streamRef.current || starting || roomRef.current) {
-      console.log("[CALLER-JOIN] startLiveStream() bailing on guard", {
-        hasStream: !!streamRef.current,
-        starting,
-        hasRoomRef: !!roomRef.current,
-      });
-      return;
-    }
-
-    // Read via ref, not the closed-over `stream`/`role` state: this
-    // function can be called from handleCallerCallUpdate's realtime/poll
-    // closure (set up once at mount), which never observes state updates
-    // that happened after that one-time effect ran. Everything below this
-    // line already refers to `stream`/`role` by name, so shadowing them
-    // with the fresh ref values here is enough to fix every use in this
-    // function without touching each call site individually.
-    const stream = streamRef.current;
-    const role = roleRef.current;
+    if (!stream || starting) return;
 
     const allowed = await checkCurrentUserStillAllowed();
-    console.log("[CALLER-JOIN] checkCurrentUserStillAllowed() ->", allowed);
     if (!allowed) return;
 
     try {
@@ -2608,21 +2241,6 @@ let receiverPrivateCallChannel: any;
              participant.identity,
              participant.name
     );
-          console.log("[RECEIVER-DISCONNECT] TrackSubscribed", {
-            role,
-            trackKind: track.kind,
-            trackSid: (track as any).sid,
-            participantIdentity: participant.identity,
-            publicationIsSubscribed: (_publication as any)?.isSubscribed,
-            attachedElementsBefore: (track as any).attachedElements?.length,
-          });
-          console.trace("[RECEIVER-DISCONNECT] TrackSubscribed stack");
-          console.log("[FULLSCREEN-DISCONNECT] TrackSubscribed", {
-            role: roleRef.current,
-            trackKind: track.kind,
-            trackSid: (track as any).sid,
-            t: Date.now(),
-          });
 
      if (track.kind === Track.Kind.Audio) {
       attachRemoteAudio(track);
@@ -2634,23 +2252,9 @@ let receiverPrivateCallChannel: any;
      }
      },
      );
+         
 
-
-      newRoom.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
-        console.log("[RECEIVER-DISCONNECT] RoomEvent.TrackUnsubscribed", {
-          role,
-          trackKind: track.kind,
-          trackSid: (track as any).sid,
-          participantIdentity: participant?.identity,
-        });
-        console.trace("[RECEIVER-DISCONNECT] TrackUnsubscribed stack");
-        console.log("[FULLSCREEN-DISCONNECT] TrackUnsubscribed", {
-          role: roleRef.current,
-          trackKind: track.kind,
-          trackSid: (track as any).sid,
-          t: Date.now(),
-        });
-
+      newRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
         try {
           if (track.kind === Track.Kind.Video) {
             removeRemoteVideo(track);
@@ -2666,38 +2270,11 @@ let receiverPrivateCallChannel: any;
         console.log("Local track published:", publication.kind);
       });
 
-      (newRoom as any).on((RoomEvent as any).SignalReconnecting, () => {
-        console.log("[RECEIVER-DISCONNECT] RoomEvent.SignalReconnecting", {
-          role,
-          streamId: stream?.id,
-        });
-        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.SignalReconnecting", {
-          role: roleRef.current,
-          t: Date.now(),
-        });
-      });
-
       (newRoom as any).on((RoomEvent as any).Reconnecting, () => {
-        console.log("[RECEIVER-DISCONNECT] RoomEvent.Reconnecting", {
-          role,
-          streamId: stream?.id,
-        });
-        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.Reconnecting", {
-          role: roleRef.current,
-          t: Date.now(),
-        });
         setStatusText("Connection unstable. Reconnecting...");
       });
 
       (newRoom as any).on((RoomEvent as any).Reconnected, () => {
-        console.log("[RECEIVER-DISCONNECT] RoomEvent.Reconnected", {
-          role,
-          streamId: stream?.id,
-        });
-        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.Reconnected", {
-          role: roleRef.current,
-          t: Date.now(),
-        });
         setStatusText(
           role === "host"
             ? "You are live as host."
@@ -2705,33 +2282,11 @@ let receiverPrivateCallChannel: any;
         );
       });
 
-      newRoom.on(RoomEvent.Disconnected, (reason) => {
-        console.log("[RECEIVER-DISCONNECT] RoomEvent.Disconnected", {
-          role,
-          streamId: stream?.id,
-          reason,
-        });
-        console.trace("[RECEIVER-DISCONNECT] RoomEvent.Disconnected stack");
-        console.log("[FULLSCREEN-DISCONNECT] RoomEvent.Disconnected", {
-          role: roleRef.current,
-          reason,
-          t: Date.now(),
-        });
+      newRoom.on(RoomEvent.Disconnected, () => {
         void endLiveAttendance();
         setStatusText("Disconnected from LiveKit room. Tap Join Stream to reconnect.");
-        roomRef.current = null;
         setRoom(null);
         setRemoteVideos([]);
-        setOutgoingCallReceiver(null);
-        // This reset is what allows the guest-auto-join effect to fire
-        // startLiveStream() again with no attempt count or backoff. If
-        // camera/mic acquisition fails for an environmental reason (busy
-        // device, revoked permission), every re-attempt fails the same
-        // way, producing an unbounded connect->fail->disconnect->retry
-        // loop that looks like "reconnecting again and again" from the UI.
-        console.log("[RECEIVER-DISCONNECT] resetting guestAutoJoinStartedRef -> auto-join effect may re-fire startLiveStream()", {
-          role,
-        });
         guestAutoJoinStartedRef.current = false;
       });
 
@@ -2752,7 +2307,6 @@ let receiverPrivateCallChannel: any;
       attachLocalVideoTrack(newRoom);
       setTimeout(() => attachLocalVideoTrack(newRoom), 500);
 
-      console.log("[CALLER-JOIN] LiveKit connected, setting room state");
       roomRef.current = newRoom;
       (window as any).__streamhubActiveCall = true;
       setRoom(newRoom);
@@ -2790,16 +2344,6 @@ let receiverPrivateCallChannel: any;
 
 
   useEffect(() => {
-    console.log("[RECEIVER-DISCONNECT] guest-auto-join effect ran", {
-      streamId: stream?.id,
-      role,
-      pendingInvite: !!pendingInvite,
-      hasRoomRef: !!roomRef.current,
-      hasRoomState: !!room,
-      starting,
-      alreadyStarted: guestAutoJoinStartedRef.current,
-    });
-
     if (!stream?.id) return;
     if (role !== "guest") return;
     if (pendingInvite) return;
@@ -2817,10 +2361,7 @@ let receiverPrivateCallChannel: any;
       });
     }, 700);
 
-    return () => {
-      console.log("[RECEIVER-DISCONNECT] guest-auto-join effect cleanup (timer cleared)");
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, [stream?.id, role, pendingInvite, room, starting]);
 
   // Fixed-price call duration: the package price was already charged in
@@ -2834,13 +2375,6 @@ let receiverPrivateCallChannel: any;
   useEffect(() => {
     const isPrivateCall = stream?.visibility === "private";
     const durationMinutes = Number(stream?.private_call_duration_minutes || 0);
-
-    console.log("[RECEIVER-DISCONNECT] call-duration effect ran", {
-      role: roleRef.current,
-      hasRoom: !!room,
-      isPrivateCall,
-      durationMinutes,
-    });
 
     if (!room || !isPrivateCall || durationMinutes <= 0) {
       return;
@@ -2866,33 +2400,16 @@ let receiverPrivateCallChannel: any;
 
       if (elapsed >= durationMs) {
         clearInterval(countdownTimer);
-        console.log("[RECEIVER-DISCONNECT] call-duration effect tearing down room: time expired", {
-          role: roleRef.current,
-          elapsed,
-          durationMs,
-        });
         alert("Call ended: your purchased call time has been used up.");
         await stopLiveStream();
       }
     }, 5000);
 
-    return () => {
-      console.log("[RECEIVER-DISCONNECT] call-duration effect cleanup (interval cleared)", {
-        role: roleRef.current,
-      });
-      clearInterval(countdownTimer);
-    };
+    return () => clearInterval(countdownTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, stream?.visibility, stream?.private_call_duration_minutes]);
 
   async function stopLiveStream() {
-    console.log("[RECEIVER-DISCONNECT] stopLiveStream() called", {
-      role: roleRef.current,
-      hasRoom: !!roomRef.current,
-      streamId: streamRef.current?.id,
-    });
-    console.trace("[RECEIVER-DISCONNECT] stopLiveStream() call stack");
-
     (window as any).__streamhubActiveCall = false;
 
     try {
@@ -2913,7 +2430,6 @@ let receiverPrivateCallChannel: any;
 
     setRoom(null);
     setRemoteVideos([]);
-    setOutgoingCallReceiver(null);
 
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
@@ -3641,10 +3157,7 @@ let receiverPrivateCallChannel: any;
       {!isTheaterMode && hostJoinRequestVideoOverlay}
 
       {room && isTheaterMode && (
-        <div
-          ref={theaterContainerRef}
-          className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white"
-        >
+        <div className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white">
           <div className="relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black">
             {hostJoinRequestVideoOverlay}
             {focusedVideo === "local" ? (
@@ -4204,81 +3717,56 @@ let receiverPrivateCallChannel: any;
 
                   {!room && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 px-4">
-                      {role === "host" && isPrivate && outgoingCallReceiver ? (
-                        <div className="max-w-md text-center">
-                          <div className="relative mx-auto mb-5 flex h-24 w-24 items-center justify-center">
-                            <span className="absolute inset-0 animate-ping rounded-full bg-red-500/20" />
-                            <span className="absolute inset-0 -m-1.5 rounded-full bg-red-500/20" />
-                            <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z" /></svg></div>
-                          </div>
+                      <div className="max-w-md text-center">
+                        <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
+                          <span className="inline-flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z" /></svg></span>
+                        </div>
 
-                          <h2 className="mb-2 text-3xl font-black sm:text-4xl">
-                            Calling {outgoingCallReceiver.name}...
-                          </h2>
+                        <h2 className="mb-3 text-3xl font-black sm:text-4xl">
+                          {role === "host"
+                            ? isPrivate
+                              ? "Ready to Start Private Call?"
+                              : isSubscribersOnly
+                                ? "Ready to Start Subscriber Stream?"
+                                : "Ready to Go Live?"
+                            : "Ready to Join?"}
+                        </h2>
 
-                          <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
-                            Waiting for them to answer.
-                          </p>
+                        <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
+                          {role === "host"
+                            ? isPrivate
+                              ? "Start your private video call. Only invited guests can join."
+                              : isSubscribersOnly
+                                ? "Start your premium stream. Active subscribers will be notified."
+                                : "Start your camera and microphone to begin broadcasting."
+                            : "Join with your camera and microphone as guest streamer."}
+                        </p>
 
+                        <div className="flex flex-col gap-3 sm:items-center">
                           <button
-                            onClick={cancelOutgoingPrivateCall}
-                            className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
+                            onClick={startLiveStream}
+                            disabled={starting}
+                            className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
                           >
-                            Cancel Call
+                            {starting
+                              ? "Starting..."
+                              : role === "host"
+                                ? isPrivate
+                                  ? "Start Private Call"
+                                  : "Start Live Stream"
+                                : "Join Stream"}
                           </button>
-                        </div>
-                      ) : (
-                        <div className="max-w-md text-center">
-                          <div className="mb-4 text-5xl sm:mb-5 sm:text-6xl">
-                            <span className="inline-flex h-24 w-24 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-black text-red-300 shadow-[0_0_45px_rgba(239,68,68,0.30)]"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.08 5.18 2 2 0 0 1 5.06 3h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.6 2.6a2 2 0 0 1-.45 2.11L9 10.64a16 16 0 0 0 4.36 4.36l1.21-1.21a2 2 0 0 1 2.11-.45c.83.28 1.7.48 2.6.6A2 2 0 0 1 22 16.92z" /></svg></span>
-                          </div>
 
-                          <h2 className="mb-3 text-3xl font-black sm:text-4xl">
-                            {role === "host"
-                              ? isPrivate
-                                ? "Ready to Start Private Call?"
-                                : isSubscribersOnly
-                                  ? "Ready to Start Subscriber Stream?"
-                                  : "Ready to Go Live?"
-                              : "Ready to Join?"}
-                          </h2>
-
-                          <p className="mb-6 text-sm text-gray-400 sm:mb-8 sm:text-base">
-                            {role === "host"
-                              ? isPrivate
-                                ? "Start your private video call. Only invited guests can join."
-                                : isSubscribersOnly
-                                  ? "Start your premium stream. Active subscribers will be notified."
-                                  : "Start your camera and microphone to begin broadcasting."
-                              : "Join with your camera and microphone as guest streamer."}
-                          </p>
-
-                          <div className="flex flex-col gap-3 sm:items-center">
+                          {role === "host" && isPrivate && !room && (
                             <button
-                              onClick={startLiveStream}
-                              disabled={starting}
-                              className="w-full rounded-xl bg-red-600 px-6 py-4 text-base font-bold hover:bg-red-700 disabled:bg-gray-700 sm:w-auto sm:px-8 sm:text-lg"
+                              onClick={cancelOutgoingPrivateCall}
+                              className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
                             >
-                              {starting
-                                ? "Starting..."
-                                : role === "host"
-                                  ? isPrivate
-                                    ? "Start Private Call"
-                                    : "Start Live Stream"
-                                  : "Join Stream"}
+                              Cancel Call
                             </button>
-
-                            {role === "host" && isPrivate && !room && (
-                              <button
-                                onClick={cancelOutgoingPrivateCall}
-                                className="w-full rounded-xl border border-white/10 bg-white/10 px-6 py-3 text-sm font-black text-white hover:bg-white/20 sm:w-auto sm:px-8"
-                              >
-                                Cancel Call
-                              </button>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4767,23 +4255,8 @@ function RemoteVideoTile({
   onClick?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2, 8));
-  const mountedAtRef = useRef(Date.now());
-
-  console.log("[RECEIVER-DISCONNECT] RemoteVideoTile render", {
-    instanceId: instanceIdRef.current,
-    identity,
-    trackSid: (track as any)?.sid,
-  });
 
   useEffect(() => {
-    console.log("[RECEIVER-DISCONNECT] RemoteVideoTile effect run (attach)", {
-      instanceId: instanceIdRef.current,
-      identity,
-      trackSid: (track as any)?.sid,
-      msSinceMount: Date.now() - mountedAtRef.current,
-    });
-
     if (!track || !videoRef.current) return;
 
     track.attach(videoRef.current);
@@ -4795,11 +4268,6 @@ function RemoteVideoTile({
     videoRef.current.play().catch(() => { });
 
     return () => {
-      console.log("[RECEIVER-DISCONNECT] RemoteVideoTile effect cleanup (detach)", {
-        instanceId: instanceIdRef.current,
-        identity,
-        trackSid: (track as any)?.sid,
-      });
       try {
         if (videoRef.current) {
           track.detach(videoRef.current);
