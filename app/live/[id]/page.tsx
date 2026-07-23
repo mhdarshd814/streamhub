@@ -156,6 +156,10 @@ export default function LiveRoomPage() {
   const [focusedVideo, setFocusedVideo] = useState<"local" | string>("local");
   const [isCompactStudio, setIsCompactStudio] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(false);
+  // dvh is unreliable in this Android WebView (already confirmed and fixed
+  // once before, in the chat panel) — the theater-mode overlay measures
+  // window.innerHeight itself instead of relying on a CSS viewport unit.
+  const [theaterViewportHeight, setTheaterViewportHeight] = useState(0);
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
   const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
   const [outgoingCallReceiver, setOutgoingCallReceiver] = useState<{ name: string } | null>(null);
@@ -2425,6 +2429,22 @@ let receiverPrivateCallChannel: any;
     };
   }, [isTheaterMode]);
 
+  // Fix for the fullscreen-toggle disconnect: dvh recomputation in this
+  // Android WebView was bouncing the theater container's rendered size,
+  // which is consistent with LiveKit's adaptiveStream visibility tracking
+  // seeing the video element as repeatedly changing/hidden and pausing the
+  // remote subscription. window.innerHeight is a plain synchronous read,
+  // not a viewport-unit recalculation, so it doesn't bounce the same way.
+  useEffect(() => {
+    if (!isTheaterMode) return;
+
+    const measure = () => setTheaterViewportHeight(window.innerHeight);
+    measure();
+
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [isTheaterMode]);
+
   function enableTheaterChromeLock() {
     document.documentElement.classList.add("streamhub-theater-mode");
     document.body.classList.add("streamhub-theater-mode");
@@ -3643,9 +3663,19 @@ let receiverPrivateCallChannel: any;
       {room && isTheaterMode && (
         <div
           ref={theaterContainerRef}
-          className="fixed inset-0 z-[2147483647] h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black text-white"
+          className="fixed inset-0 z-[2147483647] w-screen overflow-hidden bg-black text-white"
+          style={{
+            height: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+            maxHeight: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+          }}
         >
-          <div className="relative h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-black">
+          <div
+            className="relative w-screen overflow-hidden bg-black"
+            style={{
+              height: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+              maxHeight: theaterViewportHeight ? `${theaterViewportHeight}px` : "100vh",
+            }}
+          >
             {hostJoinRequestVideoOverlay}
             {focusedVideo === "local" ? (
               <>
