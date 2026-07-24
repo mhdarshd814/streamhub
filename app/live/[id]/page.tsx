@@ -272,8 +272,8 @@ export default function LiveRoomPage() {
       return {
         facingMode,
         resolution: {
-          width: 640,
-          height: 360,
+          width: 360,
+          height: 640,
           frameRate: 24,
         },
         frameRate: 24,
@@ -304,8 +304,8 @@ export default function LiveRoomPage() {
         {
           facingMode,
           resolution: {
-            width: 480,
-            height: 270,
+            width: 270,
+            height: 480,
             frameRate: 20,
           },
           frameRate: 20,
@@ -350,8 +350,8 @@ export default function LiveRoomPage() {
     if (privateCall && mobile) {
       return {
         facingMode,
-        width: { ideal: 640, max: 640 },
-        height: { ideal: 360, max: 360 },
+        width: { ideal: 360, max: 360 },
+        height: { ideal: 640, max: 640 },
         frameRate: { ideal: 24, max: 24 },
       };
     }
@@ -2049,51 +2049,24 @@ let receiverPrivateCallChannel: any;
 
     if (!videoTrack) return;
 
-    [
-      { element: localVideoRef.current, label: "localVideoRef" },
-      { element: theaterLocalVideoRef.current, label: "theaterLocalVideoRef" },
-    ].forEach(({ element: videoElement, label }) => {
-      if (!videoElement) return;
+    [localVideoRef.current, theaterLocalVideoRef.current].forEach(
+      (videoElement) => {
+        if (!videoElement) return;
 
-      try {
-        videoTrack.attach(videoElement);
-        videoElement.muted = true;
-        videoElement.playsInline = true;
-        videoElement.autoplay = true;
-        videoElement.style.width = "100%";
-        videoElement.style.height = "100%";
-        videoElement.style.objectFit = "cover";
-        videoElement.play().catch(() => { });
-
-        // Diagnostic only: confirms the camera's actual delivered frame
-        // dimensions/aspect ratio versus the container it's rendered
-        // into, to check whether an off-center crop is caused by the
-        // source frame itself rather than object-fit/object-position.
-        const logDimensions = (when: string) => {
-          const rect = videoElement.getBoundingClientRect();
-          console.log("[VIDEO-DIMENSIONS]", {
-            label,
-            when,
-            videoWidth: videoElement.videoWidth,
-            videoHeight: videoElement.videoHeight,
-            containerWidth: rect.width,
-            containerHeight: rect.height,
-          });
-        };
-
-        if (videoElement.videoWidth && videoElement.videoHeight) {
-          logDimensions("already-loaded");
+        try {
+          videoTrack.attach(videoElement);
+          videoElement.muted = true;
+          videoElement.playsInline = true;
+          videoElement.autoplay = true;
+          videoElement.style.width = "100%";
+          videoElement.style.height = "100%";
+          videoElement.style.objectFit = "cover";
+          videoElement.play().catch(() => { });
+        } catch (error) {
+          console.error("Local video attach error:", error);
         }
-
-        videoElement.addEventListener(
-          "loadedmetadata",
-          () => logDimensions("loadedmetadata"),
-          { once: true },
-        );
-      } catch (error) {
-        console.error("Local video attach error:", error);
-      }
-    });
+      },
+    );
   }
 
   async function switchCameraView() {
