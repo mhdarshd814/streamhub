@@ -2049,24 +2049,51 @@ let receiverPrivateCallChannel: any;
 
     if (!videoTrack) return;
 
-    [localVideoRef.current, theaterLocalVideoRef.current].forEach(
-      (videoElement) => {
-        if (!videoElement) return;
+    [
+      { element: localVideoRef.current, label: "localVideoRef" },
+      { element: theaterLocalVideoRef.current, label: "theaterLocalVideoRef" },
+    ].forEach(({ element: videoElement, label }) => {
+      if (!videoElement) return;
 
-        try {
-          videoTrack.attach(videoElement);
-          videoElement.muted = true;
-          videoElement.playsInline = true;
-          videoElement.autoplay = true;
-          videoElement.style.width = "100%";
-          videoElement.style.height = "100%";
-          videoElement.style.objectFit = "cover";
-          videoElement.play().catch(() => { });
-        } catch (error) {
-          console.error("Local video attach error:", error);
+      try {
+        videoTrack.attach(videoElement);
+        videoElement.muted = true;
+        videoElement.playsInline = true;
+        videoElement.autoplay = true;
+        videoElement.style.width = "100%";
+        videoElement.style.height = "100%";
+        videoElement.style.objectFit = "cover";
+        videoElement.play().catch(() => { });
+
+        // Diagnostic only: confirms the camera's actual delivered frame
+        // dimensions/aspect ratio versus the container it's rendered
+        // into, to check whether an off-center crop is caused by the
+        // source frame itself rather than object-fit/object-position.
+        const logDimensions = (when: string) => {
+          const rect = videoElement.getBoundingClientRect();
+          console.log("[VIDEO-DIMENSIONS]", {
+            label,
+            when,
+            videoWidth: videoElement.videoWidth,
+            videoHeight: videoElement.videoHeight,
+            containerWidth: rect.width,
+            containerHeight: rect.height,
+          });
+        };
+
+        if (videoElement.videoWidth && videoElement.videoHeight) {
+          logDimensions("already-loaded");
         }
-      },
-    );
+
+        videoElement.addEventListener(
+          "loadedmetadata",
+          () => logDimensions("loadedmetadata"),
+          { once: true },
+        );
+      } catch (error) {
+        console.error("Local video attach error:", error);
+      }
+    });
   }
 
   async function switchCameraView() {
