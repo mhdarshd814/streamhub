@@ -2451,8 +2451,25 @@ let receiverPrivateCallChannel: any;
     if (isPrivate && stream?.id) {
       try {
         await supabase.rpc("end_private_call", { p_stream_id: stream.id });
-      } catch (error) {
-        console.warn("end_private_call failed:", error);
+      } catch (error: any) {
+        console.warn("[END-CALL-CLEANUP-FAILED] end_private_call failed, retrying once", {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        try {
+          await supabase.rpc("end_private_call", { p_stream_id: stream.id });
+          console.warn("[END-CALL-CLEANUP-FAILED] retry succeeded");
+        } catch (retryError: any) {
+          console.warn("[END-CALL-CLEANUP-FAILED] retry also failed", {
+            message: retryError?.message,
+            code: retryError?.code,
+            details: retryError?.details,
+          });
+        }
       }
     }
 
