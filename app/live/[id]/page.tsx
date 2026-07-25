@@ -159,7 +159,6 @@ export default function LiveRoomPage() {
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
   const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
   const [outgoingCallReceiver, setOutgoingCallReceiver] = useState<{ name: string } | null>(null);
-  const [videoGeometryDebug, setVideoGeometryDebug] = useState("");
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -2068,28 +2067,6 @@ let receiverPrivateCallChannel: any;
         }
       },
     );
-
-    // TEMPORARY DIAGNOSTIC — measures the real on-screen geometry of
-    // whichever local video tile is actually visible, since two prior
-    // fixes targeting the video content itself had zero visible effect.
-    // Remove this block once the crop/off-center cause is identified.
-    requestAnimationFrame(() => {
-      const visibleVideoElement = [
-        localVideoRef.current,
-        theaterLocalVideoRef.current,
-      ].find((element) => element && element.offsetParent !== null);
-
-      if (!visibleVideoElement) return;
-
-      const videoRect = visibleVideoElement.getBoundingClientRect();
-      const parentRect = visibleVideoElement.parentElement?.getBoundingClientRect();
-
-      setVideoGeometryDebug(
-        `video x:${Math.round(videoRect.x)} w:${Math.round(videoRect.width)} | ` +
-        `parent x:${Math.round(parentRect?.x ?? 0)} w:${Math.round(parentRect?.width ?? 0)} | ` +
-        `screen:${window.innerWidth}`,
-      );
-    });
   }
 
   async function switchCameraView() {
@@ -3635,6 +3612,8 @@ let receiverPrivateCallChannel: any;
                             playsInline
                             className="absolute inset-0 h-full w-full object-cover"
                             style={{
+                              position: "absolute",
+                              inset: 0,
                               width: "100%",
                               height: "100%",
                               objectFit: "cover",
@@ -4349,16 +4328,6 @@ let receiverPrivateCallChannel: any;
           </div>
         </div>
       </div>
-
-      {/* TEMPORARY DIAGNOSTIC — rendered last so it wins the paint-order
-          tie against the theater-mode container, which uses the same
-          max z-index and previously painted over this banner during
-          calls. Remove once video geometry cause is found. */}
-      {videoGeometryDebug && (
-        <div className="fixed left-2 top-20 z-[2147483647] max-w-[92vw] rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black shadow-2xl">
-          DEBUG {videoGeometryDebug}
-        </div>
-      )}
     </>
   );
 }
