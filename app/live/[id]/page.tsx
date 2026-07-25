@@ -159,6 +159,7 @@ export default function LiveRoomPage() {
   const [usingFrontCamera, setUsingFrontCamera] = useState(true);
   const [busyCallerName, setBusyCallerName] = useState<string | null>(null);
   const [outgoingCallReceiver, setOutgoingCallReceiver] = useState<{ name: string } | null>(null);
+  const [videoGeometryDebug, setVideoGeometryDebug] = useState("");
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const theaterLocalVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -2067,6 +2068,28 @@ let receiverPrivateCallChannel: any;
         }
       },
     );
+
+    // TEMPORARY DIAGNOSTIC — measures the real on-screen geometry of
+    // whichever local video tile is actually visible, since two prior
+    // fixes targeting the video content itself had zero visible effect.
+    // Remove this block once the crop/off-center cause is identified.
+    requestAnimationFrame(() => {
+      const visibleVideoElement = [
+        localVideoRef.current,
+        theaterLocalVideoRef.current,
+      ].find((element) => element && element.offsetParent !== null);
+
+      if (!visibleVideoElement) return;
+
+      const videoRect = visibleVideoElement.getBoundingClientRect();
+      const parentRect = visibleVideoElement.parentElement?.getBoundingClientRect();
+
+      setVideoGeometryDebug(
+        `video x:${Math.round(videoRect.x)} w:${Math.round(videoRect.width)} | ` +
+        `parent x:${Math.round(parentRect?.x ?? 0)} w:${Math.round(parentRect?.width ?? 0)} | ` +
+        `screen:${window.innerWidth}`,
+      );
+    });
   }
 
   async function switchCameraView() {
@@ -3199,7 +3222,13 @@ let receiverPrivateCallChannel: any;
 
   return (
     <>
-           
+      {/* TEMPORARY DIAGNOSTIC — remove once video geometry cause is found */}
+      {videoGeometryDebug && (
+        <div className="fixed left-2 top-20 z-[2147483647] max-w-[92vw] rounded-lg bg-yellow-300 px-3 py-2 text-xs font-black text-black shadow-2xl">
+          DEBUG {videoGeometryDebug}
+        </div>
+      )}
+
       {/* Busy call toast — shows when someone tries to call while user is on a call */}
       {busyCallerName && (
         <div className="fixed right-4 top-4 z-[9999] flex items-start gap-3 rounded-2xl border border-yellow-500/30 bg-gray-900 p-4 shadow-2xl">
