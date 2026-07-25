@@ -3229,7 +3229,14 @@ let receiverPrivateCallChannel: any;
                   muted
                   playsInline
                   className="absolute inset-0 h-full w-full object-cover"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                  }}
                 />
 
                 {visibleRemoteVideos.length > 0 ? (
@@ -3292,9 +3299,12 @@ let receiverPrivateCallChannel: any;
                     playsInline
                     className="absolute inset-0 h-full w-full object-cover"
                     style={{
+                      position: "absolute",
+                      inset: 0,
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
+                      objectPosition: "center",
                     }}
                   />
 
@@ -3572,9 +3582,12 @@ let receiverPrivateCallChannel: any;
                             playsInline
                             className="absolute inset-0 h-full w-full object-cover"
                             style={{
+                              position: "absolute",
+                              inset: 0,
                               width: "100%",
                               height: "100%",
                               objectFit: "cover",
+                              objectPosition: "center",
                             }}
                           />
 
@@ -3688,9 +3701,12 @@ let receiverPrivateCallChannel: any;
                             playsInline
                             className="absolute inset-0 h-full w-full object-cover"
                             style={{
+                              position: "absolute",
+                              inset: 0,
                               width: "100%",
                               height: "100%",
                               objectFit: "cover",
+                              objectPosition: "center",
                             }}
                           />
 
